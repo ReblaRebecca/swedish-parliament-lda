@@ -1,0 +1,83 @@
+Swedish Parliamentary Motions on Education: XML-based LDA Analysis
+Project Log - XML Extraction Phase
+===========================================================
+
+PIVOT TO XML METHODOLOGY
+========================
+Date: 2026-10-06
+Rationale: Discovery of peer-reviewed methodology in Bruinsma & Johansson (2024)
+"Finding the structure of parliamentary motions in the Swedish Riksdag 1971–2015"
+
+Previous approach used JSON files with HTML content (extracted via 01_extract_motion_text_from_json.py).
+New approach uses structured XML files with explicit metadata tags for cleaner extraction.
+
+KEY ADVANTAGES OF XML APPROACH
+-------------------------------
+✓ Structured metadata in XML tags (<dok_id>, <organ>, <datum>, <titel>, <subtitel>, <html>)
+✓ Explicit author/signatory information separated from body text
+✓ Direct filtering by <organ>UbU</organ> (no CSV cross-reference needed)
+✓ Validated by peer-reviewed academic methodology
+✓ Cleaner separation of content vs. metadata (fewer boilerplate patterns needed)
+
+XML STRUCTURE EXAMINED
+----------------------
+Sample file: data_xml/mot-2022-2025/*.xml
+
+Key elements:
+  <dok_id>...</dok_id>           → Unique document identifier
+  <organ>UbU</organ>              → Education Committee filter
+  <datum>YYYY-MM-DD</datum>       → Date for temporal binning
+  <titel>...</titel>              → Motion title
+  <subtitel>...</subtitel>        → Authors/metadata (if present)
+  <html>...</html>                → HTML-encoded body content (entities: &lt;, &gt;, etc.)
+
+CONTENT EXTRACTION STRATEGY
+---------------------------
+Following Bruinsma & Johansson (2024):
+1. Load XML files from data_xml/ organized by temporal bins
+2. Filter by <organ>UbU</organ> (Education Committee)
+3. Decode HTML entities from <html> tag
+4. Extract body text between structural markers:
+   - Start: "Inledning" (Introduction section)
+   - End: "Stockholm den [DATE]" (signature block)
+5. Remove HTML tags, decode entities
+6. Output to JSONL format with fields: {dok_id, date, title, text}
+7. Organize by temporal bin (1986-1993, 1994-2004, 2005-2014, 2015-2025)
+
+XML DATA LOCATION
+-----------------
+/Users/rebecca/Dev/SU/Proj_course/data_xml/
+
+Temporal bins:
+  - mot-1986-1989/
+  - mot-1990-1997/
+  - mot-1998-2001/
+  - mot-2002-2005/
+  - mot-2006-2010/
+  - mot-2011-2015/
+  - mot-2016-2021/
+  - mot-2022-2025/
+
+NEXT STEP
+---------
+Script: 07_extract_from_xml.py
+- Parse XML files following Bruinsma & Johansson methodology
+- Extract clean body text (between "Inledning" and signature)
+- Output JSONL by temporal bin
+- Pass to scripts 02-06 (format-agnostic processors)
+
+BOILERPLATE ADJUSTMENT
+----------------------
+With XML extraction:
+- Removed from boilerplate_phrases_xml.txt:
+  × Party names/abbreviations (metadata in XML tags, not extracted)
+  × Month/day names (no signature block extracted)
+  × Parliamentary author signature patterns (structured metadata, not extracted)
+  × Parliamentary terms (hemställ*, förslag*, etc.) - these are substantive content
+
+- Kept in boilerplate_phrases_xml.txt:
+  ✓ OCR/scanning artifacts (inskann*, skann*, etc.) - real errors, not content
+  ✓ Document metadata if present (sidnum*, sidfot*, etc.)
+
+NOTE: Simplified boilerplate list assumes clean XML extraction removes metadata naturally.
+If issues remain, can expand list based on 05_fit_baseline_lda.py topic analysis.

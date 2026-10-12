@@ -1,6 +1,8 @@
 # Data directories
 data/
+data_xml/
 extracted_text/
+extracted_text_xml/
 stopword_removed/
 boilerplate_removed/
 normalized/

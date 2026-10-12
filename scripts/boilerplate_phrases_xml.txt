@@ -1,0 +1,29 @@
+# Swedish Parliamentary Boilerplate Phrases for XML Extraction
+#
+# Context: Following Bruinsma & Johansson (2024) methodology
+# With XML extraction, metadata is in XML tags, so we remove fewer items
+# Keep: Parliamentary terminology (part of substantive discussion)
+# Remove: Party names/abbreviations, dates (metadata), OCR artifacts
+#
+# One pattern per line. Wildcard (*) matches any word characters.
+
+# OCR and document scanning artifacts - these are errors, not content
+inskann*
+inscann*
+skann*
+scann*
+texttolk*
+sidnum*
+sidhuvud*
+sidfot*
+
+# NOTE: We do NOT remove parliamentary terms (hemställ*, förslag*, etc.)
+# because they appear in substantive discussion text and are content, not metadata.
+# The XML extraction handles metadata separation.
+#
+# NOTE: Party abbreviations and names are NOT removed here
+# because they appear in XML tags (subtitle/author field), not in extracted body text.
+# If they appear in body, that's substantive political discussion.
+#
+# NOTE: Date/month/day names are NOT removed because if extracted correctly
+# (body only, not signature block), they won't appear in the text.
