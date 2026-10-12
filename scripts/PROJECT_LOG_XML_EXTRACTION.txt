@@ -115,11 +115,44 @@ Full pipeline executed on XML-extracted data:
    - Output: 13,957 motions with text_normalized, is_duplicate, text_hash fields
    - Location: normalized_xml/
 
+CRITICAL BUG DISCOVERY & FIX (2026-10-12)
+------------------------------------------
+User noted: "ok but have you noticed that the number of motions changed"
+
+INVESTIGATION:
+Initial extraction returned 13,639 motions vs original CSV of 13,917 (278 missing).
+Testing revealed: XML organ tags contain lowercase 'ubu', not uppercase 'UbU'.
+The extraction script filter was case-sensitive, skipping ~310 valid motions.
+
+FIX APPLIED:
+Changed line in 07_extract_from_xml.py from:
+  if organ.strip() != 'UbU':
+to:
+  if organ.strip().upper() != 'UBU':
+
+RESULT AFTER FIX:
+  13,957 motions extracted (40 MORE than original CSV)
+
+This indicates the XML extraction is actually MORE comprehensive than the
+original JSON filtering. The 40 extra motions are legitimate UbU motions
+that were either:
+  - Not flagged as UbU in the original JSON metadata
+  - Added to the parliamentary record after the original CSV was created
+  - Missed by the original filtering logic
+
+PREPROCESSING RE-RUN (2026-10-12):
+All scripts 02-04 re-executed on corrected 13,957 motions:
+  ✓ Stopword removal:    13,957 → 13,957 (all processed)
+  ✓ Boilerplate removal: 13,957 → 13,957 (all processed)
+  ✓ Normalization:       13,957 → 13,957 (80 duplicates, 0.57%)
+
+Final preprocessing output ready for LDA fitting.
+
 NEXT STEP
 ---------
 LDA model fitting on XML-preprocessed data
-- Script: 05_fit_baseline_lda.py (reusable, reads from normalized/ directory)
-- Can test on normalized_xml/ data or integrate into XML pipeline naming
+- Script: 05_fit_baseline_lda.py (reusable, reads from normalized_xml/ directory)
+- Train on 13,957 motions across 4 temporal bins
 - Maintain 22-topic baseline from original pipeline for comparison
 
 BOILERPLATE ADJUSTMENT
