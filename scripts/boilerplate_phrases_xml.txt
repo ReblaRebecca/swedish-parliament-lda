@@ -17,6 +17,59 @@ sidnum*
 sidhuvud*
 sidfot*
 
+# CSS styling artifacts (embedded in HTML, not content)
+font
+margin
+border
+padding
+height
+width
+normal
+solid
+inside
+weight
+italic
+line
+style
+auto
+block
+collapse
+page
+break
+avoid
+size
+top
+left
+bottom
+right
+ml
+px
+pt
+em
+sans
+verdana
+color
+white
+space
+div
+span
+section
+after
+letter
+list
+name
+html
+body
+ui
+net
+words
+rubriknumrerat
+listapunkt
+tabellunderrubrik
+hyperlink
+motiveringrubriknumrerat
+lagtext
+
 # NOTE: We do NOT remove parliamentary terms (hemställ*, förslag*, etc.)
 # because they appear in substantive discussion text and are content, not metadata.
 # The XML extraction handles metadata separation.
