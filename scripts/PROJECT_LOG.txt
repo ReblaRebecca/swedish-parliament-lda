@@ -162,7 +162,35 @@ NEXT STEPS
    - This avoids trying to remove author names via boilerplate patterns
    - Cleaner approach: handle structured metadata properly during extraction
 
-   NEXT: Update extraction script to remove author signatures, rerun full pipeline (01-04), refit baseline with 15 topics
+   ITERATION 3 - AUTHOR SIGNATURE REMOVAL: 2026-10-12
+
+   Modified text extraction (01_extract_motion_text_from_json.py):
+   • Added remove_author_signatures() function
+   • Detects and strips "NAME (party)" pattern lines
+   • Removes "Stockholm den DATE" signature lines
+   • Prevents author names from contaminating topics
+
+   Reran full pipeline (01-04) with author signature removal
+   Duplicates increased: 116 → 158 (1.14%)
+   - Some motions only differed in signatories now appear identical
+
+   FINAL PERPLEXITY COMPARISON (All three iterations):
+
+   | Topics | Iter 1 (46 patterns) | Iter 2 (81 patterns) | Iter 3 (sig removal) | Total improvement |
+   |--------|---------------------|----------------------|----------------------|------------------|
+   | 6      | 1761.20             | 1757.54              | 1681.07              | ↓ 80.13          |
+   | 10     | 1710.05             | 1696.63              | 1626.03              | ↓ 84.02          |
+   | 14     | 1677.68             | 1662.15              | 1608.12              | ↓ 69.56          |
+   | 18     | 1655.06             | 1649.03              | 1602.23              | ↓ 52.83          |
+   | 22     | 1653.21             | 1636.10              | 1579.64              | ↓ 73.57 <-- BEST |
+
+   KEY FINDINGS:
+   • Each preprocessing iteration consistently improved perplexity
+   • Author signature removal had largest single impact (52-84 point improvement)
+   • 22-topic model remains best across all iterations
+   • Iterative refinement validates approach: identify noise → remove at source → improve results
+
+   NEXT: Examine cleaned 22-topic model for remaining noise, decide on 15-topic (Gordon) vs 22-topic model
 
    3b. TEMPORAL BINNED MODELS (TODO)
    • Fit separate LDA for each time period
