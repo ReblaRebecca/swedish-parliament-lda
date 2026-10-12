@@ -62,8 +62,51 @@ def extract_text_from_html(html_content):
         return ""
 
 
+def remove_author_signatures(text):
+    """Remove author/signatory block from end of motion text."""
+    if not text:
+        return text
+
+    lines = text.split('\n')
+
+    # Remove lines that are author signatures (Name + party code or similar)
+    # Signatures typically appear at the end and match patterns like:
+    # "FIRSTNAME LASTNAME (s)"
+    # "Stockholm den 23 januari 1981"
+    filtered_lines = []
+    in_signature_block = False
+
+    for line in reversed(lines):
+        stripped = line.strip()
+
+        # Detect signature patterns (Name with party code in parentheses)
+        if stripped and '(' in stripped and ')' in stripped:
+            # Likely a signature line (NAME (party))
+            in_signature_block = True
+            continue
+
+        # Skip date lines (Stockholm den X Y Z)
+        if stripped.startswith('Stockholm den') or stripped.startswith('stockholm den'):
+            in_signature_block = True
+            continue
+
+        # Once we're past the signature block, keep all remaining lines
+        if in_signature_block and not stripped:
+            # Empty lines at end of signature block
+            continue
+        elif in_signature_block and stripped:
+            # We've reached actual content, stop removing
+            in_signature_block = False
+
+        filtered_lines.append(line)
+
+    # Reverse back to original order
+    cleaned_text = '\n'.join(reversed(filtered_lines)).strip()
+    return cleaned_text
+
+
 def extract_motion_text(json_data):
-    """Extract title and text from motion JSON."""
+    """Extract title and text from motion JSON, removing author signatures."""
     if 'dokumentstatus' not in json_data:
         return None
 
@@ -74,6 +117,9 @@ def extract_motion_text(json_data):
     dok_id = doc.get('dok_id', '')
 
     text = extract_text_from_html(html)
+
+    # Remove author/signatory block
+    text = remove_author_signatures(text)
 
     # Combine title and body text
     full_text = f"{title}\n\n{text}".strip()

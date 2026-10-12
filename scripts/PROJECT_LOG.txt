@@ -144,7 +144,25 @@ NEXT STEPS
    RESULT: All models improved. 22-topic model shows largest improvement (17.11 points).
    Improved boilerplate removal (party codes + OCR artifacts) reduced perplexity across all counts.
 
-   NEXT: Examine new 22-topic model for noise reduction, then proceed with 15-topic model (Gordon methodology) for better interpretability
+   TOPIC ANALYSIS & AUTHOR NAMES ISSUE: 2026-10-12
+
+   Examined 22-topic model with improved preprocessing:
+   • Party codes successfully removed (KD, MP, SD, etc. gone)
+   • OCR artifacts significantly reduced
+   • Topics much more thematically coherent
+
+   DISCOVERY: Topic 21 contains author names (carina, kerstin, lars, andersson, göran, erik, ann)
+   - These are motion signatories from dokintressent metadata in JSON
+   - Currently extracted as text from HTML because we extract all content
+   - Should be removed at source (text extraction) not via boilerplate
+
+   SOLUTION: Modify text extraction (01_extract_motion_text_from_json.py) to:
+   - Extract title + body content from HTML
+   - Strip author/signatory blocks that appear at end of motions
+   - This avoids trying to remove author names via boilerplate patterns
+   - Cleaner approach: handle structured metadata properly during extraction
+
+   NEXT: Update extraction script to remove author signatures, rerun full pipeline (01-04), refit baseline with 15 topics
 
    3b. TEMPORAL BINNED MODELS (TODO)
    • Fit separate LDA for each time period
