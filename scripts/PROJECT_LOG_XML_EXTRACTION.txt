@@ -58,13 +58,58 @@ Temporal bins:
   - mot-2016-2021/
   - mot-2022-2025/
 
+XML EXTRACTION COMPLETED (2026-10-12)
+-------------------------------------
+Script: 07_extract_from_xml.py ✓
+- Parsed 181,194 XML files, filtered by <organ>UbU</organ>
+- Extracted body text between structural markers
+- Output JSONL by temporal bin
+
+Results by temporal bin:
+  group1_1986-1993: 3,460 motions (20.8 MB)
+  group2_1994-2004: 3,313 motions (25.8 MB)
+  group3_2005-2014: 3,577 motions (20.7 MB)
+  group4_2015-2025: 3,289 motions (69.7 MB)
+  Total: 13,639 motions extracted
+
+PREPROCESSING PIPELINE ON XML DATA (2026-10-12)
+------------------------------------------------
+Scripts 02-04 updated to accept input/output directory arguments (backward compatible).
+Full pipeline executed on XML-extracted data:
+
+2. STOPWORD REMOVAL ✓
+   Script: 02_remove_stopwords.py extracted_text_xml stopword_removed_xml
+   - Loaded 114 Swedish stop words
+   - Output: 13,639 motions with text_no_stopwords field
+   - Location: stopword_removed_xml/
+
+3. BOILERPLATE REMOVAL ✓
+   Script: 03_remove_boilerplate.py stopword_removed_xml boilerplate_removed_xml boilerplate_phrases_xml.txt
+   - Loaded 8 patterns from simplified boilerplate_phrases_xml.txt
+   - Patterns: OCR/scanning artifacts only (inskann*, skann*, etc.)
+   - Rationale: XML extraction separates metadata in tags, removing party/author patterns unnecessary
+   - Output: 13,639 motions with text_no_boilerplate field
+   - Location: boilerplate_removed_xml/
+
+4. NORMALIZATION & DEDUPLICATION ✓
+   Script: 04_normalize_and_deduplicate.py boilerplate_removed_xml normalized_xml
+   - Lowercase, remove numbers/punctuation, whitespace normalization
+   - Duplicate detection via MD5 hash
+   - Results: 80 duplicates (0.59%)
+     * group1_1986-1993: 9 duplicates
+     * group2_1994-2004: 4 duplicates
+     * group3_2005-2014: 59 duplicates
+     * group4_2015-2025: 8 duplicates
+   - Lower duplicate rate vs JSON pipeline (80 vs 158) reflects cleaner XML extraction
+   - Output: 13,639 motions with text_normalized, is_duplicate, text_hash fields
+   - Location: normalized_xml/
+
 NEXT STEP
 ---------
-Script: 07_extract_from_xml.py
-- Parse XML files following Bruinsma & Johansson methodology
-- Extract clean body text (between "Inledning" and signature)
-- Output JSONL by temporal bin
-- Pass to scripts 02-06 (format-agnostic processors)
+LDA model fitting on XML-preprocessed data
+- Script: 05_fit_baseline_lda.py (reusable, reads from normalized/ directory)
+- Can test on normalized_xml/ data or integrate into XML pipeline naming
+- Maintain 22-topic baseline from original pipeline for comparison
 
 BOILERPLATE ADJUSTMENT
 ----------------------
