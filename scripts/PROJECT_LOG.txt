@@ -1,0 +1,132 @@
+Swedish Parliamentary Motions on Education: LDA Analysis
+Project Log
+===========================================================
+
+OVERVIEW
+--------
+Tracing thematic change in Swedish parliamentary motions on education (1986-2025) using temporally binned LDA with one-to-one topic alignment.
+
+DATA PREPARATION (COMPLETED)
+----------------------------
+• Downloaded Swedish parliamentary motions from Riksdagens Öppna Data
+• Filtered for education committee (UbU) motions: 13,917 total
+• Organized into 4 temporal bins:
+  - 1986-1993: 3,770 motions
+  - 1994-2004: 3,313 motions
+  - 2005-2014: 3,577 motions
+  - 2015-2025: 3,257 motions
+• Generated CSV lists of filtered motion filenames and dates:
+  - filtered_motions_UbU.csv (full list)
+  - filtered_motions_UbU_group1_1986-1993.csv
+  - filtered_motions_UbU_group2_1994-2004.csv
+  - filtered_motions_UbU_group3_2005-2014.csv
+  - filtered_motions_UbU_group4_2015-2025.csv
+
+NEXT STEPS
+----------
+1. TEXT EXTRACTION (COMPLETED)
+   Script: 01_extract_motion_text_from_json.py
+   Completed: 2026-10-12
+
+   • Load motion JSON files using filtered CSV lists
+   • Extract title and HTML content for each motion
+   • Convert HTML to plain text (HTMLParser)
+   • Combine title + body text for each motion
+   • Output to JSON lines format (one motion per line)
+   • Organized by temporal bin:
+     - group1_1986-1993.jsonl (3,770 motions, 20MB)
+     - group2_1994-2004.jsonl (3,313 motions, 24MB)
+     - group3_2005-2014.jsonl (3,577 motions, 16MB)
+     - group4_2015-2025.jsonl (3,257 motions, 19MB)
+   • Each line contains: {dok_id, date, title, text}
+   • Output location: extracted_text/
+
+2. PREPROCESSING
+
+   2a. STOPWORD REMOVAL (COMPLETED)
+   Script: 02_remove_stopwords.py
+   Completed: 2026-10-12
+
+   • Load extracted text from JSON lines files
+   • Remove Swedish stop words using NLTK (114 stop words)
+   • Output with added field: text_no_stopwords
+   • Organized by temporal bin (same as input):
+     - group1_1986-1993.jsonl (3,770 motions, 35MB)
+     - group2_1994-2004.jsonl (3,313 motions, 42MB)
+     - group3_2005-2014.jsonl (3,577 motions, 28MB)
+     - group4_2015-2025.jsonl (3,257 motions, 34MB)
+   • Output location: stopword_removed/
+
+   2b. BOILERPLATE REMOVAL (COMPLETED)
+   Script: 03_remove_boilerplate.py
+   Phrases file: boilerplate_phrases.txt
+   Completed: 2026-10-12
+
+   Hybrid approach: regex patterns + explicit phrase matching
+
+   • Load 46 phrases from separate file (maintainable for iterations)
+   • Convert wildcard patterns (hemställ* → hemställ\w*) to regex
+   • Include explicit "yrka" forms (preserve "yrkes-" vocational content)
+   • Remove motion identification numbers (1986/87:1001, GE02A1)
+   • Remove parliamentary terms (hemställ*, förslag*, etc.)
+   • Remove author signatures (Name + party code)
+   • Clean extra whitespace
+   • Output with added field: text_no_boilerplate
+   • Organized by temporal bin:
+     - group1_1986-1993.jsonl (3,770 motions, 50MB)
+     - group2_1994-2004.jsonl (3,313 motions, 58MB)
+     - group3_2005-2014.jsonl (3,577 motions, 39MB)
+     - group4_2015-2025.jsonl (3,257 motions, 48MB)
+   • Output location: boilerplate_removed/
+
+   2c. NORMALIZATION & DUPLICATES (COMPLETED)
+   Script: 04_normalize_and_deduplicate.py
+   Completed: 2026-10-12
+
+   • Lowercase all text
+   • Remove numbers (not useful for topic modeling)
+   • Remove punctuation
+   • Remove extra whitespace
+   • Detect exact duplicates via MD5 hash
+   • Output with fields: text_normalized, is_duplicate, text_hash
+   • Results: 116 duplicates found (0.83%)
+     - group1_1986-1993: 5 duplicates
+     - group2_1994-2004: 4 duplicates
+     - group3_2005-2014: 56 duplicates
+     - group4_2015-2025: 51 duplicates
+   • Output location: normalized/ (251MB total)
+
+   PREPROCESSING COMPLETE - Ready for LDA
+
+   NOTE: Lemmatization not applied initially—will evaluate need for it
+   as part of project methodology (comparison point for report)
+
+3. LDA MODEL FITTING
+   • Fit separate LDA model for each temporal bin
+   • Determine optimal number of topics (TBD - baseline comparison approach)
+   • Test topic stability across random seeds
+   • Save model artifacts and topic-term distributions for each bin
+
+4. TOPIC ALIGNMENT & TRAJECTORY ANALYSIS
+   • Connect topics across bins using cosine similarity on topic-term distributions
+   • Create one-to-one topic mappings (following Gordon 2026 approach)
+   • Generate topic trajectories showing evolution over time
+   • Note: Cannot model topic splitting/merging (limitation documented)
+
+5. EVALUATION & INTERPRETATION
+   • Manual assessment of topic coherence and interpretability (4 weeks allocated)
+   • Comparison against baseline (full corpus model)
+   • Document which topics are most stable vs. volatile over time
+   • Assess overall utility of temporal binning for parliamentary text
+
+6. REPORTING
+   • Document findings and methodology
+   • Create visualizations of topic trajectories
+   • Write final report (3 weeks allocated)
+
+NOTES
+-----
+• Data location: /Users/rebecca/Dev/SU/Proj_course/data/mot-*/*.json
+• JSON files require UTF-8 with BOM encoding handling
+• Key fields in JSON: dokumentstatus.dokument.{titel, html, datum, organ}
+• Target organ: UbU (Education Committee / Utbildningsutskottet)

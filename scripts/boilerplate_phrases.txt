@@ -1,0 +1,63 @@
+# Swedish Parliamentary Boilerplate Phrases
+# One pattern per line. Wildcard (*) matches any word characters.
+# "hemställ*" matches: hemställa, hemställan, hemställer, hemställs, etc.
+# Lines starting with # are comments.
+
+# Parliamentary structure terms (wildcards catch variations)
+# NOTE: "motion*" removed - it catches motionera/motionsaktiviteter (real content)
+# Motion numbers handled separately by MOTION_NUMBER_PATTERN regex
+hemställ*
+förslag*
+riksdag*
+utskott*
+betänkande*
+proposition*
+regering*
+beslut*
+
+# Common action/linking phrases (wildcards catch variations)
+anför*
+hänvis*
+tillkännag*
+föreslå*
+undertecknad*
+ovannämnd*
+ovanstående*
+
+# Parliamentary verb forms - EXPLICIT (not wildcard!)
+# These are forms of "yrka" (propose/move), NOT "yrkes-" (vocational)
+yrka
+yrkar
+yrkas
+yrkade
+yrkat
+yrkats
+yrkande
+yrkanden
+yrkandet
+yrkandena
+
+# Date-related boilerplate (signatures, etc.)
+januari
+februari
+mars
+april
+maj
+juni
+juli
+augusti
+september
+oktober
+november
+december
+måndag
+tisdag
+onsdag
+torsdag
+fredag
+lördag
+söndag
+
+# Exact phrases (not caught by wildcards above)
+Med hänvisning till det anförda
+Prop.

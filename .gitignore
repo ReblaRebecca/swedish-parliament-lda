@@ -1,0 +1,27 @@
+# Data directories
+data/
+extracted_text/
+stopword_removed/
+boilerplate_removed/
+normalized/
+
+# Virtual environment
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.Python
+
+# OS
+.DS_Store
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
