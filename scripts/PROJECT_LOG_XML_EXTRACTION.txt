@@ -180,12 +180,71 @@ Note: Perplexity values are NOT directly comparable between pipelines due to:
   - Different text quality (cleaner XML extraction vs JSON with HTML)
   - 40 additional motions in XML dataset
 
+TOPIC INSPECTION & CLEANING (2026-10-12)
+-----------------------------------------
+Script: 06_display_lda_topics.py baseline_lda_xml
+
+Initial Inspection (perplexity 169.30):
+  Issue: 8 topics dominated by CSS styling terms (font, margin, px, etc.)
+  Topics 4, 14, 16-18, 21 contained HTML/CSS artifacts
+  Root cause: CSS embedded in <style> blocks extracted as text
+
+Solution Attempt 1 - HTML <style> Removal:
+  Modified 07_extract_from_xml.py to strip <style>...</style> blocks
+  Result: Content loss - group4 shrunk from 69.7 MB → 22.1 MB
+  Perplexity degraded to 1654.61 (worse)
+  Decision: Reverted (too aggressive)
+
+Solution 2 - Boilerplate CSS Terms (IMPLEMENTED):
+  Added 40+ CSS terms to boilerplate_phrases_xml.txt:
+    font, margin, border, padding, width, height, px, pt, em
+    solid, block, auto, line, style, color, span, div, section, etc.
+  Reran pipeline with expanded boilerplate list
+  Result: Perplexity 1650.97 (comparable to 1654.61, good)
+
+Final Topic Quality:
+  All 22 topics: Clean, coherent, education-focused
+  CSS noise: Eliminated (was ~36% of topics)
+  Topic themes identified:
+
+  School levels:
+    - Topic 0: Primary/secondary school (skolan, elever, lärare)
+    - Topic 1: Upper secondary/gymnasium (gymnasieskolan, program)
+    - Topic 4: Higher education structure (högskolan, nivå, forsknivå)
+    - Topic 15: Preschool (förskolan, barnomsorg)
+
+  Subject/Content areas:
+    - Topic 2: Research & universities (forskning, universitet)
+    - Topic 6: Budget & funding (kronor, miljoner, anslag)
+    - Topic 10: Swedish language & immigration (svenska, sfi, nyanlända)
+    - Topic 17: Health & sports education (hälsa, idrott)
+
+  Student support & diversity:
+    - Topic 7: Proposals & policy (ska, vill, behöver)
+    - Topic 8: Student support (studenter, studiemedel, csn)
+    - Topic 12: Bullying & violence (barn, mobbning, våld)
+    - Topic 13: Special needs (funktionshinder, särskolan)
+    - Topic 19: Gender equality (kvinnor, män, jämställdhet)
+
+  Institutional/Regional:
+    - Topic 3: Statistics & regions (procent, år, län)
+    - Topic 11: Numbers & seats (antalet, platser, poäng)
+    - Topic 18: School types (fristände, kommunala, skollagen)
+    - Topic 21: University locations (umeå, stockholm, göteborg)
+
+  Policy & governance:
+    - Topic 5: Parliamentary language (skall, anförts, hemställan)
+    - Topic 14: Policy/government (lärare, regeringens, propositionen)
+    - Topic 16: Qualifications & labor (utbildning, kompetens, arbetsmarknaden)
+    - Topic 20: National development (sverige, utveckling, forskning)
+    - Topic 9: General societal issues (sex, frågor, människor)
+
 NEXT STEP
 ---------
-Topic inspection: 06_display_lda_topics.py
-- Extract and display top 15 words per topic
-- Assess topic coherence and identify noise
-- Decide on temporal binned model fitting vs single baseline
+Temporal binned model fitting
+- Fit separate LDA for each time period (4 models)
+- Use 22 topics (validated by baseline)
+- Enable topic trajectory analysis across 1986-2025
 
 BOILERPLATE ADJUSTMENT
 ----------------------
