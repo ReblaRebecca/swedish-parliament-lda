@@ -130,7 +130,21 @@ NEXT STEPS
    • Added OCR/document scanning artifacts (inskann*, skann*, texttolk*, sidnum*, sidhuvud*, sidfot*)
    • Updated boilerplate_phrases.txt with 40+ new terms
 
-   NEXT: Will rerun preprocessing with improved boilerplate list, then refit with 15 topics (following Gordon 2026 methodology for interpretability)
+   REFIT AFTER PREPROCESSING IMPROVEMENT: 2026-10-12
+
+   Boilerplate patterns increased: 46 → 81
+
+   Perplexity comparison (Before → After | Improvement):
+   • 6 topics:  1761.20 → 1757.54 | ↓ 3.66
+   • 10 topics: 1710.05 → 1696.63 | ↓ 13.42
+   • 14 topics: 1677.68 → 1662.15 | ↓ 15.53
+   • 18 topics: 1655.06 → 1649.03 | ↓ 6.03
+   • 22 topics: 1653.21 → 1636.10 | ↓ 17.11 <-- BEST
+
+   RESULT: All models improved. 22-topic model shows largest improvement (17.11 points).
+   Improved boilerplate removal (party codes + OCR artifacts) reduced perplexity across all counts.
+
+   NEXT: Examine new 22-topic model for noise reduction, then proceed with 15-topic model (Gordon methodology) for better interpretability
 
    3b. TEMPORAL BINNED MODELS (TODO)
    • Fit separate LDA for each time period
