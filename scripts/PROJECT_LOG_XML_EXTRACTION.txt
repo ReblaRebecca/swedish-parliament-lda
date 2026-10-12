@@ -148,12 +148,44 @@ All scripts 02-04 re-executed on corrected 13,957 motions:
 
 Final preprocessing output ready for LDA fitting.
 
+LDA BASELINE FITTING (2026-10-12)
+----------------------------------
+Script: 05_fit_baseline_lda.py normalized_xml/ baseline_lda_xml/
+- Parameterized to accept input/output directories
+- Fitted 5 LDA models: 6, 10, 14, 18, 22 topics
+- Data: 13,957 normalized motions from XML extraction
+- Vocabulary: 5,000 unique tokens
+- Document-term matrix: 13,957 × 5,000
+
+Perplexity Results (Lower = Better):
+  6 topics:  174.0817
+  10 topics: 171.3444
+  14 topics: 170.7465
+  18 topics: 169.6535
+  22 topics: 169.2996 ← BEST (selected)
+
+Best Model: 22 topics with perplexity 169.30
+Output files:
+  - baseline_lda_22_topics.pkl (model)
+  - baseline_vectorizer.pkl (vectorizer)
+  - baseline_perplexity_results.json (results)
+
+COMPARISON TO ORIGINAL JSON PIPELINE:
+Original (13,917 motions):  22 topics, perplexity 1579.64
+XML (13,957 motions):       22 topics, perplexity 169.30
+
+Note: Perplexity values are NOT directly comparable between pipelines due to:
+  - Different preprocessing (simplified boilerplate list in XML)
+  - Different preprocessing order/completeness
+  - Different text quality (cleaner XML extraction vs JSON with HTML)
+  - 40 additional motions in XML dataset
+
 NEXT STEP
 ---------
-LDA model fitting on XML-preprocessed data
-- Script: 05_fit_baseline_lda.py (reusable, reads from normalized_xml/ directory)
-- Train on 13,957 motions across 4 temporal bins
-- Maintain 22-topic baseline from original pipeline for comparison
+Topic inspection: 06_display_lda_topics.py
+- Extract and display top 15 words per topic
+- Assess topic coherence and identify noise
+- Decide on temporal binned model fitting vs single baseline
 
 BOILERPLATE ADJUSTMENT
 ----------------------
