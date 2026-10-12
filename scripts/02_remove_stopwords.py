@@ -75,8 +75,16 @@ def process_temporal_bin(input_file, output_file, stop_words):
 def main():
     # Configuration
     SCRIPT_DIR = Path(__file__).parent
-    INPUT_DIR = SCRIPT_DIR / 'extracted_text'
-    OUTPUT_DIR = SCRIPT_DIR / 'stopword_removed'
+
+    # Allow command-line arguments for input/output directories (for XML or other sources)
+    # Usage: python3 02_remove_stopwords.py [input_dir] [output_dir]
+    # Default: extracted_text -> stopword_removed (backward compatible)
+    if len(sys.argv) >= 3:
+        INPUT_DIR = Path(sys.argv[1])
+        OUTPUT_DIR = Path(sys.argv[2])
+    else:
+        INPUT_DIR = SCRIPT_DIR / 'extracted_text'
+        OUTPUT_DIR = SCRIPT_DIR / 'stopword_removed'
 
     # Create output directory
     OUTPUT_DIR.mkdir(exist_ok=True)
@@ -98,6 +106,8 @@ def main():
 
     print("=" * 60)
     print("Removing Swedish stop words")
+    print(f"Input: {INPUT_DIR}")
+    print(f"Output: {OUTPUT_DIR}")
     print("=" * 60)
 
     for input_filename, output_filename in bins:

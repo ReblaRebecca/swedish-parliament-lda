@@ -49,8 +49,6 @@ def load_boilerplate_phrases(phrases_file):
 
 # Load boilerplate phrases from file
 SCRIPT_DIR = Path(__file__).parent
-PHRASES_FILE = SCRIPT_DIR / 'boilerplate_phrases.txt'
-BOILERPLATE_PATTERNS = load_boilerplate_phrases(PHRASES_FILE)
 
 # Regex for motion numbers (e.g., 1986/87:1001, GE02A1)
 MOTION_NUMBER_PATTERN = re.compile(r'\d{4}/\d{2}:\w+|[A-Z]{1,2}\d+[A-Z]*\d*')
@@ -79,9 +77,9 @@ def remove_author_signatures(text):
     return '\n'.join(filtered_lines)
 
 
-def remove_boilerplate_phrases(text):
+def remove_boilerplate_phrases(text, boilerplate_patterns):
     """Remove known boilerplate phrases."""
-    for pattern in BOILERPLATE_PATTERNS:
+    for pattern in boilerplate_patterns:
         text = pattern.sub('', text)
     return text
 
@@ -99,21 +97,21 @@ def clean_text(text):
     return text
 
 
-def remove_boilerplate(text):
+def remove_boilerplate(text, boilerplate_patterns):
     """Apply all boilerplate removal techniques."""
     if not text:
         return ""
 
     # Apply removals in sequence
     text = remove_motion_numbers(text)
-    text = remove_boilerplate_phrases(text)
+    text = remove_boilerplate_phrases(text, boilerplate_patterns)
     text = remove_author_signatures(text)
     text = clean_text(text)
 
     return text
 
 
-def process_temporal_bin(input_file, output_file):
+def process_temporal_bin(input_file, output_file, boilerplate_patterns):
     """Process one temporal bin: remove boilerplate."""
     motion_count = 0
 
@@ -129,7 +127,7 @@ def process_temporal_bin(input_file, output_file):
 
                 # Remove boilerplate from stopword-removed text
                 text = motion.get('text_no_stopwords', '')
-                text_cleaned = remove_boilerplate(text)
+                text_cleaned = remove_boilerplate(text, boilerplate_patterns)
 
                 # Add cleaned text to motion
                 motion['text_no_boilerplate'] = text_cleaned
@@ -146,9 +144,20 @@ def process_temporal_bin(input_file, output_file):
 
 
 def main():
-    # Configuration
-    INPUT_DIR = SCRIPT_DIR / 'stopword_removed'
-    OUTPUT_DIR = SCRIPT_DIR / 'boilerplate_removed'
+    # Allow command-line arguments: [input_dir] [output_dir] [boilerplate_file]
+    # Default: stopword_removed -> boilerplate_removed with boilerplate_phrases.txt
+    # Usage: python3 03_remove_boilerplate.py [input_dir] [output_dir] [boilerplate_file]
+    if len(sys.argv) >= 3:
+        INPUT_DIR = Path(sys.argv[1])
+        OUTPUT_DIR = Path(sys.argv[2])
+        PHRASES_FILE = Path(sys.argv[3]) if len(sys.argv) >= 4 else SCRIPT_DIR / 'boilerplate_phrases.txt'
+    else:
+        INPUT_DIR = SCRIPT_DIR / 'stopword_removed'
+        OUTPUT_DIR = SCRIPT_DIR / 'boilerplate_removed'
+        PHRASES_FILE = SCRIPT_DIR / 'boilerplate_phrases.txt'
+
+    # Load boilerplate patterns
+    BOILERPLATE_PATTERNS = load_boilerplate_phrases(PHRASES_FILE)
 
     # Create output directory
     OUTPUT_DIR.mkdir(exist_ok=True)
@@ -165,6 +174,8 @@ def main():
 
     print("=" * 60)
     print("Removing parliamentary boilerplate")
+    print(f"Input: {INPUT_DIR}")
+    print(f"Output: {OUTPUT_DIR}")
     print(f"Boilerplate patterns loaded: {len(BOILERPLATE_PATTERNS)}")
     print("=" * 60)
 
@@ -176,7 +187,7 @@ def main():
             print(f"Error: {input_file} not found")
             continue
 
-        count = process_temporal_bin(input_file, output_file)
+        count = process_temporal_bin(input_file, output_file, BOILERPLATE_PATTERNS)
         total_motions += count
 
     print("=" * 60)
