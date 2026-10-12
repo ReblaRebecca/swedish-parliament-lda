@@ -65,12 +65,23 @@ Script: 07_extract_from_xml.py ✓
 - Extracted body text between structural markers
 - Output JSONL by temporal bin
 
-Results by temporal bin:
+Initial results (with bug):
   group1_1986-1993: 3,460 motions (20.8 MB)
   group2_1994-2004: 3,313 motions (25.8 MB)
   group3_2005-2014: 3,577 motions (20.7 MB)
   group4_2015-2025: 3,289 motions (69.7 MB)
-  Total: 13,639 motions extracted
+  Total: 13,639 motions (INCOMPLETE - organ filter was case-sensitive)
+
+BUG FIX: Case-insensitive organ filter (2026-10-12 later)
+  - XML organ tags contain lowercase 'ubu' not uppercase 'UbU'
+  - Fixed: organ.strip().upper() != 'UBU'
+
+Corrected results:
+  group1_1986-1993: 3,778 motions (22.7 MB)
+  group2_1994-2004: 3,313 motions (25.8 MB)
+  group3_2005-2014: 3,577 motions (20.7 MB)
+  group4_2015-2025: 3,289 motions (69.7 MB)
+  Total: 13,957 motions extracted (40 more than original CSV, comprehensive)
 
 PREPROCESSING PIPELINE ON XML DATA (2026-10-12)
 ------------------------------------------------
@@ -80,7 +91,7 @@ Full pipeline executed on XML-extracted data:
 2. STOPWORD REMOVAL ✓
    Script: 02_remove_stopwords.py extracted_text_xml stopword_removed_xml
    - Loaded 114 Swedish stop words
-   - Output: 13,639 motions with text_no_stopwords field
+   - Output: 13,957 motions with text_no_stopwords field
    - Location: stopword_removed_xml/
 
 3. BOILERPLATE REMOVAL ✓
@@ -88,20 +99,20 @@ Full pipeline executed on XML-extracted data:
    - Loaded 8 patterns from simplified boilerplate_phrases_xml.txt
    - Patterns: OCR/scanning artifacts only (inskann*, skann*, etc.)
    - Rationale: XML extraction separates metadata in tags, removing party/author patterns unnecessary
-   - Output: 13,639 motions with text_no_boilerplate field
+   - Output: 13,957 motions with text_no_boilerplate field
    - Location: boilerplate_removed_xml/
 
 4. NORMALIZATION & DEDUPLICATION ✓
    Script: 04_normalize_and_deduplicate.py boilerplate_removed_xml normalized_xml
    - Lowercase, remove numbers/punctuation, whitespace normalization
    - Duplicate detection via MD5 hash
-   - Results: 80 duplicates (0.59%)
+   - Results: 80 duplicates (0.57%)
      * group1_1986-1993: 9 duplicates
      * group2_1994-2004: 4 duplicates
      * group3_2005-2014: 59 duplicates
      * group4_2015-2025: 8 duplicates
    - Lower duplicate rate vs JSON pipeline (80 vs 158) reflects cleaner XML extraction
-   - Output: 13,639 motions with text_normalized, is_duplicate, text_hash fields
+   - Output: 13,957 motions with text_normalized, is_duplicate, text_hash fields
    - Location: normalized_xml/
 
 NEXT STEP
