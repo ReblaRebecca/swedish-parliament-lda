@@ -102,10 +102,41 @@ NEXT STEPS
    as part of project methodology (comparison point for report)
 
 3. LDA MODEL FITTING
-   • Fit separate LDA model for each temporal bin
-   • Determine optimal number of topics (TBD - baseline comparison approach)
-   • Test topic stability across random seeds
+
+   3a. BASELINE MODEL (COMPLETED - NOISY)
+   Script: 05_fit_baseline_lda.py
+   Completed: 2026-10-12
+   Status: Topics analyzed, found significant noise - returned to preprocessing
+
+   • Load and combine all normalized text (13,917 motions)
+   • Test topic counts: 6, 10, 14, 18, 22
+   • Fit LDA model for each count (scikit-learn, 20 iterations)
+   • Calculate perplexity for each (lower is better):
+     - 6 topics: 1761.20
+     - 10 topics: 1710.05
+     - 14 topics: 1677.68
+     - 18 topics: 1655.06
+     - 22 topics: 1653.21 <-- Selected by perplexity
+   • Output: best model, vectorizer, perplexity results
+   • Location: baseline_lda/
+
+   DISCOVERY: Topic analysis revealed significant noise:
+   • Topic 6: Party codes (KD, MP) polluting education content
+   • Topic 15: OCR/scanning artifacts (inskannat, dokumentet, fp, ub, fl, vpk)
+   • Topic 21: Party names (SD, Sverigedemokraterna) + unrelated terms
+
+   ACTION: Returned to preprocessing (2b) to improve boilerplate removal
+   • Added all major Swedish political party names (S, M, SD, C, FP, L, KD, MP, V, VPK, NYD)
+   • Added OCR/document scanning artifacts (inskann*, skann*, texttolk*, sidnum*, sidhuvud*, sidfot*)
+   • Updated boilerplate_phrases.txt with 40+ new terms
+
+   NEXT: Will rerun preprocessing with improved boilerplate list, then refit with 15 topics (following Gordon 2026 methodology for interpretability)
+
+   3b. TEMPORAL BINNED MODELS (TODO)
+   • Fit separate LDA for each time period
+   • Use optimal topic count from baseline
    • Save model artifacts and topic-term distributions for each bin
+   • Enable topic trajectory analysis
 
 4. TOPIC ALIGNMENT & TRAJECTORY ANALYSIS
    • Connect topics across bins using cosine similarity on topic-term distributions

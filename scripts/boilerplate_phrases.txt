@@ -37,6 +37,40 @@ yrkanden
 yrkandet
 yrkandena
 
+# Swedish political parties (all major parties)
+# These are party identifiers, not thematic content
+
+# Full names and variations
+socialdemokrat*
+moderaterna
+moderaternas
+moderata samlingspartiet
+moderata samlingspartiets
+sverigedemokrat*
+centerparti*
+folkparti*
+liberalerna
+liberalernas
+kristdemokrat*
+miljöparti*
+vänsterparti*
+vänsterpartiet kommunisterna
+ny demokrati
+
+# Single-letter party abbreviations (as separate words)
+s
+m
+sd
+c
+fp
+l
+kd
+kds
+mp
+v
+vpk
+nyd
+
 # Date-related boilerplate (signatures, etc.)
 januari
 februari
@@ -57,6 +91,16 @@ torsdag
 fredag
 lördag
 söndag
+
+# OCR and document scanning artifacts
+inskann*
+inscann*
+skann*
+scann*
+texttolk*
+sidnum*
+sidhuvud*
+sidfot*
 
 # Exact phrases (not caught by wildcards above)
 Med hänvisning till det anförda
