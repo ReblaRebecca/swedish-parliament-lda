@@ -107,7 +107,8 @@ def process_xml_file(xml_path):
         html_content = dokument.findtext('html', '')
 
         # Filter by organ (UbU = Education Committee)
-        if organ.strip() != 'UbU':
+        # Note: organ tag can be "UbU" or "ubu" depending on XML source
+        if organ.strip().upper() != 'UBU':
             return None
 
         # Extract body text
