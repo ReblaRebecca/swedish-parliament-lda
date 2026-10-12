@@ -1,0 +1,28 @@
+{
+  "results": [
+    {
+      "num_topics": 6,
+      "perplexity": 174.08165263874312
+    },
+    {
+      "num_topics": 10,
+      "perplexity": 171.34441072046138
+    },
+    {
+      "num_topics": 14,
+      "perplexity": 170.74652068008695
+    },
+    {
+      "num_topics": 18,
+      "perplexity": 169.65353708845112
+    },
+    {
+      "num_topics": 22,
+      "perplexity": 169.29958163329383
+    }
+  ],
+  "best_model": {
+    "num_topics": 22,
+    "perplexity": 169.29958163329383
+  }
+}
