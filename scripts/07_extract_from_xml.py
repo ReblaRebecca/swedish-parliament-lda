@@ -95,12 +95,16 @@ def process_xml_file(xml_path):
         tree = ET.parse(xml_path)
         root = tree.getroot()
 
-        # Extract metadata from XML tags
-        dok_id = root.findtext('dok_id', '')
-        organ = root.findtext('organ', '')
-        datum = root.findtext('datum', '')
-        titel = root.findtext('titel', '')
-        html_content = root.findtext('html', '')
+        # Extract metadata from <dokument> child element
+        dokument = root.find('dokument')
+        if dokument is None:
+            return None
+
+        dok_id = dokument.findtext('dok_id', '')
+        organ = dokument.findtext('organ', '')
+        datum = dokument.findtext('datum', '')
+        titel = dokument.findtext('titel', '')
+        html_content = dokument.findtext('html', '')
 
         # Filter by organ (UbU = Education Committee)
         if organ.strip() != 'UbU':
@@ -112,9 +116,12 @@ def process_xml_file(xml_path):
         if not body_text:
             return None
 
+        # Extract year from datum (format: YYYY-MM-DD HH:MM:SS)
+        date_str = datum.strip().split()[0] if datum else ''
+
         return {
             'dok_id': dok_id.strip(),
-            'date': datum.strip(),
+            'date': date_str,
             'title': titel.strip(),
             'text': body_text
         }
