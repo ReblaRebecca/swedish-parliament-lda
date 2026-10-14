@@ -1,0 +1,66 @@
+TWO-LETTER WORDS IN SHARED VOCABULARY
+======================================
+
+Total: 53 two-letter words found in top-20 of topics
+
+These are all preprocessing artifacts/fragments that will be FILTERED OUT
+by the corrected token_pattern (2+ character minimum).
+
+COMPLETE LIST (alphabetical):
+br, de, dg, di, el, eu, fj, fr, ga, gg, gr, hb, hj, iv, jd, ka, kr, ld, lt, mf, nd, ne, ng, nk, ns, nt, oh, po, rb, rd, rk, rl, rn, rr, rs, rt, sa, sf, sj, sk, sl, sm, sv, te, tg, tj, tr, tt, tv, uf, ut, va, vs
+
+GROUPED BY FIRST LETTER:
+=======================
+
+B: br
+
+D: de, dg, di
+
+E: el, eu
+
+F: fj, fr
+
+G: ga, gg, gr
+
+H: hb, hj
+
+I: iv
+
+J: jd
+
+K: ka, kr
+
+L: ld, lt
+
+M: mf
+
+N: nd, ne, ng, nk, ns, nt
+
+O: oh
+
+P: po
+
+R: rb, rd, rk, rl, rn, rr, rs, rt
+
+S: sa, sf, sj, sk, sl, sm, sv
+
+T: te, tg, tj, tr, tt, tv
+
+U: uf, ut
+
+V: va, vs
+
+ANALYSIS:
+=========
+
+Almost all are fragments from tokenization errors in preprocessing.
+Only "eu" (European Union) is a legitimate 2-letter acronym.
+
+Examples of likely truncations:
+- "de", "det", "den" - articles or parts of words
+- "ng", "ngs", "ngd" - fragments of "-ing" or "-ning" endings
+- "rs", "rd", "ld", "lt" - likely partial word boundaries
+- "tt", "tta", "ttas" - probably fragments with "ett" (a Swedish word)
+
+With the corrected token_pattern requiring 2+ characters,
+these 53 words will NOT appear in the new vocabulary.
