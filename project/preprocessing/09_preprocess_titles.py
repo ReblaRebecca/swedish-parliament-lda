@@ -55,6 +55,8 @@ def get_swedish_stopwords():
     supplementary_stops.update({'stora', 'rätt', 'bra', 'hos', 'se', 'går', 'bara', 'ser', 'både', 'samt'})
     # Two-letter word artifacts from preprocessing (boilerplate removal, tokenization errors)
     supplementary_stops.update({'br', 'de', 'dg', 'di', 'fj', 'fr', 'ga', 'gg', 'gr', 'hb', 'hj', 'jd', 'ka', 'ld', 'lt', 'mf', 'nd', 'ne', 'ng', 'nk', 'ns', 'nt', 'oh', 'po', 'rb', 'rd', 'rk', 'rl', 'rn', 'rr', 'rs', 'rt', 'sa', 'sf', 'sj', 'sk', 'sl', 'sm', 'te', 'tg', 'tj', 'tr', 'tt', 'ut', 'vs'})
+    # Longer preprocessing artifacts (3-4+ characters): truncated words and character boundary errors
+    supplementary_stops.update({'ggare', 'tt', 'tta', 'ttas', 'ttre', 'rs', 'rn', 'rns', 'rd', 'rda', 'ret', 'rer', 'ng', 'ngd', 'ngs'})
     stop_words.update(supplementary_stops)
 
     return stop_words
