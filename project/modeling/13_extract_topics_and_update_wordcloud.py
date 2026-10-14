@@ -16,16 +16,22 @@ except ImportError:
 
 
 def extract_topics(lda_model, vectorizer, num_topics=44, num_words=20):
-    """Extract top N words for each topic from LDA model."""
+    """Extract top N words for each topic from LDA model, with normalized probabilities."""
     topics = []
     feature_names = vectorizer.get_feature_names_out()
 
     for topic_idx in range(num_topics):
-        top_indices = lda_model.components_[topic_idx].argsort()[-num_words:][::-1]
+        # Normalize topic weights to probabilities (sum to 1)
+        topic_weights = lda_model.components_[topic_idx]
+        topic_probs = topic_weights / topic_weights.sum()
+
+        # Get top word indices
+        top_indices = topic_probs.argsort()[-num_words:][::-1]
+
         top_words = [
             {
                 'word': feature_names[i],
-                'prob': float(lda_model.components_[topic_idx][i])
+                'prob': float(topic_probs[i])
             }
             for i in top_indices
         ]
@@ -48,6 +54,7 @@ def save_topics_csv(topics, output_path):
             row = {'topic': f"Topic {topic['topic_num']}"}
             for i, word_data in enumerate(topic['top_words'], 1):
                 row[f'word_{i}'] = word_data['word']
+                # Format as normalized probability (0.0000 to 1.0000)
                 row[f'prob_{i}'] = f"{word_data['prob']:.4f}"
             writer.writerow(row)
 
