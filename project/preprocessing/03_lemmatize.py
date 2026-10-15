@@ -32,12 +32,16 @@ SKIP_UPOS = {'AUX', 'PUNCT', 'SYM'}
 # Number of motions sent to Stanza at once
 BATCH_SIZE = 32
 
+# Stanza models live next to the repo (SU/stanza_resources), not in the home folder
+STANZA_DIR = Path(__file__).resolve().parent.parent.parent.parent / 'stanza_resources'
+
 
 def load_pipeline():
-    """Load the Swedish Stanza pipeline (downloads the model on first use)."""
+    """Load the Swedish Stanza pipeline (downloads the model to STANZA_DIR on first use)."""
     return stanza.Pipeline(
         'sv',
         processors='tokenize,pos,lemma',
+        dir=str(STANZA_DIR),
         logging_level='WARN',
     )
 

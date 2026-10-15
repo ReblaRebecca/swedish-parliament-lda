@@ -60,7 +60,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - **Output field:** `text_no_boilerplate`
 
 ### 3. Lemmatization (`preprocessing/03_lemmatize.py`)
-- **Tool:** [Stanza](https://stanfordnlp.github.io/stanza/) Swedish pipeline (`tokenize,pos,lemma`, default Talbanken model), downloaded automatically on first run
+- **Tool:** [Stanza](https://stanfordnlp.github.io/stanza/) Swedish pipeline (`tokenize,pos,lemma`, default Talbanken model), stored in `SU/stanza_resources/` and downloaded there automatically if missing
 - Runs on running text (before normalization and stopword removal), so the tagger sees full sentences and can use context
 - **Dropped tokens:** auxiliary verbs (UPOS `AUX`), punctuation and symbols. Stanza lemmatizes the modal *ska/skall/skulle* to `skola`, which would merge with the noun *skola* (school); all auxiliaries are stopwords anyway
 - Output is lemmas, one sentence per line
@@ -207,7 +207,7 @@ Known trade-offs of the current approach (seen when testing on example sentences
 
 ## Usage
 
-Dependencies: `pip install nltk scikit-learn scipy numpy stanza`. NLTK stopwords are read from (and downloaded to) `SU/nltk_data/`, next to the repo. Stanza downloads its Swedish model (~a few hundred MB) to `~/stanza_resources/` on first run.
+Dependencies: `pip install nltk scikit-learn scipy numpy stanza`. NLTK stopwords are read from (and downloaded to) `SU/nltk_data/`, next to the repo. Stanza's Swedish model (~190 MB) is read from (and downloaded to on first run) `SU/stanza_resources/`.
 
 ```bash
 cd project
