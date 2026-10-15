@@ -1,36 +1,15 @@
 #!/usr/bin/env python3
 """
-Normalize motion text and detect duplicates.
-Final preprocessing step before LDA.
-Input: JSON lines with boilerplate-removed text.
-Output: JSON lines with normalized text and duplicate flags.
+Detect duplicate motions on final lemmatized text (STEP 5).
+Input: JSON lines with 'text_lemmatized' field.
+Output: JSON lines with 'is_duplicate' flag and 'text_hash' field.
+Fixed version with explicit file flushing.
 """
 
 import json
-import re
 import hashlib
 from pathlib import Path
 import sys
-
-
-def normalize_text(text):
-    """Normalize text: lowercase, remove numbers/punctuation, clean whitespace."""
-    if not text:
-        return ""
-
-    # Lowercase
-    text = text.lower()
-
-    # Remove numbers
-    text = re.sub(r'\d+', '', text)
-
-    # Remove punctuation but keep spaces
-    text = re.sub(r'[^\w\s]', ' ', text)
-
-    # Remove extra whitespace
-    text = re.sub(r'\s+', ' ', text)
-
-    return text.strip()
 
 
 def compute_hash(text):
@@ -40,11 +19,11 @@ def compute_hash(text):
     return hashlib.md5(text.encode()).hexdigest()
 
 
-def process_temporal_bin(input_file, output_file):
-    """Process one temporal bin: normalize and detect duplicates."""
+def process_temporal_bin(input_file, output_file, duplicates):
+    """Process one temporal bin: detect duplicates (global dict persists across bins)."""
     motion_count = 0
-    duplicates = {}
     duplicate_count = 0
+    malformed_count = 0
 
     print(f"Processing {input_file.name}...")
 
@@ -54,56 +33,51 @@ def process_temporal_bin(input_file, output_file):
                 try:
                     motion = json.loads(line.strip())
                 except json.JSONDecodeError:
+                    malformed_count += 1
                     continue
 
-                # Normalize text from boilerplate-removed version
-                text = motion.get('text_no_boilerplate', '')
-                text_normalized = normalize_text(text)
-
-                # Compute hash for duplicate detection
-                text_hash = compute_hash(text_normalized)
+                # Compute hash on final lemmatized text
+                text = motion.get('text_lemmatized', '')
+                text_for_hash = ' '.join(text.split())
+                text_hash = compute_hash(text_for_hash)
 
                 # Check if duplicate
                 is_duplicate = False
+                duplicate_of = None
                 if text_hash:
                     if text_hash in duplicates:
                         is_duplicate = True
                         duplicate_count += 1
+                        duplicate_of = duplicates[text_hash]
                     else:
                         duplicates[text_hash] = motion.get('dok_id', 'unknown')
 
-                # Add normalized text and duplicate flag to motion
-                motion['text_normalized'] = text_normalized
+                # Add duplicate info to motion
                 motion['is_duplicate'] = is_duplicate
+                motion['duplicate_of'] = duplicate_of
                 motion['text_hash'] = text_hash
 
-                # Write to output
+                # Write to output with explicit flush
                 out_f.write(json.dumps(motion, ensure_ascii=False) + '\n')
+                out_f.flush()
                 motion_count += 1
 
                 if motion_count % 1000 == 0:
                     print(f"  Processed {motion_count} motions...")
 
-    print(f"  Completed: {motion_count} motions, {duplicate_count} duplicates found")
-    return motion_count, duplicate_count
+    print(f"  Completed: {motion_count} motions written, {duplicate_count} duplicates found, {malformed_count} malformed JSON skipped")
+    return motion_count, duplicate_count, malformed_count
 
 
 def main():
     # Configuration
     SCRIPT_DIR = Path(__file__).parent
+    PROJECT_ROOT = SCRIPT_DIR.parent
 
-    # Allow command-line arguments for input/output directories (for XML or other sources)
-    # Usage: python3 04_normalize_and_deduplicate.py [input_dir] [output_dir]
-    # Default: boilerplate_removed -> normalized (backward compatible)
-    if len(sys.argv) >= 3:
-        INPUT_DIR = Path(sys.argv[1])
-        OUTPUT_DIR = Path(sys.argv[2])
-    else:
-        INPUT_DIR = SCRIPT_DIR / 'boilerplate_removed'
-        OUTPUT_DIR = SCRIPT_DIR / 'normalized'
+    INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'lemmatized'
+    OUTPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'deduplicated'
 
-    # Create output directory
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Define temporal bins
     bins = [
@@ -113,11 +87,15 @@ def main():
         ('group4_2015-2025.jsonl', 'group4_2015-2025.jsonl'),
     ]
 
+    # Global duplicates dict
+    duplicates = {}
+
     total_motions = 0
     total_duplicates = 0
+    total_malformed = 0
 
     print("=" * 60)
-    print("Normalizing text and detecting duplicates")
+    print("STEP 5: Detecting duplicate motions (cross-bin deduplication)")
     print(f"Input: {INPUT_DIR}")
     print(f"Output: {OUTPUT_DIR}")
     print("=" * 60)
@@ -130,13 +108,23 @@ def main():
             print(f"Error: {input_file} not found")
             continue
 
-        count, dups = process_temporal_bin(input_file, output_file)
+        count, dups, malformed = process_temporal_bin(input_file, output_file, duplicates)
         total_motions += count
         total_duplicates += dups
+        total_malformed += malformed
 
     print("=" * 60)
     print(f"Total: {total_motions} motions processed")
-    print(f"Total duplicates found: {total_duplicates} ({100*total_duplicates/total_motions:.2f}%)")
+
+    duplicate_percentage = (
+        100 * total_duplicates / total_motions
+        if total_motions
+        else 0
+    )
+    print(f"Total duplicates found: {total_duplicates} ({duplicate_percentage:.2f}%)")
+
+    if total_malformed > 0:
+        print(f"⚠️  Warning: {total_malformed} malformed JSON lines skipped")
     print(f"Output saved to: {OUTPUT_DIR}")
     print("=" * 60)
 

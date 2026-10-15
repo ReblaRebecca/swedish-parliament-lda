@@ -43,24 +43,54 @@ def decode_html_entities(html_str):
 
 def extract_body_text(html_content):
     """
-    Extract main body text between "Inledning" and signature block.
-    Following Bruinsma & Johansson structure.
+    Extract motion body text from HTML, removing author-related and formatting elements.
+    Removes <div> and <p> elements with author/header classes, plus style/script tags.
+    Returns cleaned, stripped text with normalized whitespace.
     """
     if not html_content:
         return ""
 
-    text = decode_html_entities(html_content)
+    # Remove style, script, and other non-content HTML elements
+    # These contain CSS/JavaScript code that should not appear in text
+    non_content_patterns = [
+        r'<style[^>]*>.*?</style>',           # CSS styles
+        r'<script[^>]*>.*?</script>',         # JavaScript
+        r'<link[^>]*>',                       # Link tags
+        r'<meta[^>]*>',                       # Meta tags
+        r'<!--.*?-->',                        # HTML comments
+        r'<noscript[^>]*>.*?</noscript>'     # NoScript content
+    ]
 
-    # Find "Inledning" section (start of main content)
-    inledning_match = re.search(r'Inledning\s+', text, re.IGNORECASE)
-    start_idx = inledning_match.end() if inledning_match else 0
+    cleaned_html = html_content
+    for pattern in non_content_patterns:
+        cleaned_html = re.sub(pattern, '', cleaned_html, flags=re.IGNORECASE | re.DOTALL)
 
-    # Find signature block (end of main content)
-    # Pattern: "Stockholm den DATE" or similar signature markers
-    signature_match = re.search(r'Stockholm\s+den\s+\d+\s+\w+\s+\d{4}', text[start_idx:])
-    end_idx = start_idx + signature_match.start() if signature_match else len(text)
+    # Remove HTML elements with author-related classes
+    # These classes mark author signatures, dates, headers, etc.
+    author_classes = [
+        'MotionarLista',        # Author list
+        'Underskrifter',        # Signatures
+        'UnderskriftDatum',     # Signature date
+        'sidhuvud_publikation', # Publication header
+        'sidhuvud_beteckning'   # Document reference header
+    ]
 
-    body = text[start_idx:end_idx].strip()
+    for class_name in author_classes:
+        # Remove <div class="ClassName">...</div> and <p class="ClassName">...</p>
+        # Using non-greedy matching to avoid removing too much
+        cleaned_html = re.sub(
+            rf'<(div|p)[^>]*class="[^"]*{class_name}[^"]*"[^>]*>.*?</\1>',
+            '',
+            cleaned_html,
+            flags=re.IGNORECASE | re.DOTALL
+        )
+
+    text = decode_html_entities(cleaned_html)
+
+    # After structural removal of headers and signatures, use full cleaned body.
+    # The "Stockholm den DATE" pattern is now a fallback edge case rather than
+    # a primary boundary, since Underskrifter and UnderskriftDatum are already removed.
+    body = text.strip()
 
     # Clean up extra whitespace
     body = re.sub(r'\s+', ' ', body)
@@ -68,20 +98,54 @@ def extract_body_text(html_content):
     return body
 
 
+def extract_authors(root):
+    """Extract author names and metadata from <dokintressent> section.
+
+    Only includes intressents with role='undertecknare' (signatories).
+    Returns list of dicts with author info: {name, party, role, order}
+    """
+    authors = []
+    dokintressent = root.find('dokintressent')
+
+    if dokintressent is None:
+        return authors
+
+    for intressent in dokintressent.findall('intressent'):
+        namn = intressent.findtext('namn', '')
+        partibet = intressent.findtext('partibet', '')
+        ordning = intressent.findtext('ordning', '')
+        roll = intressent.findtext('roll', '')
+
+        # Only include if name exists and role is 'undertecknare' (signatory)
+        if namn and roll.strip().lower() == 'undertecknare':
+            authors.append({
+                'name': namn.strip(),
+                'party': partibet.strip() if partibet else '',
+                'role': roll.strip(),
+                'order': int(ordning) if ordning and ordning.isdigit() else 0
+            })
+
+    # Sort by order
+    authors.sort(key=lambda x: x['order'])
+    return authors
+
+
 def get_temporal_bin(date_str):
-    """Assign date to temporal bin based on year."""
+    """Assign date to temporal bin based on year (1986-2025 range)."""
     try:
         date_obj = datetime.strptime(date_str, '%Y-%m-%d')
         year = date_obj.year
 
-        if year <= 1993:
+        if 1986 <= year <= 1993:
             return 'group1_1986-1993'
-        elif year <= 2004:
+        elif 1994 <= year <= 2004:
             return 'group2_1994-2004'
-        elif year <= 2014:
+        elif 2005 <= year <= 2014:
             return 'group3_2005-2014'
-        else:
+        elif 2015 <= year <= 2025:
             return 'group4_2015-2025'
+        else:
+            return None  # Outside 1986-2025 range
     except (ValueError, AttributeError):
         return None
 
@@ -120,11 +184,17 @@ def process_xml_file(xml_path):
         # Extract year from datum (format: YYYY-MM-DD HH:MM:SS)
         date_str = datum.strip().split()[0] if datum else ''
 
+        # Extract author information from root-level <dokintressent>
+        authors = extract_authors(root)
+        author_names = [a['name'] for a in authors]
+
         return {
             'dok_id': dok_id.strip(),
             'date': date_str,
             'title': titel.strip(),
-            'text': body_text
+            'text': body_text,
+            'authors': authors,
+            'author_names': author_names
         }
 
     except Exception as e:
@@ -135,14 +205,16 @@ def process_xml_file(xml_path):
 def main():
     # Configuration
     SCRIPT_DIR = Path(__file__).parent
-    DATA_XML_DIR = SCRIPT_DIR.parent / 'data_xml'
-    OUTPUT_DIR = SCRIPT_DIR / 'extracted_text_xml'
+    PROJECT_ROOT = SCRIPT_DIR.parent
+    PARENT_DIR = PROJECT_ROOT.parent
+    DATA_XML_DIR = PARENT_DIR / 'data_xml'
+    OUTPUT_DIR = PROJECT_ROOT / 'data' / 'input' / 'extracted_text_xml'
 
     if not DATA_XML_DIR.exists():
         print(f"Error: XML data directory not found: {DATA_XML_DIR}")
         sys.exit(1)
 
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print("=" * 70)
     print("Extracting Motion Text from XML Files")
@@ -191,7 +263,7 @@ def main():
             continue
 
         # Write to appropriate bin file
-        output_files[bin_name].write(json.dumps(motion) + '\n')
+        output_files[bin_name].write(json.dumps(motion, ensure_ascii=False) + '\n')
         stats[bin_name]['count'] += 1
 
     # Close all output files
@@ -216,7 +288,7 @@ def main():
     print("=" * 70)
 
     print(f"\nOutput files in: {OUTPUT_DIR}")
-    print("Next step: Run 02_remove_stopwords.py on extracted_text_xml/")
+    print("Next step: Run 02_remove_boilerplate.py on extracted_text_xml/")
 
 
 if __name__ == '__main__':

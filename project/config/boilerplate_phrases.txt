@@ -1,0 +1,514 @@
+
+# Swedish Parliamentary Boilerplate Phrases for XML Extraction
+#
+# Context: Following Bruinsma & Johansson (2024) methodology
+# Updated: Iterative refinement based on LDA topic inspection
+#
+# One explicit word or phrase per line. No wildcard patterns are used.
+# Organized by category for readability.
+
+# ============================================================================
+# 1. OCR and Document Scanning Artifacts (these are errors, not content)
+# ============================================================================
+inskanna
+inskannad
+inskannade
+inskannat
+inskannar
+inskanning
+inskanningen
+inscanna
+inscannad
+inscannade
+inscannat
+inscannar
+inscanning
+inscanningen
+skanna
+skannad
+skannade
+skannat
+skannar
+skanning
+skanningen
+scanna
+scannad
+scannade
+scannat
+scannar
+scanning
+scanningen
+sidnummer
+sidnumret
+sidnumren
+sidhuvud
+sidhuvudet
+sidhuvuden
+sidfot
+sidfoten
+sidfötter
+
+# ============================================================================
+# 2. Government and Parliamentary Institutions
+# ============================================================================
+regering
+regeringen
+regeringens
+regeringar
+regeringarna
+riksdag
+riksdagen
+riksdagens
+riksdagar
+riksdagarna
+riksmötet
+riksdagsåret
+proposition
+propositionen
+propositionens
+propositioner
+propositionerna
+motion
+motionen
+motionerna
+motionär
+motionären
+motionärer
+motionärerna
+motion till riksdagen
+utskottet
+utskottets
+
+# ============================================================================
+# 3. Parliamentary Document and Reference Terms
+# ============================================================================
+hemställa
+hemställan
+hemställans
+hemställer
+hemställde
+hemställt
+betänkande
+betänkandet
+observera
+tabell
+dokument
+dokumentet
+dokumentets
+dokumenten
+dokumentens
+fel
+yrkande
+yrkandet
+yrkanden
+begär
+begäran
+förslaget
+förslagen
+tillkännagivande
+
+# ============================================================================
+# 4. Parliamentary Actions and Verbs
+# ============================================================================
+ställer
+ställa
+ställt
+föreslå
+föreslår
+föreslog
+föreslagit
+anför
+anförs
+anföra
+anföras
+anfördes
+anfört
+anförts
+anförande
+anförandet
+beslut
+beslutet
+beslutets
+besluten
+beslutens
+beslutar
+beslutade
+hänvisning
+hänvisa
+hänvisar
+hänvisade
+hänvisat
+hänvisas
+hänvisades
+anse
+anser
+ansåg
+ansett
+anses
+ansågs
+andel
+andelen
+andelar
+andelarna
+procent
+procenten
+procenttal
+tillkännager
+tillkännagivande
+
+# ============================================================================
+# 5. Question, Reference, and Opinion Words
+# ============================================================================
+fråga
+frågan
+vidare
+mena
+menar
+skäl
+skälet
+skälen
+borde
+innebär
+innebära
+innebar
+inneburit
+
+# ============================================================================
+# 6. Generic Filler and Discourse Words
+# ============================================================================
+vissa
+stället
+helt
+sitt
+tillägg
+nuvarande
+endast
+utredning
+känna
+känner
+kände
+känt
+kännas
+kändes
+kännedom
+anledning
+anledningen
+anledningar
+anledningarna
+förekomma
+förekommer
+förekom
+förekommit
+förekomst
+förekomsten
+förekomster
+eftersom
+dessutom
+möjligt
+annat
+annan
+lydelse
+övriga
+
+# ============================================================================
+# 7. Verb Forms and Grammar Words
+# ============================================================================
+sätt
+satte
+gäller
+gällt
+gällande
+gällandes
+ges
+tar
+
+# ============================================================================
+# 8. Abbreviations and Single Characters (metadata/structural)
+# ============================================================================
+ant
+åk
+ab
+ing
+per
+
+# ============================================================================
+# 9. Time Period Names (temporal metadata)
+# ============================================================================
+dag
+dagar
+dagen
+dagarna
+vecka
+veckor
+veckan
+veckorna
+månad
+månader
+månaden
+månaderna
+år
+året
+åren
+års
+årtionde
+årtionden
+decennium
+decennier
+sekel
+
+# ============================================================================
+# 10. Weekdays (temporal metadata)
+# ============================================================================
+måndag
+tisdag
+onsdag
+torsdag
+fredag
+lördag
+söndag
+
+# ============================================================================
+# 11. Months (temporal metadata)
+# ============================================================================
+januari
+februari
+mars
+april
+maj
+juni
+juli
+augusti
+september
+oktober
+november
+december
+
+# ============================================================================
+# 12. Seasons (temporal metadata)
+# ============================================================================
+vår
+sommar
+höst
+vinter
+
+# ============================================================================
+# 13. Temporal and Frequency Expressions (metadata)
+# ============================================================================
+idag
+i dag
+igår
+i går
+imorgon
+i morgon
+tid
+tiden
+tider
+period
+perioden
+perioder
+nu
+nyss
+snart
+sedan
+sen
+tidigare
+senare
+därefter
+dessförinnan
+fortfarande
+redan
+ännu
+samtidigt
+numera
+hädanefter
+framöver
+hittills
+länge
+alltid
+aldrig
+ibland
+ofta
+sällan
+dagligen
+årligen
+årsvis
+månadsvis
+veckovis
+tillfälligt
+slutligen
+omedelbart
+
+# ============================================================================
+# 14. Spatial and Directional Words (structural metadata)
+# ============================================================================
+upp
+uppåt
+uppe
+uppifrån
+ned
+ner
+nedåt
+nere
+nedifrån
+fram
+framåt
+framme
+framifrån
+bak
+bakåt
+bakom
+bakifrån
+in
+inåt
+inne
+inifrån
+ut
+utåt
+ute
+utifrån
+över
+ovan
+ovanpå
+ovanför
+under
+underifrån
+undertill
+bredvid
+intill
+mellan
+mitt
+mitten
+nära
+bort
+borta
+bortåt
+hit
+dit
+här
+där
+hem
+hemma
+hemåt
+vart
+varifrån
+någonstans
+överallt
+ingenstans
+
+# ============================================================================
+# 15. Geographic Locations
+# ============================================================================
+sverige
+
+# ============================================================================
+# 16. Abbreviations and Parliamentary References (metadata/structural)
+# ============================================================================
+uhä
+ex
+prop
+fl
+mot
+bl
+fr
+nr
+kap
+sid
+sida
+bil
+dnr
+sou
+sfs
+rskr
+skr
+bet
+dir
+prot
+jfr
+
+# ============================================================================
+# 17. Currency and Numerical Terms (metadata)
+# ============================================================================
+kronor
+miljoner
+kr
+milj
+antal
+antalet
+antalen
+antals
+
+# ============================================================================
+# 18. Political Party Names and Abbreviations (metadata from author signatures)
+# ============================================================================
+centerparti
+centerpartiet
+centerpartiets
+centerpartister
+centerpartisterna
+socialdemokrat
+socialdemokraten
+socialdemokrater
+socialdemokraterna
+socialdemokratisk
+socialdemokratiska
+socialdemokratiskt
+moderaterna
+moderata samlingspartiet
+sverigedemokrat
+sverigedemokraten
+sverigedemokrater
+sverigedemokraterna
+sverigedemokratisk
+sverigedemokratiska
+sverigedemokratiskt
+folkparti
+folkpartiet
+folkpartiets
+folkpartist
+folkpartister
+liberalerna
+liberalernas
+kristdemokrat
+kristdemokraten
+kristdemokrater
+kristdemokraterna
+kristdemokratisk
+kristdemokratiska
+kristdemokratiskt
+miljöparti
+miljöpartiet
+miljöpartiets
+miljöpartist
+miljöpartister
+vänsterparti
+vänsterpartiet
+vänsterpartiets
+vänsterpartist
+vänsterpartister
+vänsterpartiet kommunisterna
+ny demokrati
+ny demokratis
+s
+m
+sd
+c
+fp
+l
+kd
+kds
+mp
+v
+vpk
+nyd
+
+ett
+två
+tre
+fyra
+fem
+sex
+sju
+åtta
+nio
+tio
+
