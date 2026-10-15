@@ -230,7 +230,7 @@ def process_xml_file(xml_path):
         dok_id = dokument.findtext('dok_id', '')
         organ = dokument.findtext('organ', '')
         datum = dokument.findtext('datum', '')
-        titel = dokument.findtext('titel', '')
+        titel = repair_characters(dokument.findtext('titel', ''))
         html_content = dokument.findtext('html', '')
 
         # Filter by organ (UbU = Education Committee)

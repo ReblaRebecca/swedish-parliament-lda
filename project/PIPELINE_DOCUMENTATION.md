@@ -86,7 +86,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - Optional arguments: `[input_dir] [output_dir]`
 
 ### 7. Title Preprocessing (`preprocessing/09_preprocess_titles.py`)
-- Runs titles through boilerplate removal, Stanza lemmatization, normalization and stopword removal by importing the functions from steps 02–05, so titles and bodies are processed identically
+- Titles get the same preprocessing as body text: character repair at extraction (step 01), then boilerplate and author-name removal, Stanza lemmatization, normalization and stopword removal, using the functions from steps 02–05
 - Writes `title_processed` back into the files in `data/output/deduplicated/`
 - Title coverage ~99.5%
 

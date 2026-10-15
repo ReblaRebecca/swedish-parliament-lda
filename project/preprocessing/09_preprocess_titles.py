@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Preprocess motion titles using the same pipeline as body text.
-Apply boilerplate removal, Stanza lemmatization, normalization and stopword removal,
+Apply boilerplate and author-name removal, Stanza lemmatization, normalization and stopword removal,
 reusing the functions from preprocessing steps 02-05 so titles and bodies are treated identically.
 Store processed titles separately for weighting experiment.
 
@@ -30,9 +30,13 @@ normalize_step = load_step('normalize_text', '04_normalize_text.py')
 stopword_step = load_step('remove_stopwords', '05_remove_stopwords.py')
 
 
-def process_titles(titles, boilerplate_patterns, nlp, stopwords):
-    """Process a batch of titles through the full body-text pipeline."""
-    without_boilerplate = [boilerplate_step.remove_boilerplate(t, boilerplate_patterns) for t in titles]
+def process_titles(titles, author_names, boilerplate_patterns, nlp, stopwords):
+    """Process a batch of titles through the full body-text pipeline.
+
+    author_names: one list of the motion's author names per title (removed as in the body text)
+    """
+    without_boilerplate = [boilerplate_step.remove_boilerplate(t, boilerplate_patterns, names)
+                           for t, names in zip(titles, author_names)]
     lemmatized = lemmatize_step.lemmatize_texts(nlp, without_boilerplate)
 
     processed = []
@@ -59,9 +63,12 @@ def process_temporal_bin(input_file, output_file, boilerplate_patterns, nlp, sto
                 continue
 
     titles = [motion.get('title', '') or '' for motion in motions]
+    author_names = [motion.get('author_names', []) for motion in motions]
+    batch = lemmatize_step.BATCH_SIZE * 8
     processed = []
-    for start in range(0, len(titles), lemmatize_step.BATCH_SIZE * 8):
-        processed.extend(process_titles(titles[start:start + lemmatize_step.BATCH_SIZE * 8], boilerplate_patterns, nlp, stopwords))
+    for start in range(0, len(titles), batch):
+        processed.extend(process_titles(titles[start:start + batch], author_names[start:start + batch],
+                                        boilerplate_patterns, nlp, stopwords))
         print(f"  Processed {len(processed)}/{len(titles)} titles...")
 
     # Write all motions with processed titles
