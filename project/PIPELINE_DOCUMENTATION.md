@@ -207,7 +207,15 @@ Known trade-offs of the current approach (seen when testing on example sentences
 
 ## Usage
 
-Dependencies: `pip install nltk scikit-learn scipy numpy stanza`. NLTK stopwords are read from (and downloaded to) `SU/nltk_data/`, next to the repo. Stanza's Swedish model (~190 MB) is read from (and downloaded to on first run) `SU/stanza_resources/`.
+Setup (once, from the repo root; Python 3.9):
+
+```bash
+python3 -m venv venv
+venv/bin/pip install -r requirements.txt
+source venv/bin/activate   # in each new terminal before running scripts
+```
+
+NLTK stopwords are read from (and downloaded to) `SU/nltk_data/`, next to the repo. Stanza's Swedish model (~190 MB) is read from (and downloaded to on first run) `SU/stanza_resources/`.
 
 ```bash
 cd project
