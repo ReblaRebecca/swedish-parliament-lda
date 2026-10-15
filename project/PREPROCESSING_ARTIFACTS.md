@@ -43,22 +43,36 @@ Likely parsing errors or characters accidentally tokenized:
 - `eu` (European Union)
 - `adhd` (neurodevelopmental disorder)
 
-## Root Cause
+## Root Cause (identified 2026-10-15)
 
-These artifacts appear because:
+Most fragments were created by **extraction**, not tokenization. The source HTML often splits single words across inline `<span>` elements, and `01_extract_from_xml.py` joined every text piece with a space:
 
-1. **Tokenization errors** during preprocessing created word fragments
-2. **min_df=5 threshold** allows any word appearing ≥5 times in the corpus
-3. Many fragments occur frequently enough (appearing in different contexts or documents) to meet this threshold
-4. No post-processing to remove obvious artifacts
+| Source HTML | Extracted text (before fix) |
+|---|---|
+| `uppföljni</span><span>ng` | `uppföljni ng` |
+| `hö</span><span>gre` | `hö gre` |
+| `ansva</span><span>­</span><span>ret` (soft hyphen) | `ansva ­ ret` |
+| `f</span><span>ö</span><span>r` (every å/ä/ö its own span) | `f ö r` |
+
+This affected 4,431 of 13,917 motions (mostly 2015–2025). The most frequent fragments were `ning`, `skol`, `arbets`, `ningen`, `utbild`, `ningar`, each in 150–280 documents.
+
+Minor additional sources, also fixed at extraction:
+- Soft hyphens (U+00AD) inside words: 2,693 motions
+- Spacing diacritics (`ma°ste`, `sa¨tt`): ~10 motions
+- Combining diacritics (non-NFC text): 9 motions
+
+Not fixed (genuine source damage): 2 motions from 1997 (e.g. GL02Ub807) have å/ä/ö deleted entirely (`Ume universitet`, `Linkpings`).
+
+**Fix:** extraction now joins text pieces without separators and inserts whitespace only at block-level tags, removes soft hyphens, and repairs diacritics. Re-run the pipeline from extraction.
+
+## Not All Listed Tokens Are Artifacts
+
+Several tokens in the lists above and in `TWO_LETTER_WORDS.txt` are real words or abbreviations: `k`/`p` (from `s.k.`, `p.g.a.`), `malm` (ore), `el` (electricity, El Sistema), `sa` (said), `te` (appear), `sj`, `nt`, `hb`, `oh`, `rs` (acronyms). After re-running extraction, the artifact stopwords added to `04_remove_stopwords.py` and `09_preprocess_titles.py` should be re-evaluated, since some remove real words.
 
 ## Recommendation
 
-To clean this up in future iterations:
-- Review tokenization in preprocessing (check for encoding/character boundary issues)
-- Post-filter vocabulary to exclude short fragments (words <3 chars except known abbreviations)
-- Or increase min_df threshold (e.g., min_df=10) to filter out rare/artifact terms
-- Explicitly exclude known artifact patterns
+- Re-run the pipeline from `01_extract_from_xml.py` and rebuild the vocabulary
+- Re-check the vocabulary for remaining fragments before keeping the artifact stopwords
 
 ## Impact on Analysis
 

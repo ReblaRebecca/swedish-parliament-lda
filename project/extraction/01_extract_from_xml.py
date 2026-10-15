@@ -9,23 +9,61 @@ Output: JSONL files organized by temporal bin (1986-1993, 1994-2004, 2005-2014, 
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 from html.parser import HTMLParser
 from datetime import datetime
 import xml.etree.ElementTree as ET
 
 
+# Tags that separate words. Inline tags (<span>, <b>, <a>, ...) do NOT: the source HTML
+# often splits single words across spans ("uppföljni</span><span>ng", "f</span><span>ö</span><span>r").
+BLOCK_TAGS = {
+    'p', 'br', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'ul', 'ol',
+    'table', 'tr', 'td', 'th', 'hr', 'section', 'blockquote', 'pre',
+}
+
+# Some source texts write å/ä/ö as a base letter followed by a spacing ring/diaeresis ("ma°ste", "sa¨tt")
+SPACING_DIACRITICS = {
+    'a°': 'å', 'A°': 'Å', 'a¨': 'ä', 'A¨': 'Ä', 'o¨': 'ö', 'O¨': 'Ö',
+}
+SPACING_DIACRITICS_PATTERN = re.compile('|'.join(SPACING_DIACRITICS))
+
+
 class HTMLToTextParser(HTMLParser):
-    """Convert HTML to plain text, decoding entities."""
+    """Convert HTML to plain text, decoding entities.
+
+    Text pieces are joined without separators; whitespace is inserted only at block-level tags.
+    """
     def __init__(self):
         super().__init__()
         self.text = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in BLOCK_TAGS:
+            self.text.append('\n')
+
+    def handle_endtag(self, tag):
+        if tag in BLOCK_TAGS:
+            self.text.append('\n')
 
     def handle_data(self, data):
         self.text.append(data)
 
     def get_text(self):
-        return ' '.join(self.text)
+        return ''.join(self.text)
+
+
+def repair_characters(text):
+    """Repair character-level encoding problems in the source text.
+
+    - Remove soft hyphens (U+00AD), which otherwise become word breaks in normalization
+    - Compose combining diacritics (NFC), e.g. 'a' + U+030A -> 'å'
+    - Replace spacing diacritics after a base letter, e.g. 'a°' -> 'å', 'o¨' -> 'ö'
+    """
+    text = text.replace('\xad', '')
+    text = unicodedata.normalize('NFC', text)
+    return SPACING_DIACRITICS_PATTERN.sub(lambda m: SPACING_DIACRITICS[m.group()], text)
 
 
 def decode_html_entities(html_str):
@@ -90,7 +128,7 @@ def extract_body_text(html_content):
     # After structural removal of headers and signatures, use full cleaned body.
     # The "Stockholm den DATE" pattern is now a fallback edge case rather than
     # a primary boundary, since Underskrifter and UnderskriftDatum are already removed.
-    body = text.strip()
+    body = repair_characters(text).strip()
 
     # Clean up extra whitespace
     body = re.sub(r'\s+', ' ', body)

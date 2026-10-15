@@ -1,7 +1,7 @@
 # Swedish Parliamentary Education Motions: NLP Pipeline
 
 ## Overview
-Processing 13,957 Swedish parliamentary education motions (1986-2025) through an NLP pipeline to extract thematic structure via Latent Dirichlet Allocation (LDA). Current approach: **44-topic title-weighted LDA (titles appended 5×) on text with controlled lemmatization**, compared against a 44-topic baseline (body text only) on the same preprocessed text.
+Processing 13,917 Swedish parliamentary education motions (1986-2025) through an NLP pipeline to extract thematic structure via Latent Dirichlet Allocation (LDA). Current approach: **44-topic title-weighted LDA (titles appended 5×) on text with controlled lemmatization**, compared against a 44-topic baseline (body text only) on the same preprocessed text.
 
 All paths below are relative to `project/`. Every script resolves its default paths from its own location, so scripts can be run from any working directory. Data (`data/`), models (`models/`) and the raw XML (`../data_xml/`) are not version controlled.
 
@@ -46,7 +46,9 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - **Method:** follows Bruinsma & Johansson (2024)
 - **Filter:** UbU committee (Education Committee), case-insensitive
 - **Extract:** dok_id, date, title, author names, body text (between the introduction and signature markers); HTML entities decoded
-- **Output:** 13,957 motions as JSON lines in 4 temporal bins, in `data/input/extracted_text_xml/`
+- **HTML to text:** text pieces are joined without separators, with whitespace only at block-level tags (`<p>`, `<br>`, `<td>`, headings, …). The source HTML often splits single words across inline `<span>`s (`uppföljni</span><span>ng`, and in some motions every å/ä/ö is its own span), so joining with spaces fragmented words in ~4,400 motions (fixed 2026-10-15)
+- **Character repair:** soft hyphens (U+00AD) removed; text NFC-normalized; spacing diacritics after a base letter replaced (`a°` → `å`, `a¨` → `ä`, `o¨` → `ö`)
+- **Output:** 13,917 motions as JSON lines (13,957 UbU files; 40 have no body text or fall outside 1986–2025) in 4 temporal bins, in `data/input/extracted_text_xml/`
   - The folder name means "text extracted FROM XML"; the files are JSONL, not XML
 
 ### 2. Boilerplate Removal (`preprocessing/02_remove_boilerplate.py`)
@@ -68,7 +70,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - **Output field:** `text_no_stopwords`
 
 ### 5. Controlled Lemmatization (`preprocessing/05_apply_lemmatization.py`)
-- Uses a manual lookup table, `config/controlled_lemmatization.csv` (351 `variant,lemma` pairs, e.g. `skolan → skola`), focused on education terminology
+- Uses a manual lookup table, `config/controlled_lemmatization.csv` (284 unique `variant,lemma` mappings, e.g. `skolan → skola`), focused on education terminology
 - Words not in the table are left unchanged
 - Replaces the earlier spaCy approach, which was rejected (see "Lemmatization" below)
 - **Output field:** `text_lemmatized`
@@ -133,7 +135,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 432 explicit words/phrases, one per line, grouped by category with `#` comment headers. Loaded by `02_remove_boilerplate.py` and `09_preprocess_titles.py`. An alternative file can be passed as the 3rd argument to `02_remove_boilerplate.py`.
 
 ### `config/controlled_lemmatization.csv`
-351 `variant,lemma` mappings. Loaded by `05_apply_lemmatization.py` and `09_preprocess_titles.py`.
+284 unique `variant,lemma` mappings (351 rows; 67 rows repeat an earlier mapping). Loaded by `05_apply_lemmatization.py` and `09_preprocess_titles.py`.
 
 ### Stop words
 Hard-coded in `preprocessing/04_remove_stopwords.py` (NLTK base + 135 supplementary).
@@ -167,13 +169,13 @@ Hard-coded in `preprocessing/04_remove_stopwords.py` (NLTK base + 135 supplement
 
 | Metric | Value | Note |
 |--------|-------|------|
-| Total motions | 13,957 | After extraction filter (UbU committee) |
+| Total motions | 13,917 | 13,957 UbU files; 40 without body text or outside 1986–2025 |
 | Temporal bins | 4 | 1986-1993, 1994-2004, 2005-2014, 2015-2025 |
 | Duplicates detected | 133 (0.92%) | Earlier pipeline; flagged, kept in dataset |
 | Vocabulary | 10,000 (baseline/weighted), 20,000 (shared-vocab variant) | `max_features` |
 | Stop words | NLTK + 135 supplementary | |
 | Boilerplate phrases | 432 | Explicit phrases, no wildcards |
-| Lemmatization mappings | 351 | Controlled lookup table |
+| Lemmatization mappings | 284 | Controlled lookup table |
 | LDA topics | 44 | Baseline and title-weighted |
 | Title weighting | 5× | Current model |
 | Title coverage | ~99.5% | Documents with processed titles |
