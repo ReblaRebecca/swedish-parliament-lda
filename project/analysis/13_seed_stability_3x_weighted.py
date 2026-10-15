@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Corrected seed-stability test for 5x title-weighted LDA model.
+Corrected seed-stability test for 3x title-weighted LDA model.
 
 Uses Hungarian algorithm to optimally match topics between models before
 computing stability metrics, accounting for arbitrary topic indices.

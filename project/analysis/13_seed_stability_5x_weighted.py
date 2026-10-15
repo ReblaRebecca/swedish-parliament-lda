@@ -101,7 +101,7 @@ def main():
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'deduplicated'
     BASELINE_VECTORIZER_PATH = PROJECT_ROOT / 'models' / 'baseline_lda_44' / 'baseline_vectorizer.pkl'
     RESULTS_DIR = PROJECT_ROOT / 'results'
-    OUTPUT_FILE = RESULTS_DIR / 'SEED_STABILITY_3X_WEIGHTED_CORRECTED.md'
+    OUTPUT_FILE = RESULTS_DIR / 'SEED_STABILITY_5X_WEIGHTED_CORRECTED.md'
 
     NUM_TOPICS = 44
     SEEDS = [42, 123, 456, 789, 999]
