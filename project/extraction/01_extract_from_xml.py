@@ -2,7 +2,7 @@
 """
 Extract motion text from XML files following Bruinsma & Johansson (2024) methodology.
 Parses XML structure, filters by organ (UbU), extracts body text between markers.
-Input: XML files in data_xml/ organized by year
+Input: XML files organized by year (default: data_xml/ at repo root; override with [xml_dir] [output_dir])
 Output: JSONL files organized by temporal bin (1986-1993, 1994-2004, 2005-2014, 2015-2025)
 """
 
@@ -245,8 +245,11 @@ def main():
     SCRIPT_DIR = Path(__file__).parent
     PROJECT_ROOT = SCRIPT_DIR.parent
     PARENT_DIR = PROJECT_ROOT.parent
-    DATA_XML_DIR = PARENT_DIR / 'data_xml'
-    OUTPUT_DIR = PROJECT_ROOT / 'data' / 'input' / 'extracted_text_xml'
+
+    # Allow command-line arguments: [xml_dir] [output_dir]
+    # Default: data_xml/ (repo root) -> data/input/extracted_text_xml
+    DATA_XML_DIR = Path(sys.argv[1]) if len(sys.argv) >= 2 else PARENT_DIR / 'data_xml'
+    OUTPUT_DIR = Path(sys.argv[2]) if len(sys.argv) >= 3 else PROJECT_ROOT / 'data' / 'input' / 'extracted_text_xml'
 
     if not DATA_XML_DIR.exists():
         print(f"Error: XML data directory not found: {DATA_XML_DIR}")
@@ -275,7 +278,8 @@ def main():
         output_files[bin_name] = open(output_path, 'w', encoding='utf-8')
 
     # Find all XML files in data_xml directory structure
-    xml_files = list(DATA_XML_DIR.rglob('*.xml'))
+    # Only files: the riksdag downloads unpack into directories that are themselves named *.xml
+    xml_files = [p for p in DATA_XML_DIR.rglob('*.xml') if p.is_file()]
     total_files = len(xml_files)
 
     print(f"\nFound {total_files} XML files")
