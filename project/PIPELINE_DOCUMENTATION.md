@@ -1,157 +1,167 @@
 # Swedish Parliamentary Education Motions: NLP Pipeline
 
 ## Overview
-Processing 13,957 Swedish parliamentary education motions (1986-2025) through an optimized NLP pipeline to extract thematic structure via Latent Dirichlet Allocation (LDA). Current approach: **44-topic title-weighted LDA with lemmatization**, testing stability improvements over baseline 32-topic model.
+Processing 13,957 Swedish parliamentary education motions (1986-2025) through an NLP pipeline to extract thematic structure via Latent Dirichlet Allocation (LDA). Current approach: **44-topic title-weighted LDA (titles appended 5×) on text with controlled lemmatization**, compared against a 44-topic baseline (body text only) on the same preprocessed text.
+
+All paths below are relative to `project/`. Every script resolves its default paths from its own location, so scripts can be run from any working directory. Data (`data/`), models (`models/`) and the raw XML (`../data_xml/`) are not version controlled.
 
 ## Pipeline Architecture
 
 ```
-Raw XML (data_xml/)
+../data_xml/ (raw riksdag XML, by year)
+    ↓  extraction/01_extract_from_xml.py
+data/input/extracted_text_xml/        field: text
+    ↓  preprocessing/02_remove_boilerplate.py
+data/output/boilerplate_removed/      field: text_no_boilerplate
+    ↓  preprocessing/03_normalize_text.py
+data/output/normalized/               field: text_normalized
+    ↓  preprocessing/04_remove_stopwords.py
+data/output/stopword_removed/         field: text_no_stopwords
+    ↓  preprocessing/05_apply_lemmatization.py
+data/output/lemmatized/               field: text_lemmatized
+    ↓  preprocessing/06_detect_duplicates.py
+data/output/deduplicated/             fields: is_duplicate, duplicate_of, text_hash
+    ↓  preprocessing/09_preprocess_titles.py   (updates files in place)
+data/output/deduplicated/             field: title_processed
     ↓
-07_extract_from_xml.py
-    ↓
-extracted_text_xml/ (13,957 raw motions)
-    ↓
-02_remove_stopwords.py (133 Swedish stop words)
-    ↓
-stopword_removed/ (intermediate)
-    ↓
-03_remove_boilerplate.py (66 parliamentary/structural patterns)
-    ↓
-boilerplate_removed/ (intermediate)
-    ↓
-04_normalize_and_deduplicate.py (normalize, detect 133 duplicates)
-    ↓
-normalized/ (cleaned, ready for LDA)
-    ↓
-05_fit_baseline_lda.py (32-topic LDA on normalized text)
-    ↓
-baseline_lda_32/ (FINAL MODEL)
-    ↓
-06_display_lda_topics.py
-    ↓
-results/ (32_TOPICS_FINAL.csv, top_30_topic_words.txt)
+    ├── modeling/07_fit_baseline_lda.py        → models/baseline_lda_44/
+    │       ↓ modeling/08_display_lda_topics.py → results/44_TOPICS_FINAL.csv
+    │
+    ├── modeling/10_fit_title_weighted_lda.py  → models/title_weighted_lda_44/
+    │       ↓ modeling/11_display_weighted_lda_topics.py → results/weighted_44_TOPICS_FINAL.csv
+    │       ↓ modeling/12_generate_weighted_wordclouds.py → results/weighted_topics_wordclouds.html
+    │
+    └── modeling/06_build_shared_vocabulary_and_fit_models.py  (alternative: shared 20k vocabulary)
+            → models/baseline_lda_44_shared_vocab/, models/weighted_lda_44_shared_vocab/
+            ↓ modeling/13_extract_topics_and_update_wordcloud.py
+              → results/weighted_44_TOPICS_SHARED_VOCAB.csv, results/weighted_topics_wordclouds_shared_vocab.html
 ```
+
+Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl`, `group2_1994-2004.jsonl`, `group3_2005-2014.jsonl`, `group4_2015-2025.jsonl`. Each stage adds a field and keeps all earlier fields, so metadata (`dok_id`, title, date, author names) is carried through to the models.
 
 ## Processing Steps
 
-### 1. **Extraction** (07_extract_from_xml.py)
-- **Input:** 181,194 XML files from Swedish parliament data portal
+### 1. Extraction (`extraction/01_extract_from_xml.py`)
+- **Input:** XML files from the Swedish parliament open data portal (`../data_xml/`, organized by year)
+- **Method:** follows Bruinsma & Johansson (2024)
 - **Filter:** UbU committee (Education Committee), case-insensitive
-- **Extract:** dok_id, date, title, body text (Inledning → signature blocks)
-- **Format conversion:** XML → JSON lines (one motion per line)
-- **Output:** 13,957 motions in 4 temporal bins (1986-1993, 1994-2004, 2005-2014, 2015-2025)
-- **Storage:** `data/input/extracted_text_xml/` (87 MB, persisted in git)
-  - **Note:** Folder name means "text extracted FROM XML", not "XML files"
-  - **Actual format:** JSON lines (each line is a complete JSON motion object)
-  - **Rationale for JSON:** Easier to add fields, better for streaming processing, compatible with all downstream scripts
+- **Extract:** dok_id, date, title, author names, body text (between the introduction and signature markers); HTML entities decoded
+- **Output:** 13,957 motions as JSON lines in 4 temporal bins, in `data/input/extracted_text_xml/`
+  - The folder name means "text extracted FROM XML"; the files are JSONL, not XML
 
-### 2. **Stopword Removal** (02_remove_stopwords.py)
-- **Swedish stop words:** 114 from NLTK
-- **Supplementary (19):** Auxiliary verbs (ska, skall, blir, varit, blivit), prepositions/connectors (kommer, enligt, genom, dock, fall, ge, ta, del, fler), generic words (olika, mer, behöver, vill, nya)
-- **Total:** 133 stop words
-- **Reason:** Remove high-frequency, low-information words
+### 2. Boilerplate Removal (`preprocessing/02_remove_boilerplate.py`)
+- Runs first, on raw text with original structure (newlines, punctuation), so multi-word phrases can be matched
+- **Phrases:** loaded from `config/boilerplate_phrases.txt` (432 entries, one explicit word or phrase per line, no wildcards), matched on word boundaries
+- **Categories:** OCR/scanning artifacts, government and parliamentary institutions, parliamentary document/reference terms, procedural language, party names, etc.
+- **Rationale:** remove domain-specific metadata and structural language that doesn't represent education policy content
+- **Output field:** `text_no_boilerplate`
 
-### 3. **Boilerplate Removal** (03_remove_boilerplate.py)
-- **66 parliamentary/structural patterns** (updated from initial 129 after CSS removal)
-- **Categories:**
-  - OCR artifacts (inskann*, inscann*, skann*)
-  - Parliamentary structure (ställer, bakom, föreslå*, anför*, regering*, riksdag*, proposition*)
-  - Metadata markers (hemställ*, hänvisa*, beslut*, anledning*, antal*, sverige)
-  - Abbreviations (ub, uhä, ex, prop, fl)
-  - Currency/year (kronor, miljoner, kr, år)
-  - Party names (centerparti*, socialdemokrat*, moderaterna, etc.)
-  - Personal names (johan, eriksson)
-- **Rationale:** Remove domain-specific metadata and structural language that doesn't represent education policy content
+### 3. Normalization (`preprocessing/03_normalize_text.py`)
+- Removes the document's own author names (from extracted metadata, whole-word, case-insensitive)
+- Lowercase, remove numbers and punctuation, collapse whitespace
+- Drops single-character words; preserves line breaks
+- **Output field:** `text_normalized`
 
-### 4. **Normalization & Deduplication** (04_normalize_and_deduplicate.py)
-- **Normalization:** Lowercase, remove numbers/punctuation, collapse whitespace
-- **Deduplication:** MD5 hash detection of exact duplicates after normalization
-- **Result:** 13,957 motions, 133 duplicates detected (0.92%) and flagged but kept in dataset
-- **Output:** `text_normalized` field ready for LDA fitting
+### 4. Stopword Removal (`preprocessing/04_remove_stopwords.py`)
+- **Base list:** NLTK Swedish stop words
+- **Supplementary (135, hard-coded):** parliamentary abbreviations (ub, dvs, osv, …), auxiliary verbs (ska, skall, blir, …), generic connectors, verbs and adjectives identified from LDA inspection (kommer, enligt, olika, göra, …), and two-letter and longer fragment artifacts (see `PREPROCESSING_ARTIFACTS.md` and `TWO_LETTER_WORDS.txt`)
+- **Output field:** `text_no_stopwords`
 
-### 5. **LDA Fitting - Current Approach: Title-Weighted (10_fit_title_weighted_lda.py)**
-- **Algorithm:** scikit-learn LatentDirichletAllocation
-- **Text preprocessing for weighting:**
-  - Input text: `text_lemmatized` (lemmatized body text, despite historical quality concerns)
-  - Title enhancement: `title_processed` (preprocessed titles appended 3x)
-  - Weighted document: body + (title words × 3 additional copies)
-  - Rationale: Emphasize motion intent (title) while preserving full textual context
-- **Vectorization:**
-  - max_features: 10,000 (vocabulary truncation to top 10k terms)
-  - Rationale: Preserve domain-specific terminology while reducing dimensionality
-  - Note: Removes rare words beyond top 10k frequency
-  - Vocabulary shared with baseline (loaded from baseline_lda_44/baseline_vectorizer.pkl)
-- **LDA Parameters:**
-  - n_components: 44 topics (increased from baseline 32 for finer-grained thematic coverage)
-  - max_iter: 50 iterations (sufficient for convergence on 13k+ documents)
-  - learning_method: online (stochastic, requires adequate iterations)
-  - n_jobs: 2
-- **Convergence monitoring:** Reports actual iterations run (n_iter_) to verify convergence
-- **Output:** 
-  - title_weighted_lda_44_topics.pkl (2.7 MB model)
-  - (Uses shared baseline vectorizer)
-- **Diagnostic metric:** Training perplexity (diagnostic only, not evidence of generalization)
+### 5. Controlled Lemmatization (`preprocessing/05_apply_lemmatization.py`)
+- Uses a manual lookup table, `config/controlled_lemmatization.csv` (351 `variant,lemma` pairs, e.g. `skolan → skola`), focused on education terminology
+- Words not in the table are left unchanged
+- Replaces the earlier spaCy approach, which was rejected (see "Lemmatization" below)
+- **Output field:** `text_lemmatized`
 
-### 5a. **LDA Fitting - Baseline (07_fit_baseline_lda.py)**
-- **Preserved for comparison:** 32-topic baseline model (non-lemmatized, no title weighting)
-- **Used as vocabulary reference:** Baseline vectorizer ensures consistency across models
-- **Output:** 
-  - baseline_lda_32_topics.pkl (2.4 MB model)
-  - baseline_vectorizer.pkl (152 KB)
-- **Diagnostic metric:** Training perplexity 1770.22 (diagnostic only)
+### 6. Duplicate Detection (`preprocessing/06_detect_duplicates.py`)
+- MD5 hash of the whitespace-normalized lemmatized text; one hash dictionary shared across all bins, so duplicates are detected across time periods
+- Duplicates are **flagged, not removed**: `is_duplicate`, `duplicate_of` (dok_id of the original), `text_hash`
+- Last recorded result: 133 duplicates (0.92%), measured on the earlier normalized-text pipeline; re-check after re-running
+- Optional arguments: `[input_dir] [output_dir]`
 
-### 6. **Topic Display** (06_display_lda_topics.py)
-- **Output:** Top 10 words per topic with weights
-- **Format:** Neutral naming (Topic 1-32, no interpretive labels)
-- **Rationale:** Allow manual inspection without prior bias
+### 7. Title Preprocessing (`preprocessing/09_preprocess_titles.py`)
+- Runs boilerplate removal, normalization, stopword removal and lemmatization on titles, using the same config files as the body pipeline
+- ⚠️ The stopword list is a separate hard-coded copy that differs from `04_remove_stopwords.py`: it adds ~34 spatial/directional words (uppåt, bakom, här, där, …) and lacks some later additions (e.g. 'fn', 'of', 'mr', 'är', 'trots', 'första', 'även')
+- Writes `title_processed` back into the files in `data/output/deduplicated/`
+- Title coverage ~99.5%
 
-### 7. **Results Export**
-- **32_TOPICS_FINAL.csv** - All 32 topics × top 10 words with weights
-- **top_30_topic_words.txt** - Aggregate top 30 words across all topics
-- **COHERENCE_TESTING_REPORT.txt** - Topic count optimization (29, 32, 36... 64 tested)
+### 8a. Baseline LDA (`modeling/07_fit_baseline_lda.py`)
+- **Input:** `text_lemmatized` (body only, no title weighting)
+- **Vectorizer:** `CountVectorizer(max_df=0.5, min_df=5, max_features=10000)`, default token pattern
+- **LDA:** scikit-learn `LatentDirichletAllocation`, 44 topics, `max_iter=50`, `learning_method='online'`, `random_state=42`, `n_jobs=2`
+- **Output:** `models/baseline_lda_44/baseline_lda_44_topics.pkl`, `models/baseline_lda_44/baseline_vectorizer.pkl`, `results/document_topic_distribution.csv`
+- The baseline vectorizer is reused by the weighted model and the stability tests, so they share one vocabulary
+- **Diagnostic metric:** training perplexity (diagnostic only, not evidence of generalization)
+
+### 8b. Title-Weighted LDA — current model (`modeling/10_fit_title_weighted_lda.py`)
+- **Weighted document:** `text_lemmatized` + `title_processed` appended **5 additional times** (effective title weight up to 6× if title words also appear in the body). Documents without a title use body text only.
+- **Vectorizer:** loads `models/baseline_lda_44/baseline_vectorizer.pkl` (run 8a first)
+- **LDA:** same settings as the baseline (44 topics, seed 42)
+- **Output:** `models/title_weighted_lda_44/title_weighted_lda_44_topics.pkl`, `models/title_weighted_lda_44/title_weighting_stats.txt`, `results/document_topic_distribution.csv`
+- ⚠️ Writes the same `results/document_topic_distribution.csv` as 8a and overwrites it. `12_generate_weighted_wordclouds.py` expects the weighted version, so run 10 after 07.
+
+### 8c. Shared-Vocabulary Variant (`modeling/06_build_shared_vocabulary_and_fit_models.py`)
+- Builds a separate 20,000-feature vocabulary from body + one title copy, then fits both a baseline (body only) and a weighted (body + 5× title) 44-topic model on it
+- **Output:** `models/baseline_lda_44_shared_vocab/`, `models/weighted_lda_44_shared_vocab/` (model + `shared_vectorizer.pkl` each), `results/baseline_document_topic_distribution.csv`, `results/weighted_document_topic_distribution.csv`
+
+### 9. Topic Display and Visualization
+| Script | Reads | Writes |
+|---|---|---|
+| `modeling/08_display_lda_topics.py [model_dir]` | `models/baseline_lda_44/` | `results/44_TOPICS_FINAL.csv` (top 20 words/topic) |
+| `modeling/11_display_weighted_lda_topics.py` | `models/title_weighted_lda_44/` + baseline vectorizer | `results/weighted_44_TOPICS_FINAL.csv` |
+| `modeling/12_generate_weighted_wordclouds.py` | `weighted_44_TOPICS_FINAL.csv`, `document_topic_distribution.csv`, template `results/topics_wordclouds.html` | `results/weighted_topics_wordclouds.html`, `results/topic_statistics.csv` |
+| `modeling/13_extract_topics_and_update_wordcloud.py` | `models/weighted_lda_44_shared_vocab/` | `results/weighted_44_TOPICS_SHARED_VOCAB.csv`, `results/weighted_topics_wordclouds_shared_vocab.html` |
+
+- Word weights are shown as normalized probabilities P(word | topic)
+- Topics use neutral names (Topic 1–44, no interpretive labels) so they can be inspected without prior bias
+
+## Analysis Scripts (`analysis/`)
+
+| Script | Purpose | Output |
+|---|---|---|
+| `topic_matching.py` | Module: Hungarian-algorithm topic matching between two LDA models; cosine similarity (full distributions) + Jaccard (top words) | — |
+| `test_topic_matching.py` | Unit tests for `topic_matching.py` (identical, permuted, synthetic models) | stdout |
+| `11_validate_matching_quick.py` | Smoke test on 2,000 real documents + synthetic permutation test (8 topics) | stdout |
+| `09_test_lda_stability.py` | Seed stability of the 44-topic baseline | `results/BASELINE_STABILITY_44TOPICS_CORRECTED.md` |
+| `13_seed_stability_3x_weighted.py` | Seed stability with 3× title weighting | `results/SEED_STABILITY_3X_WEIGHTED_CORRECTED.md` |
+| `13_seed_stability_5x_weighted.py` | Seed stability with 5× title weighting (matches the current model) | `results/SEED_STABILITY_3X_WEIGHTED_CORRECTED.md` ⚠️ same file as the 3× test |
+| `compare_weighted_vs_baseline.py` | ⚠️ **Deprecated** — unvalidated coherence metric; use the stability tests instead | — |
 
 ## Configuration Files
 
-### `config/boilerplate_phrases.txt` (66 patterns)
-Dynamically loaded by `03_remove_boilerplate.py`. Supports wildcard patterns:
-- `regering*` matches regering, regeringen, regering's variants
-- `hemställ*` matches hemställan, hemställs, hemställs, etc.
-- Exact phrases like `moderata samlingspartiet` supported with word boundaries
+### `config/boilerplate_phrases.txt`
+432 explicit words/phrases, one per line, grouped by category with `#` comment headers. Loaded by `02_remove_boilerplate.py` and `09_preprocess_titles.py`. An alternative file can be passed as the 3rd argument to `02_remove_boilerplate.py`.
 
-### `preprocessing/02_remove_stopwords.py` (133 words)
-Hard-coded supplementary words; NLTK supplies base 114.
+### `config/controlled_lemmatization.csv`
+351 `variant,lemma` mappings. Loaded by `05_apply_lemmatization.py` and `09_preprocess_titles.py`.
+
+### Stop words
+Hard-coded in `preprocessing/04_remove_stopwords.py` (NLTK base + 135 supplementary).
 
 ## Key Decision Points
 
 ### Stop Words vs Boilerplate
-- **Stop words:** General Swedish, universally applicable
-- **Boilerplate:** Parliamentary/domain-specific structural language
-- **Rationale:** Separation allows reuse of stop words for other Swedish texts
+- **Stop words:** general Swedish (plus fragment artifacts), applied after normalization
+- **Boilerplate:** parliamentary/domain-specific structural language, applied to raw text
+- **Rationale:** separation allows reuse of the stop word list for other Swedish texts
 
-### Lemmatization: Tested, Revised Implementation (Current)
-- **Initial testing:** spaCy sv_core_news_sm showed domain-mismatch problems (documented below)
-- **Current approach:** Using `text_lemmatized` field in deduplicated data
-  - Lemmatization applied as part of preprocessing pipeline despite initial quality concerns
-  - Reasoning: Reduced inflectional noise may improve topic stability across seeds
-- **Historical quality issues (initial testing):**
-  - **"första" (first) → "en" (article)** — Model confused by parliamentary sentence structure
-  - **"högre" (higher-ed) → "hög" (high)** — Lost comparative form (destroying key concept)
-  - **"stora" (large) → "stor"** — Lost plurality information
-  - **Root cause:** Model trained on news text; parliamentary language confuses POS/lemmatization
-- **Decision rationale (revised):** Despite quality concerns, lemmatization is now used with:
-  - Title weighting (3x) to prioritize motion intent over body text
-  - Stability testing to validate whether the tradeoff improves topic consistency
-  - 44 topics (vs. 32 baseline) to capture more granular thematic variation
+### Lemmatization: spaCy Rejected, Controlled Lemmatization Adopted
+- **Initial testing:** spaCy `sv_core_news_sm` showed domain-mismatch problems on parliamentary Swedish (results archived in `logs/LEMMATIZATION_BENCHMARK.txt`):
+  - **"första" (first) → "en" (article)** — model confused by parliamentary sentence structure
+  - **"högre" (higher-ed) → "hög" (high)** — lost the comparative form, destroying a key concept
+  - **"stora" (large) → "stor"** — lost plurality information
+  - **Root cause:** model trained on news text; parliamentary language confuses POS tagging/lemmatization
+  - Benchmark metrics improved (-23.85% perplexity, +12.50% coherence), but this masked systematic quality degradation
+- **Current approach:** a manual lookup table (`config/controlled_lemmatization.csv`) that only merges known inflectional variants of education terms. This reduces inflectional noise without the spaCy errors, since unlisted words are untouched.
+- **Argument for proposal:** "Lemmatization testing (TBD) revealed that spaCy sv_core_news_sm shows domain-mismatch problems when applied to parliamentary Swedish: critical terms disappeared from vocabulary, and domain-specific concepts were corrupted (e.g., 'högre utbildning'→'hög'). We therefore replaced automatic lemmatization with a controlled, manually curated lemmatization table restricted to education terminology."
 
-### Topic Count: 44 (Current) vs. 32 (Baseline)
-- **Baseline (32 topics):** Original selection via concentration analysis (6, 10, 14, 18, 22, 29, 32, 36, 43, 50, 57, 64 tested)
-  - 32 ÷ 4 temporal bins = 8 topics/bin (clean division)
-  - Reference: Gordon et al. used 60 topics (15/bin); our data preferred lower count
-- **Current approach (44 topics):** Increased for title-weighted model
-  - Rationale: With title weighting emphasizing motion intent, higher topic count captures finer-grained thematic variation
-  - Stability testing will validate whether 44 improves consistency across seeds relative to 32
-  - Preserves flexibility for future temporal binning (44 ÷ 4 = 11 topics/bin if needed)
+### Title Weighting
+- Titles state the motion's intent concisely; appending them several times shifts document-topic inference toward that intent while keeping the full body text
+- The current model (`10_fit_title_weighted_lda.py`) and the shared-vocabulary variant use 5×; 3× is tested in `13_seed_stability_3x_weighted.py`
+
+### Topic Count: 44 (Current) vs. 32 (Historical Baseline)
+- **Historical baseline (32 topics):** original selection via topic concentration analysis (6, 10, 14, 18, 22, 29, 32, 36, 43, 50, 57, 64 tested; non-lemmatized text). 32 ÷ 4 temporal bins = 8 topics/bin. Gordon et al. used 60 topics (15/bin).
+- **Current (44 topics):** both baseline and weighted models. Chosen to capture finer-grained thematic variation; 44 ÷ 4 = 11 topics/bin for later temporal binning.
 
 ## Data Quality Metrics
 
@@ -159,134 +169,136 @@ Hard-coded supplementary words; NLTK supplies base 114.
 |--------|-------|------|
 | Total motions | 13,957 | After extraction filter (UbU committee) |
 | Temporal bins | 4 | 1986-1993, 1994-2004, 2005-2014, 2015-2025 |
-| Duplicates detected | 133 (0.92%) | Flagged, kept in dataset |
-| Vocabulary (truncated) | 10,000 unique tokens | CountVectorizer max_features=10000 |
-| Stop words | 133 | 114 NLTK + 19 supplementary |
-| Boilerplate patterns | 66 | Parliamentary + metadata |
-| LDA topics (baseline) | 32 | Non-lemmatized, no title weighting |
-| LDA topics (current) | 44 | Title-weighted (3x), lemmatized text |
-| Title coverage | ~99.5% | Documents with processed titles for weighting |
-| Training perplexity (current) | TBD | Diagnostic only; stability testing in progress |
+| Duplicates detected | 133 (0.92%) | Earlier pipeline; flagged, kept in dataset |
+| Vocabulary | 10,000 (baseline/weighted), 20,000 (shared-vocab variant) | `max_features` |
+| Stop words | NLTK + 135 supplementary | |
+| Boilerplate phrases | 432 | Explicit phrases, no wildcards |
+| Lemmatization mappings | 351 | Controlled lookup table |
+| LDA topics | 44 | Baseline and title-weighted |
+| Title weighting | 5× | Current model |
+| Title coverage | ~99.5% | Documents with processed titles |
 
 ## Implementation Beyond Proposal
 
-The pipeline implementation exceeds the proposal requirements in several areas to enable robust temporal analysis and ensure data integrity:
-
 ### ✅ Normalized Word Probabilities
-- **Proposal:** Top words per topic
-- **Implementation:** All topic probabilities normalized (P(word|topic)) and displayed with 4-6 decimal precision
-- **Benefit:** Enables quantitative comparisons across topics and time periods
+- **Proposal:** top words per topic
+- **Implementation:** topic-word weights normalized to P(word|topic) and displayed with 4–6 decimal precision
+- **Benefit:** enables quantitative comparisons across topics and time periods
 
 ### ✅ Complete Document-Topic Distribution
-- **Proposal:** Topic mixture per document (θ_d)
-- **Implementation:** All 32 topic probabilities per document (not just dominant + top 3)
-- **Output:** `document_topic_distribution.csv` with doc_id, title, year + 32 probability columns
-- **Benefit:** Enables downstream temporal prevalence calculations and topic trajectory analysis
+- **Proposal:** topic mixture per document (θ_d)
+- **Implementation:** all 44 topic probabilities per document (not just dominant + top 3)
+- **Output:** `document_topic_distribution.csv` with doc_id, title, year + 44 probability columns
+- **Benefit:** enables temporal prevalence calculations and topic trajectory analysis
 
 ### ✅ Document Metadata Preservation
-- **Proposal:** Document grouping by temporal bins
-- **Implementation:** Full traceability for each document (doc_id, title, year) carried through all preprocessing steps
-- **Benefit:** Enables document-to-topic linkage for temporal analysis and qualitative validation
+- Full traceability for each document (doc_id, title, year) through all preprocessing steps, enabling document-to-topic linkage for temporal analysis and qualitative validation
 
 ### ✅ Malformed JSON Tracking
-- **Proposal:** Data quality monitoring (implied)
-- **Implementation:** Explicit counting and reporting of malformed JSON lines across 4 preprocessing stages
-- **Output:** Per-bin and total malformed-line warnings with ⚠️ flag
-- **Benefit:** Ensures no silent data loss; full transparency in data pipeline
-
-### ✅ Comprehensive Pipeline Documentation
-- **Proposal:** Method description
-- **Implementation:** End-to-end documentation (PIPELINE_DOCUMENTATION.md) covering all steps, decisions, and rationale
-- **Includes:** Configuration details, data flow diagrams, decision points, and next steps
+- Every stage counts and reports malformed JSON lines per bin, so there is no silent data loss
 
 ### ✅ Methodological Rigor
-- **Proposal:** Topic evaluation on "baseline comparison, stability, and interpretability"
-- **Implementation:** 
-  - Explicit distinction between topic concentration testing (our method) vs. semantic coherence testing (not used)
-  - Training perplexity labeled as diagnostic-only, not generalization evidence
-  - Random seed fixed (reproducibility) but stability testing can be added before temporal binning
+- Topic matching across seeds via the Hungarian algorithm (topic indices are arbitrary between runs)
+- Explicit distinction between topic concentration testing (our method) and semantic coherence testing (not used)
+- Training perplexity labeled as diagnostic only, not evidence of generalization
 
 ## Usage
 
 ```bash
-# Full pipeline from normalized text to final topics
-python modeling/05_fit_baseline_lda.py data/output/normalized models
-python modeling/06_display_lda_topics.py models
+cd project
 
-# Output: results/32_TOPICS_FINAL.csv, results/top_30_topic_words.txt
+# Extraction and preprocessing (each step reads the previous step's output)
+python extraction/01_extract_from_xml.py
+python preprocessing/02_remove_boilerplate.py
+python preprocessing/03_normalize_text.py
+python preprocessing/04_remove_stopwords.py
+python preprocessing/05_apply_lemmatization.py
+python preprocessing/06_detect_duplicates.py
+python preprocessing/09_preprocess_titles.py
+
+# Baseline model (also creates the vectorizer the weighted model needs)
+python modeling/07_fit_baseline_lda.py
+python modeling/08_display_lda_topics.py
+
+# Title-weighted model (run after 07)
+python modeling/10_fit_title_weighted_lda.py
+python modeling/11_display_weighted_lda_topics.py
+python modeling/12_generate_weighted_wordclouds.py
+
+# Stability tests
+python analysis/test_topic_matching.py
+python analysis/09_test_lda_stability.py
+python analysis/13_seed_stability_5x_weighted.py
 ```
 
-**Note:** Lemmatization was tested (results archived in `logs/LEMMATIZATION_BENCHMARK.txt`) but rejected due to quality issues. Use non-lemmatized normalized text as pipeline input.
-
-## Project Proposal TBD Resolution
-
-**Status: COMPLETED**
-
-Lemmatization (TBD in proposal) was systematically tested and rejected:
-1. ✅ Reviewed Swedish lemmatization options (spaCy, Snowball, custom)
-2. ✅ Selected spaCy sv_core_news_sm for testing (easiest, off-the-shelf)
-3. ✅ Verified context-aware processing (full documents, not isolated words)
-4. ✅ Ran comprehensive benchmarks (2 models, 6 metrics)
-5. ✅ Discovered systematic quality issues (POS/lemmatization errors, vocabulary collapse)
-6. ✅ Documented findings and rationale for rejection
-
-**Argument for proposal:** "Lemmatization testing (TBD) revealed that spaCy sv_core_news_sm shows domain-mismatch problems when applied to parliamentary Swedish. While benchmark metrics improved (-23.85% perplexity, +12.50% coherence), this masked systematic quality degradation: critical terms disappeared from vocabulary, and domain-specific concepts were corrupted (e.g., 'högre utbildning'→'hög'). We concluded that reliable lemmatization would require a parliamentary-domain-specific model, so the baseline pipeline uses normalized (non-lemmatized) text instead."
+Preprocessing scripts 02–06 and `07_fit_baseline_lda.py` also accept `[input_dir] [output_dir]` arguments to override the defaults.
 
 ## File Organization
 
 ```
 project/
-├── preprocessing/           # Data cleaning pipeline
-│   ├── 02_remove_stopwords.py
-│   ├── 03_remove_boilerplate.py
-│   └── 04_normalize_and_deduplicate.py
-├── modeling/               # LDA fitting & analysis
-│   ├── 05_fit_baseline_lda.py
-│   ├── 06_display_lda_topics.py
-│   └── 08_extended_lda_testing.py
+├── extraction/
+│   └── 01_extract_from_xml.py
+├── preprocessing/
+│   ├── 02_remove_boilerplate.py
+│   ├── 03_normalize_text.py
+│   ├── 04_remove_stopwords.py
+│   ├── 05_apply_lemmatization.py
+│   ├── 06_detect_duplicates.py
+│   └── 09_preprocess_titles.py
+├── modeling/
+│   ├── 06_build_shared_vocabulary_and_fit_models.py
+│   ├── 07_fit_baseline_lda.py
+│   ├── 08_display_lda_topics.py
+│   ├── 10_fit_title_weighted_lda.py
+│   ├── 11_display_weighted_lda_topics.py
+│   ├── 12_generate_weighted_wordclouds.py
+│   └── 13_extract_topics_and_update_wordcloud.py
+├── analysis/
+│   ├── topic_matching.py
+│   ├── test_topic_matching.py
+│   ├── 09_test_lda_stability.py
+│   ├── 11_validate_matching_quick.py
+│   ├── 13_seed_stability_3x_weighted.py
+│   ├── 13_seed_stability_5x_weighted.py
+│   └── compare_weighted_vs_baseline.py   (deprecated)
 ├── config/
-│   └── boilerplate_phrases.txt (66 patterns)
-├── data/
-│   ├── input/extracted_text_xml/  (13,957 raw motions)
-│   └── output/
-│       ├── stopword_removed/
-│       ├── boilerplate_removed/
-│       └── normalized/
-├── models/
-│   ├── baseline_lda_32/             (32-topic baseline - non-lemmatized)
-│   ├── baseline_lda_44/             (44-topic baseline - non-lemmatized, shared vectorizer)
-│   └── title_weighted_lda_44/       (CURRENT MODEL - title-weighted 3x, lemmatized)
+│   ├── boilerplate_phrases.txt
+│   └── controlled_lemmatization.csv
 ├── results/
-│   ├── 32_TOPICS_FINAL.csv
-│   ├── 44_TOPICS_FINAL.csv
-│   ├── weighted_44_TOPICS_FINAL.csv (Current model topics)
-│   ├── weighted_topics_wordclouds.html
-│   └── SEED_STABILITY_3X_WEIGHTED_CORRECTED.md (Testing in progress)
-└── logs/
-    ├── COHERENCE_TESTING_REPORT.txt
-    ├── LEMMATIZATION_BENCHMARK.txt
-    └── PROJECT_LOG_XML_EXTRACTION.txt
+│   └── topics_wordclouds.html            (template for the word cloud scripts; other results are regenerated)
+├── data/                                  (not in git)
+│   ├── input/extracted_text_xml/
+│   └── output/{boilerplate_removed,normalized,stopword_removed,lemmatized,deduplicated}/
+├── models/                                (not in git)
+│   ├── baseline_lda_44/
+│   ├── title_weighted_lda_44/
+│   ├── baseline_lda_44_shared_vocab/
+│   └── weighted_lda_44_shared_vocab/
+├── PIPELINE_DOCUMENTATION.md
+├── PREPROCESSING_ARTIFACTS.md
+└── TWO_LETTER_WORDS.txt
 ```
 
 ## Current Phase: Title-Weighted Stability Testing (2026-10-14)
 
-**Objective:** Validate whether title weighting (3x) + lemmatization improves topic stability in a 44-topic model.
+**Objective:** validate whether title weighting + controlled lemmatization improves topic stability in a 44-topic model.
 
-**Hypothesis:** By emphasizing motion intent (titles) and reducing inflectional noise (lemmatization), the model should discover more consistent topics across random seeds.
+**Hypothesis:** by emphasizing motion intent (titles) and reducing inflectional noise, the model should discover more consistent topics across random seeds.
 
 **Testing approach:**
-- Fit 44-topic title-weighted LDA with 5 different seeds (42, 123, 456, 789, 999)
-- Compare topic matching using Hungarian algorithm (optimal matching)
-- Metrics: Cosine similarity (full distributions) + Jaccard overlap (top 20 words)
-- Comparison baseline: Baseline 32-topic and 44-topic non-weighted models
+- Fit 44-topic title-weighted LDA with 5 seeds (42, 123, 456, 789, 999), at 3× and 5× weighting
+- Match topics with the Hungarian algorithm (optimal one-to-one matching)
+- Metrics: cosine similarity (full distributions) + Jaccard overlap (top 20 words)
+- Comparison: 44-topic baseline (`09_test_lda_stability.py`)
 
-**Status:** Tests prepared in `analysis/13_seed_stability_3x_weighted.py`; awaiting execution.
+**Status:** tests prepared in `analysis/13_seed_stability_{3x,5x}_weighted.py`; awaiting execution.
 
 ---
 
 ## Baseline Stability Testing (Historical - 2026-10-13)
 
-**Finding:** The 32-topic whole-corpus model is **highly unstable** across random seeds.
+**Finding:** the 32-topic whole-corpus model (non-lemmatized) was **highly unstable** across random seeds. Note: this test appears to predate the "corrected" Hungarian-matching scripts; index-by-index comparison understates stability, so re-run with `09_test_lda_stability.py` before relying on these numbers.
 
 | Seed Pair | Mean Jaccard | Status |
 |-----------|--------------|--------|
@@ -295,27 +307,21 @@ project/
 | 123 vs 456 | 0.033 | ❌ Unstable |
 | **Overall** | **0.021** | **Below 0.60 threshold** |
 
-**Interpretation:** Topics are completely reshuffled between seeds. Topic 1 in seed 42 covers government administration, in seed 123 covers teacher education, and in seed 456 covers healthcare — demonstrating that the model cannot reliably identify topic structure in this corpus.
+**Interpretation:** topics were reshuffled between seeds. Topic 1 in seed 42 covered government administration, in seed 123 teacher education, and in seed 456 healthcare.
 
-**Why this happens:** 
-- Heterogeneous corpus (39 years, author concentration in pre-1880)
+**Possible causes:**
+- Heterogeneous corpus spanning 39 years
 - Domain-specific parliamentary vocabulary evolves over time
 - LDA struggles to find consistent themes across such diversity
 
-**This validates Gordon's approach:** Gordon found identical whole-corpus instability (Jaccard 0.26–0.31) and solved it with temporal binning, which constrains each period's vocabulary and author mix, enabling stable topic discovery.
+**Relation to Gordon's approach:** Gordon found similar whole-corpus instability (Jaccard 0.26–0.31) and addressed it with temporal binning, which constrains each period's vocabulary and author mix.
 
-**Detailed analysis:** See `results/STABILITY_ANALYSIS_REPORT.txt`
+## Next Steps
 
-## Next Steps (Current Phase: Stability Validation)
-
-1. **Run seed-stability test** on 44-topic title-weighted model
-   - Compare to baseline 32-topic stability metrics
-   - Assess whether title weighting (3x) and lemmatization improve consistency
-2. **Evaluate results:**
-   - If 44-topic weighted model shows improved stability → Use as primary model
-   - If baseline 32 is more stable → Revert to baseline with optional title weighting
-3. **Decision point:** Based on stability results, proceed to either:
-   - **Temporal binning phase** (4 separate models, 8-11 topics each)
-   - **Extended topic testing** (try additional topic counts with confirmed best approach)
-4. **Topic alignment and trajectory analysis** (post-stability validation)
-5. **Publication:** Document findings for thesis/paper
+1. **Run seed-stability tests** for the 44-topic baseline and the 3×/5× title-weighted models
+2. **Evaluate:** if title weighting improves stability → use the weighted model as primary; otherwise keep the baseline
+3. **Decision point:** proceed to either
+   - **Temporal binning** (4 separate models, ~11 topics each), or
+   - **Extended topic-count testing** with the best approach
+4. **Topic alignment and trajectory analysis**
+5. **Publication:** document findings for thesis/paper
