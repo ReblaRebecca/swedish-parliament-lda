@@ -136,6 +136,31 @@ def extract_body_text(html_content):
     return body
 
 
+# The title heading appears near the start of the body ("Motion till riksdagen ... av NAME (PARTY) TITLE").
+# Only an occurrence starting within this many characters is treated as the heading.
+TITLE_HEADING_MAX_START = 400
+
+
+def remove_title_heading(body, title):
+    """Remove the title heading from the start of the body text.
+
+    The title is weighted separately (title words appended to the body), so the heading copy
+    would otherwise count once more. Matching is word by word, ignoring case and punctuation
+    differences ("Sfi - uttalets" vs "Sfi – uttalets"). Later repetitions of the title phrase
+    belong to the motion's argument and are kept.
+    """
+    words = re.findall(r'\w+', title)
+    if not body or not words:
+        return body
+
+    pattern = re.compile(r'\b' + r'\W+'.join(re.escape(w) for w in words) + r'\b', re.IGNORECASE)
+    match = pattern.search(body)
+    if not match or match.start() > TITLE_HEADING_MAX_START:
+        return body
+
+    return re.sub(r'\s+', ' ', body[:match.start()] + ' ' + body[match.end():]).strip()
+
+
 def extract_authors(root):
     """Extract author names and metadata from <dokintressent> section.
 
@@ -218,6 +243,9 @@ def process_xml_file(xml_path):
 
         if not body_text:
             return None
+
+        # Remove the title heading so title words are not counted once extra (titles are weighted separately)
+        body_text = remove_title_heading(body_text, titel)
 
         # Extract year from datum (format: YYYY-MM-DD HH:MM:SS)
         date_str = datum.strip().split()[0] if datum else ''

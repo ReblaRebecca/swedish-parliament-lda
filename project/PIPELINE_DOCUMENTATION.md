@@ -47,6 +47,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - **Filter:** UbU committee (Education Committee), case-insensitive
 - **Extract:** dok_id, date, title, author names, body text (between the introduction and signature markers); HTML entities decoded
 - **HTML to text:** text pieces are joined without separators, with whitespace only at block-level tags (`<p>`, `<br>`, `<td>`, headings, …). The source HTML often splits single words across inline `<span>`s (`uppföljni</span><span>ng`, and in some motions every å/ä/ö is its own span), so joining with spaces fragmented words in ~4,400 motions (fixed 2026-10-15)
+- **Title heading removed:** the title appears as a heading near the start of the body in ~97% of motions. The first word-by-word match of the title within the first 400 characters is removed (13,532 motions), so title weighting counts the title exactly 5×. Later mentions of the title phrase (e.g. in the proposed decision) are kept as body text
 - **Character repair:** soft hyphens (U+00AD) removed; text NFC-normalized; spacing diacritics after a base letter replaced (`a°` → `å`, `a¨` → `ä`, `o¨` → `ö`)
 - **Output:** 13,917 motions as JSON lines (13,957 UbU files; 40 have no body text or fall outside 1986–2025) in 4 temporal bins, in `data/input/extracted_text_xml/`
   - The folder name means "text extracted FROM XML"; the files are JSONL, not XML
@@ -98,7 +99,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - **Diagnostic metric:** training perplexity (diagnostic only, not evidence of generalization)
 
 ### 8b. Title-Weighted LDA — current model (`modeling/10_fit_title_weighted_lda.py`)
-- **Weighted document:** `text_no_stopwords` + `title_processed` appended **5 additional times** (effective title weight up to 6× if title words also appear in the body). Documents without a title use body text only.
+- **Weighted document:** `text_no_stopwords` + `title_processed` appended **5 times**. The title heading is removed from the body at extraction, so the title counts exactly 5× (plus any genuine mentions of the title phrase in the body text). Documents without a title use body text only.
 - **Vectorizer:** loads `models/baseline_lda_44/baseline_vectorizer.pkl` (run 8a first)
 - **LDA:** same settings as the baseline (44 topics, seed 42)
 - **Output:** `models/title_weighted_lda_44/title_weighted_lda_44_topics.pkl`, `models/title_weighted_lda_44/title_weighting_stats.txt`, `results/document_topic_distribution.csv`
@@ -161,6 +162,7 @@ Known trade-offs of the current approach (seen when testing on example sentences
 ### Title Weighting
 - Titles state the motion's intent concisely; appending them several times shifts document-topic inference toward that intent while keeping the full body text
 - The current model (`10_fit_title_weighted_lda.py`) and the shared-vocabulary variant use 5×; 3× is tested in `13_seed_stability_3x_weighted.py`
+- The title heading is removed from the body at extraction, so the weight is exactly 5× (or 3×) rather than one extra from the heading
 
 ### Topic Count: 44 (Current) vs. 32 (Historical Baseline)
 - **Historical baseline (32 topics):** original selection via topic concentration analysis (6, 10, 14, 18, 22, 29, 32, 36, 43, 50, 57, 64 tested; non-lemmatized text). 32 ÷ 4 temporal bins = 8 topics/bin. Gordon et al. used 60 topics (15/bin).

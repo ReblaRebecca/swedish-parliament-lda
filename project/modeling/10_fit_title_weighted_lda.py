@@ -2,7 +2,8 @@
 """
 Fit title-weighted LDA model for comparison with baseline.
 Strategy: Append processed title words five additional times to body text.
-If title is already in body, effective count could be higher (up to 6x original).
+The title heading is removed from the body at extraction, so title words count exactly 5x
+(plus any genuine mentions in the body text).
 This weights document-topic inference toward title content without changing vocabulary.
 
 Input: Deduplicated motions with title_processed field
@@ -28,7 +29,7 @@ def load_texts_with_titles(input_dir):
     """Load final preprocessed text and processed titles from all temporal bins.
 
     Creates weighted documents by appending processed title words five additional times.
-    Note: If title words already appear in body, effective count could reach 6x original.
+    Note: The title heading is removed from the body at extraction, so the title counts exactly 5x.
     Returns: texts (list), metadata (list), title_stats (dict)
     """
     print("Loading texts with title processing...")
@@ -204,7 +205,7 @@ def main():
         f.write(f"Title coverage: {100*title_stats['weighted']/title_stats['total']:.2f}%\n")
         f.write(f"\nTitle weighting strategy: Five additional copies appended\n")
         f.write(f"(Processed title words appended 5 more times after body text)\n")
-        f.write(f"Note: If title words already appear in body, effective count up to 6x\n")
+        f.write(f"Note: Title heading removed from body at extraction; title counts exactly 5x\n")
 
     print(f"✅ Title statistics saved to: {stats_file}")
 
