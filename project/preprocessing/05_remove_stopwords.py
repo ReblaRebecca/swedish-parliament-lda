@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Remove Swedish stop words from normalized, lemmatized motion text (STEP 5).
+Remove Swedish stop words from normalized, lemmatized motion text and titles (STEP 5).
 Works on already-normalized text (lowercase, punctuation removed). Because the text is
 lemmatized, every stop word must also be listed in its lemma (base) form.
-Input: JSON lines with 'text_normalized' field.
-Output: JSON lines with 'text_no_stopwords' field.
+Input: JSON lines with 'text_normalized' and 'title_normalized' fields.
+Output: JSON lines with 'text_no_stopwords' and 'title_processed' fields (the final text used by the models).
 """
 
 import json
@@ -56,7 +56,7 @@ def get_swedish_stopwords():
     supplementary_stops.update({'br', 'de', 'dg', 'di', 'fj', 'fr', 'ga', 'gg', 'gr', 'hb', 'hj', 'jd', 'ka', 'ld', 'lt', 'mf', 'nd', 'ne', 'ng', 'nk', 'ns', 'nt', 'oh', 'po', 'rb', 'rd', 'rk', 'rl', 'rn', 'rr', 'rs', 'rt', 'sa', 'sf', 'sj', 'sk', 'sl', 'sm', 'te', 'tg', 'tj', 'tr', 'tt', 'ut', 'vs'})
     # Longer preprocessing artifacts (3-4+ characters): truncated words and character boundary errors
     supplementary_stops.update({'ggare', 'tt', 'tta', 'ttas', 'ttre', 'rs', 'rn', 'rns', 'rd', 'rda', 'ret', 'rer', 'ng', 'ngd', 'ngs'})
-    # Lemma forms of the inflected stop words above, as produced by Stanza (text is lemmatized in step 3)
+    # Lemma forms of the inflected stop words above, as produced by Stanza (text is lemmatized in step 2)
     supplementary_stops.update({'behöva', 'vilja', 'kunna', 'visa', 'hålla', 'sätta', 'gå', 'röra', 'ny', 'stor', 'olik', 'hel', 'mången'})
     stop_words.update(supplementary_stops)
 
@@ -105,6 +105,7 @@ def process_temporal_bin(input_file, output_file, stop_words):
 
                 # Update motion with cleaned text
                 motion['text_no_stopwords'] = text_cleaned
+                motion['title_processed'] = ' '.join(remove_stopwords(motion.get('title_normalized', ''), stop_words).split())
 
                 # Write to output
                 out_f.write(json.dumps(motion, ensure_ascii=False) + '\n')

@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-Lemmatize motion text with Stanza (STEP 3).
-Runs on boilerplate-removed running text, so the tagger sees full sentences
-(punctuation, function words and word order are still present).
-Input: JSON lines with 'text_no_boilerplate' field.
-Output: JSON lines with 'text_lemmatized' field (lemmas, one sentence per line).
+Tag and lemmatize motion text and titles with Stanza (STEP 2).
+Runs on the extracted running text, so the tagger sees full sentences.
+Every word is saved with its original form, lemma and part of speech, so later steps
+(boilerplate removal on word forms, then lemmas) can be re-run without running Stanza again.
 
-Auxiliary verbs (UPOS AUX) are dropped: Stanza lemmatizes the modal 'ska/skall/skulle'
-to 'skola', which would merge with the noun 'skola' (school). All auxiliaries are
-stopwords anyway. Punctuation and symbols are dropped as well.
+Input: JSON lines with 'text' and 'title_text' fields from extraction.
+Output: JSON lines with 'tokens' and 'title_tokens' fields:
+        a list of sentences, each a list of [word, lemma, upos] triples.
 
 Resumable: motions already present in the output file are skipped, so an interrupted
 run continues where it stopped.
@@ -25,9 +24,6 @@ except ImportError:
     print("Error: Stanza not installed. Install with: pip install stanza")
     sys.exit(1)
 
-
-# Parts of speech left out of the lemmatized text
-SKIP_UPOS = {'AUX', 'PUNCT', 'SYM'}
 
 # Number of motions sent to Stanza at once
 BATCH_SIZE = 32
@@ -46,9 +42,9 @@ def load_pipeline():
     )
 
 
-def lemmatize_texts(nlp, texts):
-    """Lemmatize a batch of texts. Returns one string per text, one sentence per line."""
-    results = [''] * len(texts)
+def tag_texts(nlp, texts):
+    """Tag a batch of texts. Returns, per text, a list of sentences of [word, lemma, upos] triples."""
+    results = [[] for _ in texts]
     non_empty = [i for i, t in enumerate(texts) if t and t.strip()]
     if not non_empty:
         return results
@@ -56,12 +52,10 @@ def lemmatize_texts(nlp, texts):
     docs = nlp([stanza.Document([], text=texts[i]) for i in non_empty])
 
     for i, doc in zip(non_empty, docs):
-        lines = []
-        for sentence in doc.sentences:
-            lemmas = [word.lemma or word.text for word in sentence.words if word.upos not in SKIP_UPOS]
-            if lemmas:
-                lines.append(' '.join(lemmas))
-        results[i] = '\n'.join(lines)
+        results[i] = [
+            [[word.text, word.lemma or word.text, word.upos] for word in sentence.words]
+            for sentence in doc.sentences
+        ]
 
     return results
 
@@ -88,7 +82,7 @@ def load_completed(output_file):
 
 
 def process_temporal_bin(input_file, output_file, nlp):
-    """Process one temporal bin: lemmatize boilerplate-removed text."""
+    """Process one temporal bin: tag body text and title."""
     motion_count = 0
     skipped_count = 0
     malformed_count = 0
@@ -116,10 +110,12 @@ def process_temporal_bin(input_file, output_file, nlp):
     with open(output_file, 'a', encoding='utf-8') as out_f:
         for batch_start in range(0, len(pending), BATCH_SIZE):
             batch = pending[batch_start:batch_start + BATCH_SIZE]
-            lemmatized = lemmatize_texts(nlp, [m.get('text_no_boilerplate', '') for m in batch])
+            body_tokens = tag_texts(nlp, [m.get('text', '') for m in batch])
+            title_tokens = tag_texts(nlp, [m.get('title_text', '') for m in batch])
 
-            for motion, text_lemmatized in zip(batch, lemmatized):
-                motion['text_lemmatized'] = text_lemmatized
+            for motion, tokens, t_tokens in zip(batch, body_tokens, title_tokens):
+                motion['tokens'] = tokens
+                motion['title_tokens'] = t_tokens
                 out_f.write(json.dumps(motion, ensure_ascii=False) + '\n')
             out_f.flush()
 
@@ -138,13 +134,13 @@ def main():
     PROJECT_ROOT = SCRIPT_DIR.parent
 
     # Allow command-line arguments for input/output directories
-    # Usage: python3 03_lemmatize.py [input_dir] [output_dir]
-    # Default: data/output/boilerplate_removed -> data/output/lemmatized
+    # Usage: python3 02_lemmatize.py [input_dir] [output_dir]
+    # Default: data/input/extracted_text_xml -> data/output/lemmatized
     if len(sys.argv) >= 3:
         INPUT_DIR = Path(sys.argv[1])
         OUTPUT_DIR = Path(sys.argv[2])
     else:
-        INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'boilerplate_removed'
+        INPUT_DIR = PROJECT_ROOT / 'data' / 'input' / 'extracted_text_xml'
         OUTPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'lemmatized'
 
     # Create output directory (with parents in case path doesn't exist)
@@ -162,7 +158,7 @@ def main():
     total_malformed = 0
 
     print("=" * 60)
-    print("STEP 3: Lemmatizing text with Stanza")
+    print("STEP 2: Tagging and lemmatizing text and titles with Stanza")
     print(f"Stanza version: {stanza.__version__}")
     print(f"Input: {INPUT_DIR}")
     print(f"Output: {OUTPUT_DIR}")

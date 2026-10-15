@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Normalize lemmatized motion text: lowercase, remove numbers and punctuation (STEP 4).
-Works on lemmatized text (one sentence per line), preserves line structure.
-Input: JSON lines with 'text_lemmatized' field.
-Output: JSON lines with 'text_normalized' field.
+Normalize lemmatized motion text and titles: lowercase, remove numbers and punctuation (STEP 4).
+Works on boilerplate-removed lemmas (one sentence per line), preserves line structure.
+Input: JSON lines with 'text_no_boilerplate' and 'title_no_boilerplate' fields.
+Output: JSON lines with 'text_normalized' and 'title_normalized' fields.
 """
 
 import json
@@ -61,8 +61,9 @@ def process_temporal_bin(input_file, output_file):
                     malformed_count += 1
                     continue
 
-                # Normalize lemmatized text
-                text_normalized = normalize_text(motion.get('text_lemmatized', ''))
+                # Normalize body and title
+                text_normalized = normalize_text(motion.get('text_no_boilerplate', ''))
+                motion['title_normalized'] = normalize_text(motion.get('title_no_boilerplate', ''))
 
                 # Add normalized text to motion
                 motion['text_normalized'] = text_normalized
@@ -85,12 +86,12 @@ def main():
 
     # Allow command-line arguments for input/output directories
     # Usage: python3 04_normalize_text.py [input_dir] [output_dir]
-    # Default: data/output/lemmatized -> data/output/normalized
+    # Default: data/output/boilerplate_removed -> data/output/normalized
     if len(sys.argv) >= 3:
         INPUT_DIR = Path(sys.argv[1])
         OUTPUT_DIR = Path(sys.argv[2])
     else:
-        INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'lemmatized'
+        INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'boilerplate_removed'
         OUTPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'normalized'
 
     # Create output directory (with parents in case path doesn't exist)
@@ -108,7 +109,7 @@ def main():
     total_malformed = 0
 
     print("=" * 60)
-    print("STEP 4: Normalizing lemmatized text")
+    print("STEP 4: Normalizing lemmatized text and titles")
     print(f"Input: {INPUT_DIR}")
     print(f"Output: {OUTPUT_DIR}")
     print("=" * 60)

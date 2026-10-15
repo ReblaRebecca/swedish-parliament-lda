@@ -2,6 +2,8 @@
 """
 Extract motion text from XML files following Bruinsma & Johansson (2024) methodology.
 Parses XML structure, filters by organ (UbU), extracts body text between markers.
+Removes document metadata from the text: signatures, headers, the title heading,
+motion numbers and the motion's own author names (body and title).
 Input: XML files organized by year (default: data_xml/ at repo root; override with [xml_dir] [output_dir])
 Output: JSONL files organized by temporal bin (1986-1993, 1994-2004, 2005-2014, 2015-2025)
 """
@@ -161,6 +163,36 @@ def remove_title_heading(body, title):
     return re.sub(r'\s+', ' ', body[:match.start()] + ' ' + body[match.end():]).strip()
 
 
+# Motion numbers (e.g., 1986/87:1001, GE02A1)
+MOTION_NUMBER_PATTERN = re.compile(r'\d{4}/\d{2}:\w+|[A-Z]{1,2}\d+[A-Z]*\d*')
+
+
+def remove_motion_numbers(text):
+    """Remove motion identification numbers."""
+    return MOTION_NUMBER_PATTERN.sub('', text)
+
+
+def remove_author_names(text, author_names):
+    """Remove author names from text using per-document metadata.
+
+    Only removes exact word matches to avoid removing legitimate content.
+    Author names are case-insensitive but matched as whole words only.
+    """
+    escaped_names = [re.escape(name) for name in author_names if name]
+    if not text or not escaped_names:
+        return text
+
+    pattern = r'\b(' + '|'.join(escaped_names) + r')\b'
+    return re.sub(pattern, '', text, flags=re.IGNORECASE)
+
+
+def remove_metadata(text, author_names):
+    """Remove motion numbers and author names, then collapse whitespace."""
+    text = remove_motion_numbers(text)
+    text = remove_author_names(text, author_names)
+    return re.sub(r'\s+', ' ', text).strip()
+
+
 def extract_authors(root):
     """Extract author names and metadata from <dokintressent> section.
 
@@ -254,10 +286,15 @@ def process_xml_file(xml_path):
         authors = extract_authors(root)
         author_names = [a['name'] for a in authors]
 
+        # Remove motion numbers and author names from body and title
+        body_text = remove_metadata(body_text, author_names)
+        title_text = remove_metadata(titel, author_names)
+
         return {
             'dok_id': dok_id.strip(),
             'date': date_str,
-            'title': titel.strip(),
+            'title': titel.strip(),          # original title, for display
+            'title_text': title_text,        # title with metadata removed, for processing
             'text': body_text,
             'authors': authors,
             'author_names': author_names
@@ -358,7 +395,7 @@ def main():
     print("=" * 70)
 
     print(f"\nOutput files in: {OUTPUT_DIR}")
-    print("Next step: Run 02_remove_boilerplate.py on extracted_text_xml/")
+    print("Next step: Run preprocessing/02_lemmatize.py")
 
 
 if __name__ == '__main__':

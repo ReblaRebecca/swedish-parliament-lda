@@ -9,20 +9,18 @@ All paths below are relative to `project/`. Every script resolves its default pa
 
 ```
 ../data_xml/ (raw riksdag XML, by year)
-    ↓  extraction/01_extract_from_xml.py
-data/input/extracted_text_xml/        field: text
-    ↓  preprocessing/02_remove_boilerplate.py
-data/output/boilerplate_removed/      field: text_no_boilerplate
-    ↓  preprocessing/03_lemmatize.py   (Stanza, on running text)
-data/output/lemmatized/               field: text_lemmatized
-    ↓  preprocessing/04_normalize_text.py
-data/output/normalized/               field: text_normalized
-    ↓  preprocessing/05_remove_stopwords.py
-data/output/stopword_removed/         field: text_no_stopwords   ← final text used by all models
-    ↓  preprocessing/06_detect_duplicates.py
+    ↓  extraction/01_extract_from_xml.py        ┐ run once
+data/input/extracted_text_xml/        fields: text, title_text           │ (minutes)
+    ↓  preprocessing/02_lemmatize.py            │ run once
+data/output/lemmatized/               fields: tokens, title_tokens       ┘ (Stanza, hours)
+    ↓  preprocessing/03_remove_boilerplate.py   ┐
+data/output/boilerplate_removed/      fields: text_no_boilerplate, title_no_boilerplate
+    ↓  preprocessing/04_normalize_text.py       │ cheap, re-run freely
+data/output/normalized/               fields: text_normalized, title_normalized
+    ↓  preprocessing/05_remove_stopwords.py     │ (e.g. after editing the
+data/output/stopword_removed/         fields: text_no_stopwords, title_processed   ← final text used by all models
+    ↓  preprocessing/06_detect_duplicates.py    ┘  boilerplate or stopword lists)
 data/output/deduplicated/             fields: is_duplicate, duplicate_of, text_hash
-    ↓  preprocessing/09_preprocess_titles.py   (updates files in place)
-data/output/deduplicated/             field: title_processed
     ↓
     ├── modeling/07_fit_baseline_lda.py        → models/baseline_lda_44/
     │       ↓ modeling/08_display_lda_topics.py → results/44_TOPICS_FINAL.csv
@@ -37,7 +35,11 @@ data/output/deduplicated/             field: title_processed
               → results/weighted_44_TOPICS_SHARED_VOCAB.csv, results/weighted_topics_wordclouds_shared_vocab.html
 ```
 
-Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl`, `group2_1994-2004.jsonl`, `group3_2005-2014.jsonl`, `group4_2015-2025.jsonl`. Each stage adds a field and keeps all earlier fields, so metadata (`dok_id`, title, date, author names) is carried through to the models.
+Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl`, `group2_1994-2004.jsonl`, `group3_2005-2014.jsonl`, `group4_2015-2025.jsonl`. Each stage adds fields and keeps earlier ones, so metadata (`dok_id`, title, date, author names) is carried through to the models. All of `data/` is ignored by git.
+
+**Why this order:** Stanza is the only slow step, so it runs once, right after extraction, and saves every word with its original form, lemma and part of speech. Everything after it works from that saved output and takes minutes, so the boilerplate list, stopwords and title weighting can be changed and re-run without running Stanza again.
+
+**Titles** go through exactly the same steps as the body text, in the same scripts (fields prefixed `title_`).
 
 ## Processing Steps
 
@@ -47,48 +49,43 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - **Filter:** UbU committee (Education Committee), case-insensitive
 - **Extract:** dok_id, date, title, author names, body text (between the introduction and signature markers); HTML entities decoded
 - **HTML to text:** text pieces are joined without separators, with whitespace only at block-level tags (`<p>`, `<br>`, `<td>`, headings, …). The source HTML often splits single words across inline `<span>`s (`uppföljni</span><span>ng`, and in some motions every å/ä/ö is its own span), so joining with spaces fragmented words in ~4,400 motions (fixed 2026-10-15)
+- **Character repair (body and title):** soft hyphens (U+00AD) removed; text NFC-normalized; spacing diacritics after a base letter replaced (`a°` → `å`, `a¨` → `ä`, `o¨` → `ö`)
 - **Title heading removed:** the title appears as a heading near the start of the body in ~97% of motions. The first word-by-word match of the title within the first 400 characters is removed (13,532 motions), so title weighting counts the title exactly 5×. Later mentions of the title phrase (e.g. in the proposed decision) are kept as body text
-- **Character repair:** soft hyphens (U+00AD) removed; text NFC-normalized; spacing diacritics after a base letter replaced (`a°` → `å`, `a¨` → `ä`, `o¨` → `ö`)
-- **Output:** 13,917 motions as JSON lines (13,957 UbU files; 40 have no body text or fall outside 1986–2025) in 4 temporal bins, in `data/input/extracted_text_xml/`
+- **Metadata removed (body and title):** motion numbers (`1989/90:Ub742`, `GE02A1`) and the motion's own author names (from the XML author list, whole-word, case-insensitive). Done here, before Stanza, so numbers are not split into odd tokens and names are not lemmatized
+- **Output:** 13,917 motions as JSON lines (13,957 UbU files; 40 have no body text or fall outside 1986–2025) in 4 temporal bins, in `data/input/extracted_text_xml/`. Fields: `text` (cleaned body), `title` (original title, for display), `title_text` (cleaned title, for processing)
   - The folder name means "text extracted FROM XML"; the files are JSONL, not XML
 
-### 2. Boilerplate Removal (`preprocessing/02_remove_boilerplate.py`)
-- Runs first, on raw text with original structure (newlines, punctuation), so multi-word phrases can be matched
-- **Phrases:** loaded from `config/boilerplate_phrases.txt` (432 entries, one explicit word or phrase per line, no wildcards), matched on word boundaries
-- **Categories:** OCR/scanning artifacts, government and parliamentary institutions, parliamentary document/reference terms, procedural language, party names, etc.
-- Also removes the document's own author names (from extracted metadata, whole-word, case-insensitive), before lemmatization so names are never lemmatized
-- **Rationale:** remove domain-specific metadata and structural language that doesn't represent education policy content
-- **Output field:** `text_no_boilerplate`
-
-### 3. Lemmatization (`preprocessing/03_lemmatize.py`)
+### 2. Tagging and Lemmatization (`preprocessing/02_lemmatize.py`) — run once
 - **Tool:** [Stanza](https://stanfordnlp.github.io/stanza/) Swedish pipeline (`tokenize,pos,lemma`, default Talbanken model), stored in `SU/stanza_resources/` and downloaded there automatically if missing
-- Runs on running text (before normalization and stopword removal), so the tagger sees full sentences and can use context
-- **Dropped tokens:** auxiliary verbs (UPOS `AUX`), punctuation and symbols. Stanza lemmatizes the modal *ska/skall/skulle* to `skola`, which would merge with the noun *skola* (school); all auxiliaries are stopwords anyway
-- Output is lemmas, one sentence per line
+- Runs on the extracted running text of body and title, so the tagger sees full sentences and can use context
+- **Saves every word** as `[word, lemma, upos]`, grouped by sentence, in `tokens` (body) and `title_tokens` (title). Nothing is removed at this step
 - **Resumable:** motions already in the output file are skipped, so an interrupted run continues where it stopped
 - **Runtime:** CPU-heavy; expect hours for the full corpus
-- **Output field:** `text_lemmatized`
+
+### 3. Boilerplate Removal (`preprocessing/03_remove_boilerplate.py`)
+- **Phrases:** loaded from `config/boilerplate_phrases.txt` (432 entries, one explicit word or phrase per line, no wildcards), matched case-insensitively against the **original word forms** saved by step 2, so the list keeps its surface forms (`riksdagen`, `med anledning av`). A word is removed only if a phrase match covers the whole word; phrases never match across sentences
+- **Categories:** OCR/scanning artifacts, government and parliamentary institutions, parliamentary document/reference terms, procedural language, party names, etc.
+- **Output is lemmas** of the remaining words, one sentence per line
+- **Dropped tokens:** auxiliary verbs (UPOS `AUX`), punctuation and symbols. Stanza lemmatizes the modal *ska/skall/skulle* to `skola`, which would merge with the noun *skola* (school); all auxiliaries are stopwords anyway
+- **Rationale:** remove domain-specific metadata and structural language that doesn't represent education policy content
+- The per-word Stanza output is not copied further; it stays in `data/output/lemmatized/`
+- **Output fields:** `text_no_boilerplate`, `title_no_boilerplate`
 
 ### 4. Normalization (`preprocessing/04_normalize_text.py`)
 - Lowercase, remove numbers and punctuation, collapse whitespace
 - Drops single-character words; preserves line breaks
-- **Output field:** `text_normalized`
+- **Output fields:** `text_normalized`, `title_normalized`
 
 ### 5. Stopword Removal (`preprocessing/05_remove_stopwords.py`)
 - **Base list:** NLTK Swedish stop words
 - **Supplementary (hard-coded):** parliamentary abbreviations (ub, dvs, osv, …), auxiliary verbs (ska, skall, blir, …), generic connectors, verbs and adjectives identified from LDA inspection (kommer, enligt, olika, göra, …), two-letter and longer fragment artifacts (see `PREPROCESSING_ARTIFACTS.md` and `TWO_LETTER_WORDS.txt`), and the **lemma forms** of inflected entries (behöva, vilja, kunna, ny, stor, olik, mången, …), since the text is lemmatized
-- **Output field:** `text_no_stopwords` — the final text used by all models
+- **Output fields:** `text_no_stopwords` and `title_processed` — the final body and title text used by all models
 
 ### 6. Duplicate Detection (`preprocessing/06_detect_duplicates.py`)
 - MD5 hash of the whitespace-normalized final text (`text_no_stopwords`); one hash dictionary shared across all bins, so duplicates are detected across time periods
 - Duplicates are **flagged, not removed**: `is_duplicate`, `duplicate_of` (dok_id of the original), `text_hash`
 - Last recorded result: 133 duplicates (0.92%), measured on the earlier normalized-text pipeline; re-check after re-running
 - Optional arguments: `[input_dir] [output_dir]`
-
-### 7. Title Preprocessing (`preprocessing/09_preprocess_titles.py`)
-- Titles get the same preprocessing as body text: character repair at extraction (step 01), then boilerplate and author-name removal, Stanza lemmatization, normalization and stopword removal, using the functions from steps 02–05
-- Writes `title_processed` back into the files in `data/output/deduplicated/`
-- Title coverage ~99.5%
 
 ### 8a. Baseline LDA (`modeling/07_fit_baseline_lda.py`)
 - **Input:** `text_no_stopwords` (body only, no title weighting)
@@ -135,7 +132,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 ## Configuration Files
 
 ### `config/boilerplate_phrases.txt`
-432 explicit words/phrases, one per line, grouped by category with `#` comment headers. Loaded by `02_remove_boilerplate.py` and `09_preprocess_titles.py`. An alternative file can be passed as the 3rd argument to `02_remove_boilerplate.py`.
+432 explicit words/phrases, one per line, grouped by category with `#` comment headers. Loaded by `03_remove_boilerplate.py` and matched against original word forms (body and title). An alternative file can be passed as the 3rd argument to `03_remove_boilerplate.py`. After editing it, re-run steps 03–06 (no need to re-run Stanza).
 
 ### Stop words
 Hard-coded in `preprocessing/05_remove_stopwords.py` (NLTK base + supplementary list, including lemma forms).
@@ -151,12 +148,12 @@ Hard-coded in `preprocessing/05_remove_stopwords.py` (NLTK base + supplementary 
 History:
 1. **spaCy `sv_core_news_sm` — rejected.** Domain-mismatch problems on parliamentary Swedish (results archived in `logs/LEMMATIZATION_BENCHMARK.txt`): `första → en`, `högre → hög`, `stora → stor`. Benchmark metrics improved (-23.85% perplexity, +12.50% coherence), but this masked quality degradation.
 2. **Controlled lookup table — replaced.** A hand-made CSV of ~284 variant→lemma mappings for education terms. It only covered the words listed, and ran after stopword removal on a bag of words.
-3. **Stanza — current.** A general, context-aware lemmatizer (Swedish Talbanken model) run on full sentences before normalization. The controlled table was dropped entirely (no domain overrides).
+3. **Stanza — current.** A general, context-aware lemmatizer (Swedish Talbanken model) run once on full sentences right after extraction; every word is saved with its original form and lemma, so boilerplate removal still matches original word forms. The controlled table was dropped entirely (no domain overrides).
 
 Known trade-offs of the current approach (seen when testing on example sentences):
 - Comparatives are reduced to the positive form: *högre utbildning* → `hög utbildning`. This is correct lemmatization but merges *higher education* with *hög* in other senses.
 - Rare compounds can get wrong lemmas, e.g. *arbetsvillkor* → `arbetsvillka`.
-- Modal *ska/skall/skulle* gets lemma `skola`, colliding with the noun *skola*; handled by dropping all auxiliaries (UPOS `AUX`).
+- Modal *ska/skall/skulle* gets lemma `skola`, colliding with the noun *skola*; handled by dropping all auxiliaries (UPOS `AUX`) in the boilerplate step.
 - The earlier proposal argument ("replaced automatic lemmatization with a controlled table") no longer describes the pipeline.
 
 ### Title Weighting
@@ -222,14 +219,15 @@ NLTK stopwords are read from (and downloaded to) `SU/nltk_data/`, next to the re
 ```bash
 cd project
 
-# Extraction and preprocessing (each step reads the previous step's output)
+# Run once: extraction and Stanza (each step reads the previous step's output)
 python extraction/01_extract_from_xml.py ../../swedish-parliament-data   # or omit to use ../data_xml/
-python preprocessing/02_remove_boilerplate.py
-python preprocessing/03_lemmatize.py          # slow (hours); resumable if interrupted
+python preprocessing/02_lemmatize.py          # slow (hours); resumable if interrupted
+
+# Cheap: re-run these after changing the boilerplate list or stopwords
+python preprocessing/03_remove_boilerplate.py
 python preprocessing/04_normalize_text.py
 python preprocessing/05_remove_stopwords.py
 python preprocessing/06_detect_duplicates.py
-python preprocessing/09_preprocess_titles.py
 
 # Baseline model (also creates the vectorizer the weighted model needs)
 python modeling/07_fit_baseline_lda.py
@@ -255,12 +253,11 @@ project/
 ├── extraction/
 │   └── 01_extract_from_xml.py
 ├── preprocessing/
-│   ├── 02_remove_boilerplate.py
-│   ├── 03_lemmatize.py
+│   ├── 02_lemmatize.py
+│   ├── 03_remove_boilerplate.py
 │   ├── 04_normalize_text.py
 │   ├── 05_remove_stopwords.py
-│   ├── 06_detect_duplicates.py
-│   └── 09_preprocess_titles.py
+│   └── 06_detect_duplicates.py
 ├── modeling/
 │   ├── 06_build_shared_vocabulary_and_fit_models.py
 │   ├── 07_fit_baseline_lda.py
@@ -283,7 +280,7 @@ project/
 │   └── topics_wordclouds.html            (template for the word cloud scripts; other results are regenerated)
 ├── data/                                  (not in git)
 │   ├── input/extracted_text_xml/
-│   └── output/{boilerplate_removed,lemmatized,normalized,stopword_removed,deduplicated}/
+│   └── output/{lemmatized,boilerplate_removed,normalized,stopword_removed,deduplicated}/
 ├── models/                                (not in git)
 │   ├── baseline_lda_44/
 │   ├── title_weighted_lda_44/
