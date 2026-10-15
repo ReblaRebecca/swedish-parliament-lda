@@ -33,7 +33,7 @@ def load_texts_and_titles(input_dir):
             for line in f:
                 try:
                     motion = json.loads(line.strip())
-                    body = motion.get('text_lemmatized', '').strip()
+                    body = motion.get('text_no_stopwords', '').strip()
                     title = motion.get('title_processed', '').strip()
 
                     if body:

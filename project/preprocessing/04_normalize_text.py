@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-Normalize motion text: lowercase, remove numbers and punctuation (STEP 2).
-Works on boilerplate-removed text, preserves line structure.
-Removes document-specific author names using extracted metadata.
-Input: JSON lines with 'text_no_boilerplate' and 'author_names' fields.
+Normalize lemmatized motion text: lowercase, remove numbers and punctuation (STEP 4).
+Works on lemmatized text (one sentence per line), preserves line structure.
+Input: JSON lines with 'text_lemmatized' field.
 Output: JSON lines with 'text_normalized' field.
 """
 
@@ -13,41 +12,14 @@ from pathlib import Path
 import sys
 
 
-def remove_author_names(text, author_names):
-    """Remove author names from text using per-document metadata.
-
-    Only removes exact word matches to avoid removing legitimate content.
-    Author names are case-insensitive but matched as whole words only.
-    """
-    if not text or not author_names:
-        return text
-
-    # Build regex pattern for author names (case-insensitive, word boundaries)
-    # Escape special regex characters in names
-    escaped_names = [re.escape(name.lower()) for name in author_names if name]
-    if not escaped_names:
-        return text
-
-    # Pattern: word boundary + author name + word boundary
-    pattern = r'\b(' + '|'.join(escaped_names) + r')\b'
-
-    # Remove author names (case-insensitive)
-    text = re.sub(pattern, '', text, flags=re.IGNORECASE)
-
-    return text
-
-
-def normalize_text(text, author_names=None):
+def normalize_text(text):
     """Normalize text: lowercase, remove numbers/punctuation, clean whitespace.
 
-    Removes document-specific author names, preserves line breaks for structure.
+    Preserves line breaks for structure.
     Removes single-character words (OCR artifacts).
     """
     if not text:
         return ""
-
-    # Remove author names first (before lowercasing, for better matching)
-    text = remove_author_names(text, author_names)
 
     # Lowercase
     text = text.lower()
@@ -89,10 +61,8 @@ def process_temporal_bin(input_file, output_file):
                     malformed_count += 1
                     continue
 
-                # Normalize text from boilerplate-removed version
-                text = motion.get('text_no_boilerplate', '')
-                author_names = motion.get('author_names', [])
-                text_normalized = normalize_text(text, author_names)
+                # Normalize lemmatized text
+                text_normalized = normalize_text(motion.get('text_lemmatized', ''))
 
                 # Add normalized text to motion
                 motion['text_normalized'] = text_normalized
@@ -114,13 +84,13 @@ def main():
     PROJECT_ROOT = SCRIPT_DIR.parent
 
     # Allow command-line arguments for input/output directories
-    # Usage: python3 03_normalize_text.py [input_dir] [output_dir]
-    # Default: data/output/boilerplate_removed -> data/output/normalized
+    # Usage: python3 04_normalize_text.py [input_dir] [output_dir]
+    # Default: data/output/lemmatized -> data/output/normalized
     if len(sys.argv) >= 3:
         INPUT_DIR = Path(sys.argv[1])
         OUTPUT_DIR = Path(sys.argv[2])
     else:
-        INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'boilerplate_removed'
+        INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'lemmatized'
         OUTPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'normalized'
 
     # Create output directory (with parents in case path doesn't exist)
@@ -138,7 +108,7 @@ def main():
     total_malformed = 0
 
     print("=" * 60)
-    print("STEP 3: Normalizing text and removing per-document author names")
+    print("STEP 4: Normalizing lemmatized text")
     print(f"Input: {INPUT_DIR}")
     print(f"Output: {OUTPUT_DIR}")
     print("=" * 60)

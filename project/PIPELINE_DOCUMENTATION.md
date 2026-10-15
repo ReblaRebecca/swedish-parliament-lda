@@ -1,7 +1,7 @@
 # Swedish Parliamentary Education Motions: NLP Pipeline
 
 ## Overview
-Processing 13,917 Swedish parliamentary education motions (1986-2025) through an NLP pipeline to extract thematic structure via Latent Dirichlet Allocation (LDA). Current approach: **44-topic title-weighted LDA (titles appended 5×) on text with controlled lemmatization**, compared against a 44-topic baseline (body text only) on the same preprocessed text.
+Processing 13,917 Swedish parliamentary education motions (1986-2025) through an NLP pipeline to extract thematic structure via Latent Dirichlet Allocation (LDA). Current approach: **44-topic title-weighted LDA (titles appended 5×) on text lemmatized with Stanza**, compared against a 44-topic baseline (body text only) on the same preprocessed text.
 
 All paths below are relative to `project/`. Every script resolves its default paths from its own location, so scripts can be run from any working directory. Data (`data/`), models (`models/`) and the raw XML (`../data_xml/`) are not version controlled.
 
@@ -13,12 +13,12 @@ All paths below are relative to `project/`. Every script resolves its default pa
 data/input/extracted_text_xml/        field: text
     ↓  preprocessing/02_remove_boilerplate.py
 data/output/boilerplate_removed/      field: text_no_boilerplate
-    ↓  preprocessing/03_normalize_text.py
-data/output/normalized/               field: text_normalized
-    ↓  preprocessing/04_remove_stopwords.py
-data/output/stopword_removed/         field: text_no_stopwords
-    ↓  preprocessing/05_apply_lemmatization.py
+    ↓  preprocessing/03_lemmatize.py   (Stanza, on running text)
 data/output/lemmatized/               field: text_lemmatized
+    ↓  preprocessing/04_normalize_text.py
+data/output/normalized/               field: text_normalized
+    ↓  preprocessing/05_remove_stopwords.py
+data/output/stopword_removed/         field: text_no_stopwords   ← final text used by all models
     ↓  preprocessing/06_detect_duplicates.py
 data/output/deduplicated/             fields: is_duplicate, duplicate_of, text_hash
     ↓  preprocessing/09_preprocess_titles.py   (updates files in place)
@@ -42,7 +42,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 ## Processing Steps
 
 ### 1. Extraction (`extraction/01_extract_from_xml.py`)
-- **Input:** XML files from the Swedish parliament open data portal (`../data_xml/`, organized by year)
+- **Input:** XML files from the Swedish parliament open data portal (default `../data_xml/`, organized by year). Pass another location as the first argument: `python extraction/01_extract_from_xml.py <xml_dir> [output_dir]`
 - **Method:** follows Bruinsma & Johansson (2024)
 - **Filter:** UbU committee (Education Committee), case-insensitive
 - **Extract:** dok_id, date, title, author names, body text (between the introduction and signature markers); HTML entities decoded
@@ -55,40 +55,42 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - Runs first, on raw text with original structure (newlines, punctuation), so multi-word phrases can be matched
 - **Phrases:** loaded from `config/boilerplate_phrases.txt` (432 entries, one explicit word or phrase per line, no wildcards), matched on word boundaries
 - **Categories:** OCR/scanning artifacts, government and parliamentary institutions, parliamentary document/reference terms, procedural language, party names, etc.
+- Also removes the document's own author names (from extracted metadata, whole-word, case-insensitive), before lemmatization so names are never lemmatized
 - **Rationale:** remove domain-specific metadata and structural language that doesn't represent education policy content
 - **Output field:** `text_no_boilerplate`
 
-### 3. Normalization (`preprocessing/03_normalize_text.py`)
-- Removes the document's own author names (from extracted metadata, whole-word, case-insensitive)
+### 3. Lemmatization (`preprocessing/03_lemmatize.py`)
+- **Tool:** [Stanza](https://stanfordnlp.github.io/stanza/) Swedish pipeline (`tokenize,pos,lemma`, default Talbanken model), downloaded automatically on first run
+- Runs on running text (before normalization and stopword removal), so the tagger sees full sentences and can use context
+- **Dropped tokens:** auxiliary verbs (UPOS `AUX`), punctuation and symbols. Stanza lemmatizes the modal *ska/skall/skulle* to `skola`, which would merge with the noun *skola* (school); all auxiliaries are stopwords anyway
+- Output is lemmas, one sentence per line
+- **Resumable:** motions already in the output file are skipped, so an interrupted run continues where it stopped
+- **Runtime:** CPU-heavy; expect hours for the full corpus
+- **Output field:** `text_lemmatized`
+
+### 4. Normalization (`preprocessing/04_normalize_text.py`)
 - Lowercase, remove numbers and punctuation, collapse whitespace
 - Drops single-character words; preserves line breaks
 - **Output field:** `text_normalized`
 
-### 4. Stopword Removal (`preprocessing/04_remove_stopwords.py`)
+### 5. Stopword Removal (`preprocessing/05_remove_stopwords.py`)
 - **Base list:** NLTK Swedish stop words
-- **Supplementary (135, hard-coded):** parliamentary abbreviations (ub, dvs, osv, …), auxiliary verbs (ska, skall, blir, …), generic connectors, verbs and adjectives identified from LDA inspection (kommer, enligt, olika, göra, …), and two-letter and longer fragment artifacts (see `PREPROCESSING_ARTIFACTS.md` and `TWO_LETTER_WORDS.txt`)
-- **Output field:** `text_no_stopwords`
-
-### 5. Controlled Lemmatization (`preprocessing/05_apply_lemmatization.py`)
-- Uses a manual lookup table, `config/controlled_lemmatization.csv` (284 unique `variant,lemma` mappings, e.g. `skolan → skola`), focused on education terminology
-- Words not in the table are left unchanged
-- Replaces the earlier spaCy approach, which was rejected (see "Lemmatization" below)
-- **Output field:** `text_lemmatized`
+- **Supplementary (hard-coded):** parliamentary abbreviations (ub, dvs, osv, …), auxiliary verbs (ska, skall, blir, …), generic connectors, verbs and adjectives identified from LDA inspection (kommer, enligt, olika, göra, …), two-letter and longer fragment artifacts (see `PREPROCESSING_ARTIFACTS.md` and `TWO_LETTER_WORDS.txt`), and the **lemma forms** of inflected entries (behöva, vilja, kunna, ny, stor, olik, mången, …), since the text is lemmatized
+- **Output field:** `text_no_stopwords` — the final text used by all models
 
 ### 6. Duplicate Detection (`preprocessing/06_detect_duplicates.py`)
-- MD5 hash of the whitespace-normalized lemmatized text; one hash dictionary shared across all bins, so duplicates are detected across time periods
+- MD5 hash of the whitespace-normalized final text (`text_no_stopwords`); one hash dictionary shared across all bins, so duplicates are detected across time periods
 - Duplicates are **flagged, not removed**: `is_duplicate`, `duplicate_of` (dok_id of the original), `text_hash`
 - Last recorded result: 133 duplicates (0.92%), measured on the earlier normalized-text pipeline; re-check after re-running
 - Optional arguments: `[input_dir] [output_dir]`
 
 ### 7. Title Preprocessing (`preprocessing/09_preprocess_titles.py`)
-- Runs boilerplate removal, normalization, stopword removal and lemmatization on titles, using the same config files as the body pipeline
-- ⚠️ The stopword list is a separate hard-coded copy that differs from `04_remove_stopwords.py`: it adds ~34 spatial/directional words (uppåt, bakom, här, där, …) and lacks some later additions (e.g. 'fn', 'of', 'mr', 'är', 'trots', 'första', 'även')
+- Runs titles through boilerplate removal, Stanza lemmatization, normalization and stopword removal by importing the functions from steps 02–05, so titles and bodies are processed identically
 - Writes `title_processed` back into the files in `data/output/deduplicated/`
 - Title coverage ~99.5%
 
 ### 8a. Baseline LDA (`modeling/07_fit_baseline_lda.py`)
-- **Input:** `text_lemmatized` (body only, no title weighting)
+- **Input:** `text_no_stopwords` (body only, no title weighting)
 - **Vectorizer:** `CountVectorizer(max_df=0.5, min_df=5, max_features=10000)`, default token pattern
 - **LDA:** scikit-learn `LatentDirichletAllocation`, 44 topics, `max_iter=50`, `learning_method='online'`, `random_state=42`, `n_jobs=2`
 - **Output:** `models/baseline_lda_44/baseline_lda_44_topics.pkl`, `models/baseline_lda_44/baseline_vectorizer.pkl`, `results/document_topic_distribution.csv`
@@ -96,7 +98,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - **Diagnostic metric:** training perplexity (diagnostic only, not evidence of generalization)
 
 ### 8b. Title-Weighted LDA — current model (`modeling/10_fit_title_weighted_lda.py`)
-- **Weighted document:** `text_lemmatized` + `title_processed` appended **5 additional times** (effective title weight up to 6× if title words also appear in the body). Documents without a title use body text only.
+- **Weighted document:** `text_no_stopwords` + `title_processed` appended **5 additional times** (effective title weight up to 6× if title words also appear in the body). Documents without a title use body text only.
 - **Vectorizer:** loads `models/baseline_lda_44/baseline_vectorizer.pkl` (run 8a first)
 - **LDA:** same settings as the baseline (44 topics, seed 42)
 - **Output:** `models/title_weighted_lda_44/title_weighted_lda_44_topics.pkl`, `models/title_weighted_lda_44/title_weighting_stats.txt`, `results/document_topic_distribution.csv`
@@ -134,28 +136,27 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 ### `config/boilerplate_phrases.txt`
 432 explicit words/phrases, one per line, grouped by category with `#` comment headers. Loaded by `02_remove_boilerplate.py` and `09_preprocess_titles.py`. An alternative file can be passed as the 3rd argument to `02_remove_boilerplate.py`.
 
-### `config/controlled_lemmatization.csv`
-284 unique `variant,lemma` mappings (351 rows; 67 rows repeat an earlier mapping). Loaded by `05_apply_lemmatization.py` and `09_preprocess_titles.py`.
-
 ### Stop words
-Hard-coded in `preprocessing/04_remove_stopwords.py` (NLTK base + 135 supplementary).
+Hard-coded in `preprocessing/05_remove_stopwords.py` (NLTK base + supplementary list, including lemma forms).
 
 ## Key Decision Points
 
 ### Stop Words vs Boilerplate
-- **Stop words:** general Swedish (plus fragment artifacts), applied after normalization
+- **Stop words:** general Swedish (plus fragment artifacts), applied to lemmatized, normalized text
 - **Boilerplate:** parliamentary/domain-specific structural language, applied to raw text
 - **Rationale:** separation allows reuse of the stop word list for other Swedish texts
 
-### Lemmatization: spaCy Rejected, Controlled Lemmatization Adopted
-- **Initial testing:** spaCy `sv_core_news_sm` showed domain-mismatch problems on parliamentary Swedish (results archived in `logs/LEMMATIZATION_BENCHMARK.txt`):
-  - **"första" (first) → "en" (article)** — model confused by parliamentary sentence structure
-  - **"högre" (higher-ed) → "hög" (high)** — lost the comparative form, destroying a key concept
-  - **"stora" (large) → "stor"** — lost plurality information
-  - **Root cause:** model trained on news text; parliamentary language confuses POS tagging/lemmatization
-  - Benchmark metrics improved (-23.85% perplexity, +12.50% coherence), but this masked systematic quality degradation
-- **Current approach:** a manual lookup table (`config/controlled_lemmatization.csv`) that only merges known inflectional variants of education terms. This reduces inflectional noise without the spaCy errors, since unlisted words are untouched.
-- **Argument for proposal:** "Lemmatization testing (TBD) revealed that spaCy sv_core_news_sm shows domain-mismatch problems when applied to parliamentary Swedish: critical terms disappeared from vocabulary, and domain-specific concepts were corrupted (e.g., 'högre utbildning'→'hög'). We therefore replaced automatic lemmatization with a controlled, manually curated lemmatization table restricted to education terminology."
+### Lemmatization: Stanza (since 2026-10-15)
+History:
+1. **spaCy `sv_core_news_sm` — rejected.** Domain-mismatch problems on parliamentary Swedish (results archived in `logs/LEMMATIZATION_BENCHMARK.txt`): `första → en`, `högre → hög`, `stora → stor`. Benchmark metrics improved (-23.85% perplexity, +12.50% coherence), but this masked quality degradation.
+2. **Controlled lookup table — replaced.** A hand-made CSV of ~284 variant→lemma mappings for education terms. It only covered the words listed, and ran after stopword removal on a bag of words.
+3. **Stanza — current.** A general, context-aware lemmatizer (Swedish Talbanken model) run on full sentences before normalization. The controlled table was dropped entirely (no domain overrides).
+
+Known trade-offs of the current approach (seen when testing on example sentences):
+- Comparatives are reduced to the positive form: *högre utbildning* → `hög utbildning`. This is correct lemmatization but merges *higher education* with *hög* in other senses.
+- Rare compounds can get wrong lemmas, e.g. *arbetsvillkor* → `arbetsvillka`.
+- Modal *ska/skall/skulle* gets lemma `skola`, colliding with the noun *skola*; handled by dropping all auxiliaries (UPOS `AUX`).
+- The earlier proposal argument ("replaced automatic lemmatization with a controlled table") no longer describes the pipeline.
 
 ### Title Weighting
 - Titles state the motion's intent concisely; appending them several times shifts document-topic inference toward that intent while keeping the full body text
@@ -175,7 +176,7 @@ Hard-coded in `preprocessing/04_remove_stopwords.py` (NLTK base + 135 supplement
 | Vocabulary | 10,000 (baseline/weighted), 20,000 (shared-vocab variant) | `max_features` |
 | Stop words | NLTK + 135 supplementary | |
 | Boilerplate phrases | 432 | Explicit phrases, no wildcards |
-| Lemmatization mappings | 284 | Controlled lookup table |
+| Lemmatizer | Stanza | Swedish Talbanken model; auxiliaries dropped |
 | LDA topics | 44 | Baseline and title-weighted |
 | Title weighting | 5× | Current model |
 | Title coverage | ~99.5% | Documents with processed titles |
@@ -206,15 +207,17 @@ Hard-coded in `preprocessing/04_remove_stopwords.py` (NLTK base + 135 supplement
 
 ## Usage
 
+Dependencies: `pip install nltk scikit-learn scipy numpy stanza`. NLTK stopwords are read from (and downloaded to) `SU/nltk_data/`, next to the repo. Stanza downloads its Swedish model (~a few hundred MB) to `~/stanza_resources/` on first run.
+
 ```bash
 cd project
 
 # Extraction and preprocessing (each step reads the previous step's output)
-python extraction/01_extract_from_xml.py
+python extraction/01_extract_from_xml.py ../../swedish-parliament-data   # or omit to use ../data_xml/
 python preprocessing/02_remove_boilerplate.py
-python preprocessing/03_normalize_text.py
-python preprocessing/04_remove_stopwords.py
-python preprocessing/05_apply_lemmatization.py
+python preprocessing/03_lemmatize.py          # slow (hours); resumable if interrupted
+python preprocessing/04_normalize_text.py
+python preprocessing/05_remove_stopwords.py
 python preprocessing/06_detect_duplicates.py
 python preprocessing/09_preprocess_titles.py
 
@@ -233,7 +236,7 @@ python analysis/09_test_lda_stability.py
 python analysis/13_seed_stability_5x_weighted.py
 ```
 
-Preprocessing scripts 02–06 and `07_fit_baseline_lda.py` also accept `[input_dir] [output_dir]` arguments to override the defaults.
+`01_extract_from_xml.py` accepts `[xml_dir] [output_dir]`; preprocessing scripts 02–06 and `07_fit_baseline_lda.py` accept `[input_dir] [output_dir]` arguments to override the defaults.
 
 ## File Organization
 
@@ -243,9 +246,9 @@ project/
 │   └── 01_extract_from_xml.py
 ├── preprocessing/
 │   ├── 02_remove_boilerplate.py
-│   ├── 03_normalize_text.py
-│   ├── 04_remove_stopwords.py
-│   ├── 05_apply_lemmatization.py
+│   ├── 03_lemmatize.py
+│   ├── 04_normalize_text.py
+│   ├── 05_remove_stopwords.py
 │   ├── 06_detect_duplicates.py
 │   └── 09_preprocess_titles.py
 ├── modeling/
@@ -265,13 +268,12 @@ project/
 │   ├── 13_seed_stability_5x_weighted.py
 │   └── compare_weighted_vs_baseline.py   (deprecated)
 ├── config/
-│   ├── boilerplate_phrases.txt
-│   └── controlled_lemmatization.csv
+│   └── boilerplate_phrases.txt
 ├── results/
 │   └── topics_wordclouds.html            (template for the word cloud scripts; other results are regenerated)
 ├── data/                                  (not in git)
 │   ├── input/extracted_text_xml/
-│   └── output/{boilerplate_removed,normalized,stopword_removed,lemmatized,deduplicated}/
+│   └── output/{boilerplate_removed,lemmatized,normalized,stopword_removed,deduplicated}/
 ├── models/                                (not in git)
 │   ├── baseline_lda_44/
 │   ├── title_weighted_lda_44/
@@ -284,7 +286,7 @@ project/
 
 ## Current Phase: Title-Weighted Stability Testing (2026-10-14)
 
-**Objective:** validate whether title weighting + controlled lemmatization improves topic stability in a 44-topic model.
+**Objective:** validate whether title weighting improves topic stability in a 44-topic model.
 
 **Hypothesis:** by emphasizing motion intent (titles) and reducing inflectional noise, the model should discover more consistent topics across random seeds.
 

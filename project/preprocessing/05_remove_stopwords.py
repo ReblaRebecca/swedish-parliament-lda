@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Remove Swedish stop words from normalized motion text (STEP 3).
-Works on already-normalized text (lowercase, punctuation removed).
+Remove Swedish stop words from normalized, lemmatized motion text (STEP 5).
+Works on already-normalized text (lowercase, punctuation removed). Because the text is
+lemmatized, every stop word must also be listed in its lemma (base) form.
 Input: JSON lines with 'text_normalized' field.
 Output: JSON lines with 'text_no_stopwords' field.
 """
@@ -11,10 +12,15 @@ from pathlib import Path
 import sys
 
 try:
+    import nltk
     from nltk.corpus import stopwords
 except ImportError:
     print("Error: NLTK not installed. Install with: pip install nltk")
     sys.exit(1)
+
+# NLTK data lives next to the repo (SU/nltk_data), not in the home folder
+NLTK_DATA_DIR = Path(__file__).resolve().parent.parent.parent.parent / 'nltk_data'
+nltk.data.path.insert(0, str(NLTK_DATA_DIR))
 
 
 def get_swedish_stopwords():
@@ -22,9 +28,8 @@ def get_swedish_stopwords():
     try:
         stop_words = set(stopwords.words('swedish'))
     except LookupError:
-        print("Downloading NLTK stopwords...")
-        import nltk
-        nltk.download('stopwords', quiet=True)
+        print(f"Downloading NLTK stopwords to {NLTK_DATA_DIR}...")
+        nltk.download('stopwords', download_dir=str(NLTK_DATA_DIR), quiet=True)
         stop_words = set(stopwords.words('swedish'))
 
     # Add Swedish general words missing from NLTK
@@ -51,6 +56,8 @@ def get_swedish_stopwords():
     supplementary_stops.update({'br', 'de', 'dg', 'di', 'fj', 'fr', 'ga', 'gg', 'gr', 'hb', 'hj', 'jd', 'ka', 'ld', 'lt', 'mf', 'nd', 'ne', 'ng', 'nk', 'ns', 'nt', 'oh', 'po', 'rb', 'rd', 'rk', 'rl', 'rn', 'rr', 'rs', 'rt', 'sa', 'sf', 'sj', 'sk', 'sl', 'sm', 'te', 'tg', 'tj', 'tr', 'tt', 'ut', 'vs'})
     # Longer preprocessing artifacts (3-4+ characters): truncated words and character boundary errors
     supplementary_stops.update({'ggare', 'tt', 'tta', 'ttas', 'ttre', 'rs', 'rn', 'rns', 'rd', 'rda', 'ret', 'rer', 'ng', 'ngd', 'ngs'})
+    # Lemma forms of the inflected stop words above, as produced by Stanza (text is lemmatized in step 3)
+    supplementary_stops.update({'behöva', 'vilja', 'kunna', 'visa', 'hålla', 'sätta', 'gå', 'röra', 'ny', 'stor', 'olik', 'hel', 'mången'})
     stop_words.update(supplementary_stops)
 
     return stop_words
@@ -116,7 +123,7 @@ def main():
     PROJECT_ROOT = SCRIPT_DIR.parent
 
     # Allow command-line arguments for input/output directories
-    # Usage: python3 04_remove_stopwords.py [input_dir] [output_dir]
+    # Usage: python3 05_remove_stopwords.py [input_dir] [output_dir]
     # Default: data/output/normalized -> data/output/stopword_removed
     if len(sys.argv) >= 3:
         INPUT_DIR = Path(sys.argv[1])
@@ -145,7 +152,7 @@ def main():
     total_malformed = 0
 
     print("=" * 60)
-    print("STEP 3: Removing Swedish stop words")
+    print("STEP 5: Removing Swedish stop words")
     print(f"Input: {INPUT_DIR}")
     print(f"Output: {OUTPUT_DIR}")
     print("=" * 60)

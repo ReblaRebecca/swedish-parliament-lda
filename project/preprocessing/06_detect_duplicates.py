@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Detect duplicate motions on final lemmatized text (STEP 5).
-Input: JSON lines with 'text_lemmatized' field.
+Detect duplicate motions on final preprocessed text (STEP 6).
+Input: JSON lines with 'text_no_stopwords' field.
 Output: JSON lines with 'is_duplicate' flag and 'text_hash' field.
 """
 
@@ -41,10 +41,10 @@ def process_temporal_bin(input_file, output_file, duplicates):
                     malformed_count += 1
                     continue
 
-                # Compute hash on final lemmatized text
+                # Compute hash on final preprocessed text
                 # Normalize whitespace (collapse newlines, multiple spaces) to catch
                 # duplicates that differ only in line wrapping
-                text = motion.get('text_lemmatized', '')
+                text = motion.get('text_no_stopwords', '')
                 text_for_hash = ' '.join(text.split())
                 text_hash = compute_hash(text_for_hash)
 
@@ -84,12 +84,12 @@ def main():
 
     # Allow command-line arguments for input/output directories
     # Usage: python3 06_detect_duplicates.py [input_dir] [output_dir]
-    # Default: data/output/lemmatized -> data/output/deduplicated
+    # Default: data/output/stopword_removed -> data/output/deduplicated
     if len(sys.argv) >= 3:
         INPUT_DIR = Path(sys.argv[1])
         OUTPUT_DIR = Path(sys.argv[2])
     else:
-        INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'lemmatized'
+        INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
         OUTPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'deduplicated'
 
     # Create output directory (with parents in case path doesn't exist)
@@ -111,7 +111,7 @@ def main():
     total_malformed = 0
 
     print("=" * 60)
-    print("STEP 5: Detecting duplicate motions (cross-bin deduplication)")
+    print("STEP 6: Detecting duplicate motions (cross-bin deduplication)")
     print(f"Input: {INPUT_DIR}")
     print(f"Output: {OUTPUT_DIR}")
     print("=" * 60)

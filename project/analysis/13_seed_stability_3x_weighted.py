@@ -27,7 +27,7 @@ def load_text_with_titles_3x(input_dir):
     """Load text with 3x title weighting - matches weighted LDA fitting pipeline.
 
     Reproduces the exact preprocessing from 10_fit_title_weighted_lda.py:
-    - Uses text_lemmatized (same as baseline)
+    - Uses text_no_stopwords (same as baseline)
     - Uses title_processed (preprocessed titles)
     - Appends title three additional times (3x replication)
     """
@@ -40,7 +40,7 @@ def load_text_with_titles_3x(input_dir):
             for line in f:
                 try:
                     motion = json.loads(line.strip())
-                    text = motion.get('text_lemmatized', '')
+                    text = motion.get('text_no_stopwords', '')
                     title = motion.get('title_processed', '')
 
                     # Create weighted document: body + (title * 3 additional copies)
@@ -110,7 +110,7 @@ def main():
     print(f"Seeds: {SEEDS}")
     print("=" * 80)
 
-    # Load data with 3x title weighting (exact pipeline: deduplicated + text_lemmatized + title_processed 3x)
+    # Load data with 3x title weighting (exact pipeline: deduplicated + text_no_stopwords + title_processed 3x)
     print("\n1. Loading text with 3x title weighting...")
     texts, metadata = load_text_with_titles_3x(INPUT_DIR)
     print(f"   Loaded {len(texts)} documents")

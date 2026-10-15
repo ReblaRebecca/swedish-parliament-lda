@@ -23,13 +23,13 @@ except ImportError:
     sys.exit(1)
 
 
-def load_text(input_dir, text_field='text_lemmatized'):
+def load_text(input_dir, text_field='text_no_stopwords'):
     """Load text from all temporal bins.
 
     Args:
         input_dir: Directory containing group*.jsonl files
         text_field: Which text field to load. Must match the field used to fit baseline model.
-                   (default 'text_lemmatized' for 44-topic baseline)
+                   (default 'text_no_stopwords' for 44-topic baseline)
     """
     print(f"Loading {text_field} from all bins...")
     texts = []
@@ -108,9 +108,9 @@ def main():
     print(f"Input: {INPUT_DIR}")
     print("=" * 80)
 
-    # Load data once (using text_lemmatized to match 44-topic baseline model)
+    # Load data once (using text_no_stopwords to match 44-topic baseline model)
     print("\n1. Loading text...")
-    texts = load_text(INPUT_DIR, text_field='text_lemmatized')
+    texts = load_text(INPUT_DIR, text_field='text_no_stopwords')
     if not texts:
         print("Error: No texts loaded")
         sys.exit(1)

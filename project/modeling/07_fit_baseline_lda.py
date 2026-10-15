@@ -27,7 +27,7 @@ except ImportError:
 def load_normalized_text(input_dir):
     """Load final preprocessed text (lemmatized) and metadata from all temporal bins.
 
-    Input field: text_lemmatized (output of complete preprocessing pipeline)
+    Input field: text_no_stopwords (output of complete preprocessing pipeline)
 
     Returns:
         texts: List of text strings
@@ -45,7 +45,7 @@ def load_normalized_text(input_dir):
             for line in f:
                 try:
                     motion = json.loads(line.strip())
-                    text = motion.get('text_lemmatized', '')
+                    text = motion.get('text_no_stopwords', '')
                     if text:
                         texts.append(text)
                         # Preserve metadata in same order

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Remove Swedish parliamentary boilerplate from motion text (STEP 1).
+Remove Swedish parliamentary boilerplate from motion text (STEP 2).
 Works on raw extracted text with original structure (newlines, punctuation).
-Input: JSON lines with raw 'text' field from extraction.
+Also removes the document's own author names (from extracted metadata).
+Input: JSON lines with raw 'text' and 'author_names' fields from extraction.
 Output: JSON lines with 'text_no_boilerplate' field.
 """
 
@@ -83,6 +84,28 @@ def remove_author_signatures(text):
     return '\n'.join(filtered_lines)
 
 
+def remove_author_names(text, author_names):
+    """Remove author names from text using per-document metadata.
+
+    Only removes exact word matches to avoid removing legitimate content.
+    Author names are case-insensitive but matched as whole words only.
+    """
+    if not text or not author_names:
+        return text
+
+    # Build regex pattern for author names (case-insensitive, word boundaries)
+    # Escape special regex characters in names
+    escaped_names = [re.escape(name) for name in author_names if name]
+    if not escaped_names:
+        return text
+
+    # Pattern: word boundary + author name + word boundary
+    pattern = r'\b(' + '|'.join(escaped_names) + r')\b'
+
+    # Remove author names (case-insensitive)
+    return re.sub(pattern, '', text, flags=re.IGNORECASE)
+
+
 def remove_boilerplate_phrases(text, boilerplate_patterns):
     """Remove known boilerplate phrases."""
     for pattern in boilerplate_patterns:
@@ -104,14 +127,16 @@ def clean_text(text):
     return '\n'.join(cleaned_lines)
 
 
-def remove_boilerplate(text, boilerplate_patterns):
+def remove_boilerplate(text, boilerplate_patterns, author_names=None):
     """Apply all boilerplate removal techniques."""
     if not text:
         return ""
 
     # Apply removals in sequence (order matters - structural first)
+    # Author names are removed here, before lemmatization, so names are never lemmatized
     text = remove_motion_numbers(text)
     text = remove_author_signatures(text)
+    text = remove_author_names(text, author_names)
     text = remove_boilerplate_phrases(text, boilerplate_patterns)
     text = clean_text(text)
 
@@ -136,7 +161,7 @@ def process_temporal_bin(input_file, output_file, boilerplate_patterns):
 
                 # Remove boilerplate from raw extracted text
                 text = motion.get('text', '')
-                text_cleaned = remove_boilerplate(text, boilerplate_patterns)
+                text_cleaned = remove_boilerplate(text, boilerplate_patterns, motion.get('author_names', []))
 
                 # Add cleaned text to motion
                 motion['text_no_boilerplate'] = text_cleaned
@@ -185,7 +210,7 @@ def main():
     total_malformed = 0
 
     print("=" * 60)
-    print("STEP 1: Removing parliamentary boilerplate (structural)")
+    print("STEP 2: Removing parliamentary boilerplate (structural)")
     print(f"Input: {INPUT_DIR}")
     print(f"Output: {OUTPUT_DIR}")
     print(f"Boilerplate patterns loaded: {len(BOILERPLATE_PATTERNS)}")
