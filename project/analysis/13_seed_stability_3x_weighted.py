@@ -97,7 +97,7 @@ def main():
     SCRIPT_DIR = Path(__file__).parent
     PROJECT_ROOT = SCRIPT_DIR.parent
 
-    INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'deduplicated'
+    INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
     BASELINE_VECTORIZER_PATH = PROJECT_ROOT / 'models' / 'baseline_lda_44' / 'baseline_vectorizer.pkl'
     RESULTS_DIR = PROJECT_ROOT / 'results'
     OUTPUT_FILE = RESULTS_DIR / 'SEED_STABILITY_3X_WEIGHTED_CORRECTED.md'
@@ -110,7 +110,7 @@ def main():
     print(f"Seeds: {SEEDS}")
     print("=" * 80)
 
-    # Load data with 3x title weighting (exact pipeline: deduplicated + text_no_stopwords + title_processed 3x)
+    # Load data with 3x title weighting (exact pipeline: stopword_removed + text_no_stopwords + title_processed 3x)
     print("\n1. Loading text with 3x title weighting...")
     texts, metadata = load_text_with_titles_3x(INPUT_DIR)
     print(f"   Loaded {len(texts)} documents")

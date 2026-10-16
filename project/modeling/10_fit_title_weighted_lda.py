@@ -6,7 +6,7 @@ The title heading is removed from the body at extraction, so title words count e
 (plus any genuine mentions in the body text).
 This weights document-topic inference toward title content without changing vocabulary.
 
-Input: Deduplicated motions with title_processed field
+Input: Preprocessed motions (stopword_removed) with text_no_stopwords and title_processed fields
 Output: Title-weighted LDA model, weighted vectorizer, document-topic distribution
 Configuration: 44 topics, same settings as baseline for fair comparison
 """
@@ -108,7 +108,7 @@ def main():
     SCRIPT_DIR = Path(__file__).parent
     PROJECT_ROOT = SCRIPT_DIR.parent
 
-    INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'deduplicated'
+    INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
     BASELINE_VECTORIZER_PATH = PROJECT_ROOT / 'models' / 'baseline_lda_44' / 'baseline_vectorizer.pkl'
     OUTPUT_DIR = PROJECT_ROOT / 'models' / 'title_weighted_lda_44'
     RESULTS_DIR = PROJECT_ROOT / 'results'

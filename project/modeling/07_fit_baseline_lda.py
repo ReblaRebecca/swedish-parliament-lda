@@ -117,13 +117,12 @@ def main():
 
     # Allow command-line arguments for input/output directories
     # Usage: python3 07_fit_baseline_lda.py [input_dir] [output_dir]
-    # Default: data/output/deduplicated -> models/baseline_lda_44
-    # (deduplicated contains all docs; is_duplicate flags indicate flagged duplicates, not removed)
+    # Default: data/output/stopword_removed -> models/baseline_lda_44
     if len(sys.argv) >= 3:
         INPUT_DIR = Path(sys.argv[1])
         OUTPUT_DIR = Path(sys.argv[2])
     else:
-        INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'deduplicated'
+        INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
         OUTPUT_DIR = PROJECT_ROOT / 'models' / 'baseline_lda_44'
 
     # Create output directory (with parents in case path doesn't exist)

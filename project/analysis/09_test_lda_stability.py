@@ -97,7 +97,7 @@ def main():
     SCRIPT_DIR = Path(__file__).parent
     PROJECT_ROOT = SCRIPT_DIR.parent
 
-    INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'deduplicated'
+    INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
     BASELINE_VECTORIZER_PATH = PROJECT_ROOT / 'models' / 'baseline_lda_44' / 'baseline_vectorizer.pkl'
     RESULTS_DIR = PROJECT_ROOT / 'results'
     OUTPUT_FILE = RESULTS_DIR / f'BASELINE_STABILITY_{NUM_TOPICS}TOPICS_CORRECTED.md'

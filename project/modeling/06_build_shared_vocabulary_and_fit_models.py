@@ -140,7 +140,7 @@ def main():
     SCRIPT_DIR = Path(__file__).parent
     PROJECT_ROOT = SCRIPT_DIR.parent
 
-    INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'deduplicated'
+    INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
     BASELINE_OUTPUT_DIR = PROJECT_ROOT / 'models' / 'baseline_lda_44_shared_vocab'
     WEIGHTED_OUTPUT_DIR = PROJECT_ROOT / 'models' / 'weighted_lda_44_shared_vocab'
     RESULTS_DIR = PROJECT_ROOT / 'results'

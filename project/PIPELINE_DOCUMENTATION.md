@@ -17,10 +17,8 @@ data/output/lemmatized/               fields: tokens, title_tokens       ┘ (St
 data/output/boilerplate_removed/      fields: text_no_boilerplate, title_no_boilerplate
     ↓  preprocessing/04_normalize_text.py       │ cheap, re-run freely
 data/output/normalized/               fields: text_normalized, title_normalized
-    ↓  preprocessing/05_remove_stopwords.py     │ (e.g. after editing the
+    ↓  preprocessing/05_remove_stopwords.py     ┘ (e.g. after editing the boilerplate or stopword lists)
 data/output/stopword_removed/         fields: text_no_stopwords, title_processed   ← final text used by all models
-    ↓  preprocessing/06_detect_duplicates.py    ┘  boilerplate or stopword lists)
-data/output/deduplicated/             fields: is_duplicate, duplicate_of, text_hash
     ↓
     ├── modeling/07_fit_baseline_lda.py        → models/baseline_lda_44/
     │       ↓ modeling/08_display_lda_topics.py → results/44_TOPICS_FINAL.csv
@@ -81,11 +79,13 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - **Supplementary (hard-coded):** parliamentary abbreviations (ub, dvs, osv, …), auxiliary verbs (ska, skall, blir, …), generic connectors, verbs and adjectives identified from LDA inspection (kommer, enligt, olika, göra, …), two-letter and longer fragment artifacts (see `PREPROCESSING_ARTIFACTS.md` and `TWO_LETTER_WORDS.txt`), and the **lemma forms** of inflected entries (behöva, vilja, kunna, ny, stor, olik, mången, …), since the text is lemmatized
 - **Output fields:** `text_no_stopwords` and `title_processed` — the final body and title text used by all models
 
-### 6. Duplicate Detection (`preprocessing/06_detect_duplicates.py`)
+### Duplicate count — for the report, not a pipeline step (`analysis/count_duplicates.py`)
+- Not part of the pipeline: models use all motions, duplicates are not removed
 - MD5 hash of the whitespace-normalized final text (`text_no_stopwords`); one hash dictionary shared across all bins, so duplicates are detected across time periods
-- Duplicates are **flagged, not removed**: `is_duplicate`, `duplicate_of` (dok_id of the original), `text_hash`
+- Prints duplicates per bin, the total and percentage, and each duplicate → original `dok_id`; writes no data
+- The count depends on the final text, so re-run it after changing the boilerplate or stopword lists
 - Last recorded result: 133 duplicates (0.92%), measured on the earlier normalized-text pipeline; re-check after re-running
-- Optional arguments: `[input_dir] [output_dir]`
+- Optional argument: `[input_dir]` (default `data/output/stopword_removed`)
 
 ### 8a. Baseline LDA (`modeling/07_fit_baseline_lda.py`)
 - **Input:** `text_no_stopwords` (body only, no title weighting)
@@ -227,7 +227,9 @@ python preprocessing/02_lemmatize.py          # slow (hours); resumable if inter
 python preprocessing/03_remove_boilerplate.py
 python preprocessing/04_normalize_text.py
 python preprocessing/05_remove_stopwords.py
-python preprocessing/06_detect_duplicates.py
+
+# For the report: duplicate count on the final text (not needed by the models)
+python analysis/count_duplicates.py
 
 # Baseline model (also creates the vectorizer the weighted model needs)
 python modeling/07_fit_baseline_lda.py
@@ -244,7 +246,7 @@ python analysis/09_test_lda_stability.py
 python analysis/13_seed_stability_5x_weighted.py
 ```
 
-`01_extract_from_xml.py` accepts `[xml_dir] [output_dir]`; preprocessing scripts 02–06 and `07_fit_baseline_lda.py` accept `[input_dir] [output_dir]` arguments to override the defaults.
+`01_extract_from_xml.py` accepts `[xml_dir] [output_dir]`; preprocessing scripts 02–05 and `07_fit_baseline_lda.py` accept `[input_dir] [output_dir]` arguments to override the defaults.
 
 ## File Organization
 
@@ -256,8 +258,7 @@ project/
 │   ├── 02_lemmatize.py
 │   ├── 03_remove_boilerplate.py
 │   ├── 04_normalize_text.py
-│   ├── 05_remove_stopwords.py
-│   └── 06_detect_duplicates.py
+│   └── 05_remove_stopwords.py
 ├── modeling/
 │   ├── 06_build_shared_vocabulary_and_fit_models.py
 │   ├── 07_fit_baseline_lda.py
@@ -273,6 +274,7 @@ project/
 │   ├── 11_validate_matching_quick.py
 │   ├── 13_seed_stability_3x_weighted.py
 │   ├── 13_seed_stability_5x_weighted.py
+│   ├── count_duplicates.py               (duplicate count for the report)
 │   └── compare_weighted_vs_baseline.py   (deprecated)
 ├── config/
 │   └── boilerplate_phrases.txt
@@ -280,7 +282,7 @@ project/
 │   └── topics_wordclouds.html            (template for the word cloud scripts; other results are regenerated)
 ├── data/                                  (not in git)
 │   ├── input/extracted_text_xml/
-│   └── output/{lemmatized,boilerplate_removed,normalized,stopword_removed,deduplicated}/
+│   └── output/{lemmatized,boilerplate_removed,normalized,stopword_removed}/
 ├── models/                                (not in git)
 │   ├── baseline_lda_44/
 │   ├── title_weighted_lda_44/
