@@ -25,7 +25,8 @@ data/output/stopword_removed/         fields: text_no_stopwords, title_processed
             ├── modeling/14_generate_topic_explorer.py  → results/topic_explorer.html
             ├── analysis/09_test_lda_stability.py       → results/BASELINE_STABILITY_44TOPICS_CORRECTED.md
             │   (period models: same vocabulary, the vectorizer saved by 07)
-            ├── modeling/15_fit_period_lda.py           → models/period_lda_11/, results/period_11_topics.csv
+            ├── modeling/15_fit_period_lda.py [k]       → models/period_lda_<k>/, results/period_<k>_topics.csv
+            │       ↓ modeling/17_generate_period_explorer.py → results/period_explorer.html
             └── analysis/16_seed_stability_periods.py   → results/PERIOD_SEED_STABILITY_SUMMARY.md, results/period_stability/
 ```
 
@@ -104,7 +105,8 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 | Script | Reads | Writes |
 |---|---|---|
 | `modeling/08_display_lda_topics.py [model_dir]` | `models/baseline_lda_44/` | `results/44_TOPICS_FINAL.csv` (top 20 words/topic) |
-| `modeling/15_fit_period_lda.py [num_topics]` | `data/output/stopword_removed/`, baseline vectorizer | `models/period_lda_<k>/` (one model per period + `vocabulary.txt`), `results/period_<k>_topics.csv` (top 20 words per topic and period). See *Plan: Period Models* |
+| `modeling/15_fit_period_lda.py [num_topics]` | `data/output/stopword_removed/`, baseline vectorizer | `models/period_lda_<k>/` (one model per period + `vocabulary.txt`), `results/period_<k>_topics.csv` (top 20 words per topic and period). See *Period Models* |
+| `modeling/17_generate_period_explorer.py [k ...]` | `models/period_lda_<k>/` for k = 8, 11, 15 (default), baseline vectorizer, `data/output/stopword_removed/`, the per-topic CSVs of 16, template `modeling/period_explorer_template.html` | `results/period_explorer.html`: one row (chain) per topic of the first period with four word clouds, one per period; topics per period switchable (8/11/15). See *Period explorer* below |
 | `modeling/14_generate_topic_explorer.py` | `models/baseline_lda_44/`, `data/output/stopword_removed/`, template `modeling/topic_explorer_template.html` | `results/topic_explorer.html`: word cloud per topic, share overall and per period, top 8 motions with year/party/id, party concentration among the top 5 motions. Reads the model directly. Replaces the earlier word cloud scripts (12, 13) and their template |
 
 - Word weights are shown as normalized probabilities P(word | topic)
@@ -244,6 +246,8 @@ python analysis/09_test_lda_stability.py
 # Period models (run after 07: they use its vectorizer)
 python analysis/16_seed_stability_periods.py    # choose the topic count first: 60 fits, roughly 1-3 hours
 python modeling/15_fit_period_lda.py 11         # then fit with the chosen count
+for k in 8 11 15; do python modeling/15_fit_period_lda.py $k; done   # all three, for the period explorer (about 7 min)
+python modeling/17_generate_period_explorer.py
 ```
 
 `01_extract_from_xml.py` accepts `[xml_dir] [output_dir]`; preprocessing scripts 02–05 and `07_fit_baseline_lda.py` accept `[input_dir] [output_dir]` arguments to override the defaults.
@@ -266,6 +270,7 @@ python analysis/check_pipeline_output.py
   - **Loading:** the periods together hold exactly the motions of the whole-corpus model, in the same order, with the same skip rule; periods come in order with their labels
   - **Shared vocabulary:** one model per period with the shared settings; every model has the same vocabulary in the same order; a word absent from a period still has a column there with only prior weight; a reordered vocabulary is rejected; adjacent periods can be matched with `topic_matching.py`. A mutation check (giving each period its own vectorizer) makes these tests fail
   - **Stability summary:** per-pair means, found-in-all/none and stable counts computed correctly; one summary row per period and count
+  - **Period explorer chains:** rows follow the Hungarian matches between adjacent periods (shuffled identical topics are linked correctly), a link below the chain criterion is reported as weak, and the seed-stability CSV is only used if its top words match the model (so it cannot describe another model)
 - **`tests/test_topic_matching.py`** — Hungarian matching on synthetic topic matrices: identical models match with cosine 1, a known permutation is recovered, mismatched or reordered vocabularies and mismatched topic counts are rejected, summary statistics equal the per-topic values
 - **`tests/test_seed_stability.py`** — the seed-stability tests and the shared LDA code:
   - **Text loading:** body text only (titles not added), motions without body text skipped, malformed lines counted
@@ -291,6 +296,8 @@ project/
 │   ├── 08_display_lda_topics.py
 │   ├── 14_generate_topic_explorer.py
 │   ├── 15_fit_period_lda.py              (one model per period, shared vocabulary)
+│   ├── 17_generate_period_explorer.py    (word clouds per period, topics linked across periods)
+│   ├── period_explorer_template.html
 │   ├── topic_explorer_template.html
 │   └── lda_common.py                     (shared LDA settings, text loading)
 ├── tests/
@@ -314,7 +321,8 @@ project/
 │   ├── input/extracted_text_xml/
 │   └── output/{lemmatized,boilerplate_removed,normalized,stopword_removed}/
 ├── models/                                (not in git)
-│   └── baseline_lda_44/
+│   ├── baseline_lda_44/
+│   └── period_lda_{8,11,15}/                (one model per period + vocabulary.txt)
 ├── PIPELINE_DOCUMENTATION.md
 ├── PREPROCESSING_ARTIFACTS.md
 ├── MODEL_REVIEW.md                        (review of the first models on the Stanza pipeline)
@@ -349,7 +357,7 @@ project/
 2. **Title weighting helps a little.** Both weighted variants are about 0.014 above the baseline in mean cosine, and the per-pair ranges overlap with the baseline's, so the gain is small. The weighted variants do, however, give more topics that are found in every seed (7 and 10 vs. 5), and those are substantive education themes (gender equality, teacher education, language, sport) rather than budget or administrative topics.
 3. **3× vs. 5×.** The two weights have the same mean cosine (0.539). 3× is the more even across seed pairs (range 0.521–0.554, vs. 0.506–0.573) and has the most topics found in all four other models (10, vs. 7 and 5), but these differences are small.
 4. **Caveats.** All differences come from one set of 5 seeds; the *found* counts depend on the 0.70 threshold and are counted for the seed-42 model only; the pooled statistics are not independent (each seed appears in 4 of 10 pairs).
-5. **Many seed-dependent topics** suggest that 44 topics split the corpus more finely than the data supports. For the whole-corpus model this matters less (see *What the whole-corpus instability means* below), but it is a warning for the period models (see *Plan*, *Topic count per period*).
+5. **Many seed-dependent topics** suggest that 44 topics split the corpus more finely than the data supports. For the whole-corpus model this matters less (see *What the whole-corpus instability means* below), but it is a warning for the period models (see *Period Models*, *Topic count per period*).
 
 **What the whole-corpus instability means**
 - **The topic count stays at 44.** As in Gordon, the whole-corpus model is mainly a point of comparison: it is rated with the same rubric as the period models. Gordon chose k=60 = 4 × 15 so that it matches four periods of 15 topics; 44 = 4 × 11 follows the same logic. Unstable whole-corpus topics are also the very finding Gordon uses to motivate period models, so they support the design rather than undermine it.
@@ -381,14 +389,14 @@ project/
 
 **Relation to Gordon's approach:** Gordon found similar whole-corpus instability (Jaccard 0.26–0.31) and addressed it with temporal binning, which constrains each period's vocabulary and author mix.
 
-## Plan: Period Models and Cross-Period Comparison (code ready, not yet run)
+## Period Models and Cross-Period Comparison (first run 2026-10-16; vocabulary option still open)
 
 Separate LDA models will be fitted for each of the four periods and their topics compared across periods with cosine similarity. Cosine similarity between two topic-word vectors is only meaningful if both vectors refer to **the same words in the same order** (supervisor's comment, 2026-10-16). The design below guarantees that.
 
 **Already in place**
 - `analysis/topic_matching.py` refuses to compute similarities unless both models have an identical vocabulary in identical column order (`np.array_equal`); different or reordered vocabularies raise a `ValueError`. This is tested in `tests/test_topic_matching.py` (vocabulary mismatch, reordered vocabulary), so a misaligned comparison cannot pass silently.
 - The whole-corpus model and all seed-stability runs already share one vocabulary: the vectorizer saved by `07_fit_baseline_lda.py`.
-- **Period models (2026-10-16):** `modeling/15_fit_period_lda.py` fits one model per period with that same vectorizer (option A below; design points 1–4 implemented), checks that all period models have the same vocabulary in the same order, and saves the models and the vocabulary. `analysis/16_seed_stability_periods.py` runs the seed-stability test per period and topic count. Both are tested in `tests/test_period_models.py`. Neither has been run on the corpus yet.
+- **Period models (2026-10-16):** `modeling/15_fit_period_lda.py` fits one model per period with that same vectorizer (option A below; design points 1–4 implemented), checks that all period models have the same vocabulary in the same order, and saves the models and the vocabulary. `analysis/16_seed_stability_periods.py` runs the seed-stability test per period and topic count. Both are tested in `tests/test_period_models.py`. Both have been run on the corpus with option A (results below); the period models for 8, 11 and 15 topics are saved in `models/period_lda_{8,11,15}/`.
 - **Vocabulary option still open** (seminar notes, 0.1/2.2): the code uses option A, one global vocabulary. If option B (per-period vocabularies compared over shared words, as Gordon) is chosen, `period_vectorizers()` in 15 changes to fit one vectorizer per period, and a step is added that restricts two periods' topic vectors to their shared words before matching; the vocabulary check would then apply to that restricted pair.
 
 **Design for the period models**
@@ -414,6 +422,33 @@ Choosing the count:
 
 Alternative: fix 11 per period (like Gordon's fixed 15) and use the seed test only to flag uncertain topics and chains. Simpler, but leaves open whether 11 suits this data.
 
+**Seed-stability results per period (2026-10-16, option A)**
+
+`analysis/16_seed_stability_periods.py`, 5 seeds, 10 pairs per period and count; *stable* = found again (cosine ≥ 0.70) in at least 3 of the 4 other seeds' models. Full results: `results/PERIOD_SEED_STABILITY_SUMMARY.md`, `results/period_stability/`. Runtime 33 minutes.
+
+| Period | 8 topics: mean cosine / stable | 11 topics | 15 topics |
+|---|---|---|---|
+| 1986–1993 | 0.73 / 4 of 8 (50%) | 0.63 / 4 of 11 (36%) | 0.52 / 5 of 15 (33%) |
+| 1994–2004 | 0.71 / 4 of 8 (50%) | 0.65 / 7 of 11 (64%) | 0.59 / 7 of 15 (47%) |
+| 2005–2014 | 0.75 / 6 of 8 (75%) | 0.70 / 6 of 11 (55%) | 0.62 / 6 of 15 (40%) |
+| 2015–2025 | 0.76 / 5 of 8 (62%) | 0.70 / 4 of 11 (36%) | 0.61 / 6 of 15 (40%) |
+| **All periods** | **19 of 32 (59%)** | **21 of 44 (48%)** | **24 of 60 (40%)** |
+
+- **The period models are more stable than the whole-corpus model** (mean cosine 0.525, about 27% stable): 0.63–0.76 at 8 or 11 topics. This supports Gordon's case for period models.
+- **The number of robust themes per period is roughly constant**, about 4–7, whatever the topic count: going from 8 to 15 topics adds 28 topics but only 5 stable ones.
+- **Stability falls with the topic count** in every period, in mean cosine and in the stable share; 15 (Gordon's count) is the least stable everywhere.
+- **The oldest period (1986–1993) is the least stable at 11 and 15 topics**, although it has the most motions.
+- **Choice: 8 or 11 topics per period.** 8 gives the highest stability; 11 gives about as many stable topics (21 vs. 19) and matches 44 = 4 × 11, but about half of its topics are seed-dependent. Decide after looking at the stable topics' words (period explorer) and after the seminar's answer on the vocabulary option. Caveats: one set of seeds, the 0.70 threshold, and option A; option B may change the numbers somewhat.
+
+**Period explorer (`modeling/17_generate_period_explorer.py`)**
+
+A page for inspecting the period models before the formal alignment: `results/period_explorer.html`, with 8, 11 or 15 topics per period selectable.
+- **Rows are chains.** Each period model has its own topics, so topic numbers do not correspond across periods. Topics of adjacent periods are matched one-to-one with the Hungarian algorithm on cosine (`topic_matching.py`), and each row starts from a topic of the first period and follows the matches to the last.
+- **Per cloud:** the period, the topic's number in that period model, its share (mean θ over the period's motions), its seed stability from 16 (`seed n/4`, gold when below 3; shown only if the stability CSV's top words match the model) and the cosine with the matched topic of the previous period. Links below 0.50 (Gordon's chain criterion) are shown as weak.
+- **Sorting and search:** by chain number, weakest link, rise or fall in share; a word search filters chains and highlights the word.
+- **Limitations:** the Hungarian matching gives every topic a partner, so a topic that exists in only one period still sits in a chain, joined by weak links; a topic that appears in a later period cannot start its own row. This is a provisional alignment for inspection only, without Gordon's permutation null (seminar notes 2.5).
+- **First observation (option A):** few chains hold through all four periods: 3 of 8, 3 of 11 and 4 of 15 have every link ≥ 0.50. Those that hold are research and higher education, higher education and regions, and school (pupils, teachers). The other topics change between periods or are linked to different themes, which is the kind of change the analysis is about, but also why the permutation test is needed to tell real links from chance.
+
 **Consequences to keep in mind**
 - **Words absent from a period** get near-zero weight in that period's topics (only the LDA prior). That is correct, but it means period-specific vocabulary also contributes to topics looking different across periods; this should be noted when interpreting similarities.
 - **Vocabulary thresholds** (`min_df=5`, `max_df=0.5`, `max_features=10000`) are applied to the full corpus, not per period. A word frequent in one period but rare overall is still included; a word used in more than half of all motions is excluded everywhere.
@@ -423,6 +458,6 @@ Alternative: fix 11 per period (like Gordon's fixed 15) and use the seed test on
 0. **Act on the first model review** (`MODEL_REVIEW.md`, 2026-10-16): the first models on the Stanza pipeline are fitted and reviewed; the review's vocabulary fixes (boilerplate gaps, abbreviation matching in step 03, artifact stopwords, Stanza lemma errors) are done; a few small leftovers remain (see the review)
 1. ✅ **Seed-stability tests** for the 44-topic model on body text and with 3×/5× title weighting (2026-10-16; see *Seed-Stability Results*)
 2. ✅ **Evaluate:** title weighting gives only a small stability gain; **no title weighting**, weighting code removed
-3. **Period models** (see *Plan: Period Models* above): code ready and tested (15, 16). After the seminar's answer on the vocabulary (option A or B): run 16 to choose the topic count per period, then fit with 15
+3. **Period models** (see *Period Models* above): fitted and seed-tested with option A for 8, 11 and 15 topics, inspectable in the period explorer. After the seminar's answer on the vocabulary (option A or B): choose the topic count per period (8 or 11), re-run 15/16 if option B
 4. **Topic alignment and trajectory analysis**
 5. **Publication:** document findings for thesis/paper

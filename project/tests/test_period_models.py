@@ -41,6 +41,7 @@ def load_script(relative_path):
 
 period_models = load_script('modeling/15_fit_period_lda.py')
 period_stability = load_script('analysis/16_seed_stability_periods.py')
+period_explorer = load_script('modeling/17_generate_period_explorer.py')
 
 
 def quiet(function, *args, **kwargs):
@@ -192,6 +193,57 @@ class TestPeriodStabilitySummary(unittest.TestCase):
         report = period_stability.summary_report({('1986-1993', 3): s, ('1994-2004', 3): s})
         self.assertIn('| 1986-1993 | 3 |', report)
         self.assertIn('| 1994-2004 | 3 |', report)
+
+
+class FakeModel:
+    """Stands in for a fitted LDA model: only components_ and n_components are used."""
+
+    def __init__(self, components):
+        self.components_ = np.asarray(components, dtype=float)
+        self.n_components = self.components_.shape[0]
+
+
+class TestPeriodExplorerChains(unittest.TestCase):
+    """Rows follow the Hungarian matches between adjacent periods."""
+
+    def test_chains_follow_matches(self):
+        vocab = np.array(['a', 'b', 'c'])
+        topic_a, topic_b, topic_c = [10, 1, 1], [1, 10, 1], [1, 1, 10]
+        models = [
+            FakeModel([topic_a, topic_b, topic_c]),
+            FakeModel([topic_c, topic_a, topic_b]),   # same topics, shuffled
+            FakeModel([topic_b, topic_c, topic_a]),
+        ]
+        chains, links = period_explorer.build_chains(models, vocab)
+        # Row 0 is topic a in every period: index 0, then 1, then 2
+        self.assertEqual(chains, [[0, 1, 2], [1, 2, 0], [2, 0, 1]])
+        for row_links in links:
+            self.assertEqual(len(row_links), 2)
+            for c in row_links:
+                self.assertAlmostEqual(c, 1.0, places=3)
+
+    def test_weak_link_is_reported(self):
+        vocab = np.array(['a', 'b', 'c', 'd'])
+        models = [FakeModel([[10, 1, 1, 1], [1, 10, 1, 1]]), FakeModel([[10, 1, 1, 1], [1, 1, 10, 10]])]
+        chains, links = period_explorer.build_chains(models, vocab)
+        self.assertEqual(chains, [[0, 0], [1, 1]])
+        self.assertGreater(links[0][0], 0.99)
+        self.assertLess(links[1][0], period_explorer.CHAIN_COSINE)
+
+    def test_stability_only_used_for_the_same_model(self):
+        vocab = np.array([f'w{i}' for i in range(10)])
+        model = FakeModel([list(range(10, 0, -1)), list(range(1, 11))])
+        top = [' '.join(f'w{i}' for i in range(8)), ' '.join(f'w{i}' for i in range(9, 1, -1))]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'stability.csv'
+            path.write_text('topic,found,compared,mean_cosine,min_cosine,mean_jaccard,top_words\n'
+                            f'1,4,4,0.9,0.8,0.5,{top[0]}\n2,1,4,0.5,0.3,0.2,{top[1]}\n', encoding='utf-8')
+            self.assertEqual(period_explorer.load_stability(path, model, vocab),
+                             {0: {'found': 4, 'of': 4}, 1: {'found': 1, 'of': 4}})
+            # Different top words: the CSV describes another model and is not used
+            other = FakeModel([list(range(1, 11)), list(range(10, 0, -1))])
+            self.assertIsNone(period_explorer.load_stability(path, other, vocab))
+            self.assertIsNone(period_explorer.load_stability(Path(tmp) / 'missing.csv', model, vocab))
 
 
 if __name__ == '__main__':
