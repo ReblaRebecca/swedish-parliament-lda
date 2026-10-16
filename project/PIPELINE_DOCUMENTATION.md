@@ -132,7 +132,9 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 | `13_seed_stability_5x_weighted.py` | Seed stability with 5× title weighting (matches the current model) | `results/SEED_STABILITY_5X_WEIGHTED_CORRECTED.md` |
 | `compare_weighted_vs_baseline.py` | ⚠️ **Deprecated** — unvalidated coherence metric; use the stability tests instead | — |
 
-**Seed-stability reports** list, per seed, the training perplexity and iteration count, then cosine and Jaccard statistics for each of the 10 seed pairs, then pooled statistics over all 440 matched topic pairs.
+**Seed-stability reports** list, per seed, the training perplexity and iteration count; then the **stability per topic** of the reference model (seed 42, the seed of the reported models); then cosine and Jaccard statistics for each of the 10 seed pairs; then pooled statistics over all 440 matched topic pairs.
+
+**Stability per topic:** each topic of the seed-42 model is compared with its matched topic in each of the other 4 models. The table gives its top words, in how many of the 4 models it is *found* (matched cosine ≥ 0.70, a judgement call set in `seed_stability.FOUND_COSINE`), and its mean and minimum cosine and mean Jaccard. The same numbers are saved as CSV next to the report (`results/BASELINE_STABILITY_44TOPICS_PER_TOPIC.csv`, `results/SEED_STABILITY_{3X,5X}_WEIGHTED_PER_TOPIC.csv`). The seed-42 model is fitted on the same data with the same settings as the reported model, so its topic numbers are those of the reported model. Use this to decide which topics to interpret with confidence.
 
 **Interpreting the pooled statistics:** the 440 matched topic pairs are not independent. Each seed's model appears in 4 of the 10 pairs, so the same topics are counted several times. The pooled mean is a fair summary, but the pooled standard deviation understates the real uncertainty. For the spread across runs, report the 10 per-pair means (or their range) rather than the pooled standard deviation.
 

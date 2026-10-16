@@ -10,10 +10,12 @@ seeds with the Hungarian algorithm and writes a markdown report.
 import sys
 from pathlib import Path
 
-from seed_stability import generate_report, run_seed_stability, save_report
+from seed_stability import (
+    generate_report, per_topic_stability, run_seed_stability, save_report, save_topic_stability,
+)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'modeling'))
-from lda_common import NUM_TOPICS, STABILITY_SEEDS, load_baseline_vectorizer, load_weighted_texts  # noqa: E402
+from lda_common import DEFAULT_SEED, NUM_TOPICS, STABILITY_SEEDS, load_baseline_vectorizer, load_weighted_texts  # noqa: E402
 
 TITLE_WEIGHT = 3
 
@@ -58,6 +60,8 @@ def main():
         ],
     )
     save_report(report, OUTPUT_FILE)
+    save_topic_stability(per_topic_stability(pairwise_results, DEFAULT_SEED, NUM_TOPICS), seed_info, DEFAULT_SEED,
+                         PROJECT_ROOT / 'results' / 'SEED_STABILITY_3X_WEIGHTED_PER_TOPIC.csv')
 
 
 if __name__ == '__main__':

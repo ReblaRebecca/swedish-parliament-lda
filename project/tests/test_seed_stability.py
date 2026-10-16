@@ -253,6 +253,49 @@ class TestPlantedTopics(unittest.TestCase):
         self.assertEqual(set(seed_info), set(seeds))
         for info in seed_info.values():
             self.assertEqual(info['n_iter'], lda_common.LDA_PARAMS['max_iter'])
+            self.assertEqual(len(info['top_words']), len(PLANTED_TOPICS))
+        # Every planted topic of the reference model is found again in both other models
+        rows = seed_stability.per_topic_stability(pairwise, 42, len(PLANTED_TOPICS))
+        self.assertEqual([r['found'] for r in rows], [2, 2, 2])
+
+
+class TestPerTopicStability(unittest.TestCase):
+    """Each reference topic collects its matches from every pair that includes the reference seed."""
+
+    def setUp(self):
+        # Reference seed 42 appears both as first and as second seed of a pair
+        self.pairwise = {
+            (123, 42): {'matches': [(0, 1, 0.95, 0.8), (1, 0, 0.40, 0.1)]},   # ref topic 1 <-> 123's topic 0
+            (123, 456): {'matches': [(0, 0, 0.10, 0.0), (1, 1, 0.10, 0.0)]},  # does not involve 42: ignored
+            (42, 456): {'matches': [(0, 1, 0.50, 0.2), (1, 0, 0.90, 0.6)]},
+        }
+
+    def test_matches_collected_for_both_pair_orientations(self):
+        rows = seed_stability.per_topic_stability(self.pairwise, 42, 2)
+        self.assertEqual(rows[0]['cosines'], [0.40, 0.50])  # topic 1 of seed 42
+        self.assertEqual(rows[1]['cosines'], [0.95, 0.90])  # topic 2 of seed 42
+        self.assertAlmostEqual(rows[1]['mean_cosine'], 0.925)
+        self.assertAlmostEqual(rows[0]['min_cosine'], 0.40)
+        self.assertAlmostEqual(rows[1]['mean_jaccard'], 0.7)
+
+    def test_found_uses_threshold(self):
+        rows = seed_stability.per_topic_stability(self.pairwise, 42, 2)
+        self.assertEqual([r['found'] for r in rows], [0, 2])
+        self.assertEqual(seed_stability.FOUND_COSINE, 0.70)
+
+    def test_unknown_reference_seed(self):
+        with self.assertRaises(ValueError):
+            seed_stability.per_topic_stability(self.pairwise, 999, 2)
+
+    def test_csv_output(self):
+        rows = seed_stability.per_topic_stability(self.pairwise, 42, 2)
+        seed_info = {42: {'top_words': [['skola', 'lärare'], ['barn', 'förskola']]}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'per_topic.csv'
+            quiet(seed_stability.save_topic_stability, rows, seed_info, 42, path)
+            lines = path.read_text(encoding='utf-8').splitlines()
+        self.assertEqual(lines[0], 'topic,found,compared,mean_cosine,min_cosine,mean_jaccard,top_words')
+        self.assertEqual(lines[2], '2,2,2,0.9250,0.9000,0.7000,barn förskola')
 
 
 class TestReport(unittest.TestCase):
@@ -272,7 +315,9 @@ class TestReport(unittest.TestCase):
                 self.all_jaccard.extend(jaccard)
                 matches = [(t, t, float(c), float(j)) for t, (c, j) in enumerate(zip(cosine, jaccard))]
                 self.pairwise[(seed1, seed2)] = {'matches': matches, 'summary': {}, 'similarity_matrix': None}
-        self.seed_info = {seed: {'perplexity': 1000.0 + seed, 'n_iter': 50} for seed in self.seeds}
+        self.seed_info = {seed: {'perplexity': 1000.0 + seed, 'n_iter': 50,
+                                 'top_words': [[f'ord{k}_{i}' for i in range(8)] for k in range(self.num_topics)]}
+                          for seed in self.seeds}
         self.report = seed_stability.generate_report(
             'Test report', 'Title words are appended five times', self.num_topics,
             self.seed_info, self.pairwise, closing_lines=['## Closing'])
@@ -302,6 +347,16 @@ class TestReport(unittest.TestCase):
         start = self.report.index('### Seed 42 vs Seed 123')
         pair_section = self.report[start:self.report.index('### Seed 42 vs Seed 456')]
         self.assertIn(f"- Mean: {np.mean(cosine):.4f}", pair_section)
+
+    def test_per_topic_section(self):
+        self.assertIn('## Stability per Topic (reference model: seed 42)', self.report)
+        rows = seed_stability.per_topic_stability(self.pairwise, 42, self.num_topics)
+        # Distribution table covers every topic exactly once
+        counts = [int(m) for m in re.findall(r'^\| \d of 4 \| (\d+) \|$', self.report, re.M)]
+        self.assertEqual(sum(counts), self.num_topics)
+        first = rows[0]
+        self.assertIn(f"| 1 | ord0_0, ord0_1, ord0_2, ord0_3, ord0_4, ord0_5, ord0_6, ord0_7 | {first['found']}/4 | "
+                      f"{first['mean_cosine']:.3f} |", self.report)
 
     def test_seed_table_and_notes(self):
         for seed in self.seeds:

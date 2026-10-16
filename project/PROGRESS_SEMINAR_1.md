@@ -528,7 +528,7 @@ These should be stated explicitly in the methods section.
 
 ## 4. Next Steps
 
-1. Run the seed-stability tests (baseline, 3×, 5×) and decide on title weighting (2.1).
+1. Run the seed-stability tests (baseline, 3×, 5×) and decide on title weighting (2.1). The reports include the stability of each topic of the reported models (found again in how many of the other 4 seeds' models), so unstable topics can be flagged before interpretation.
 2. Settle the alignment design (2.2, 2.5) and the definition of thematic change (2.4).
 3. Implement the period models with the agreed vocabulary design, the alignment with permutation null, and the chains.
 4. If agreed: the topic mapping (2.3.2) and the prevalence analysis (2.4).
