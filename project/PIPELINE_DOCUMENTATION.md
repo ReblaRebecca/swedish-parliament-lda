@@ -65,6 +65,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - **Categories:** OCR/scanning artifacts, government and parliamentary institutions, parliamentary document/reference terms, procedural language, party names, etc.
 - **Output is lemmas** of the remaining words, one sentence per line
 - **Dropped tokens:** auxiliary verbs (UPOS `AUX`), punctuation and symbols. Stanza lemmatizes the modal *ska/skall/skulle* to `skola`, which would merge with the noun *skola* (school); all auxiliaries are stopwords anyway
+- **Dropped abbreviation lemmas:** words whose lemma contains an underscore. Stanza expands abbreviations into multi-word lemmas (`t.ex.` → `till_exempel`, `bl.a.` → `bland_annat`, `s.k.` → `så_kallad`, `dvs` → `det_vill_säga`, `m.fl.` → `med_flera`), sometimes garbled (`få_cetera`); the underscore would otherwise make each one a single token in the model. Every dropped word is counted in `data/output/boilerplate_removed/underscore_lemmas.json` (lemma → total count and word forms, most frequent first) for manual review of whether any are worth keeping
 - **Rationale:** remove domain-specific metadata and structural language that doesn't represent education policy content
 - The per-word Stanza output is not copied further; it stays in `data/output/lemmatized/`
 - **Output fields:** `text_no_boilerplate`, `title_no_boilerplate`
@@ -248,6 +249,21 @@ python analysis/13_seed_stability_5x_weighted.py
 
 `01_extract_from_xml.py` accepts `[xml_dir] [output_dir]`; preprocessing scripts 02–05 and `07_fit_baseline_lda.py` accept `[input_dir] [output_dir]` arguments to override the defaults.
 
+## Tests
+
+```bash
+cd project
+
+# Unit tests: hand-written examples for steps 01, 03, 04, 05 (seconds, no corpus or Stanza model needed)
+python -m unittest discover -s tests -v
+
+# Sanity checks on the pipeline output after running 01-05 (about a minute; read-only)
+python analysis/check_pipeline_output.py
+```
+
+- **`tests/test_preprocessing.py`** — HTML parsing (words split across spans are joined), character repair, title heading removal, motion number and author name removal, period boundaries, boilerplate matching on word forms (and AUX `ska` dropped while the noun `skola` is kept), normalization, and the stopword list (lemma forms included, content words such as `skola`, `lärare`, `utbildning` excluded)
+- **`analysis/check_pipeline_output.py`** — for each stage that has been run: all four period files present, no malformed lines, required fields present, no `dok_id` written twice, the same motions as extraction. Plus stage-specific checks: no soft hyphens or broken diacritics after extraction; Stanza output well-formed and every text tagged; final text lowercase letters only with no digits, punctuation, single-character words or stopwords left. Warns about empty texts or titles and frequent known extraction fragments. `FAIL` means the output is wrong; exit code 1 if any check fails. Optional argument: `[data_dir]`
+
 ## File Organization
 
 ```
@@ -267,7 +283,10 @@ project/
 │   ├── 11_display_weighted_lda_topics.py
 │   ├── 12_generate_weighted_wordclouds.py
 │   └── 13_extract_topics_and_update_wordcloud.py
+├── tests/
+│   └── test_preprocessing.py             (unit tests for steps 01, 03, 04, 05)
 ├── analysis/
+│   ├── check_pipeline_output.py          (sanity checks on pipeline output)
 │   ├── topic_matching.py
 │   ├── test_topic_matching.py
 │   ├── 09_test_lda_stability.py

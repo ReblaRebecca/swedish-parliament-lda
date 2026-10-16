@@ -7,6 +7,10 @@ saved by the Stanza step, so the phrase list keeps its surface forms ("riksdagen
 Auxiliary verbs (UPOS AUX), punctuation and symbols are dropped from the output: Stanza
 lemmatizes the modal 'ska/skall/skulle' to 'skola', which would merge with the noun
 'skola' (school), and all auxiliaries are stopwords anyway.
+Words whose lemma contains an underscore are dropped too: Stanza expands abbreviations into
+multi-word lemmas ('t.ex.' -> 'till_exempel', 'bl.a.' -> 'bland_annat'), which would otherwise
+become single tokens in the model. They are counted, with their word forms, in
+underscore_lemmas.json in the output directory, so the most frequent ones can be reviewed.
 
 Cheap to re-run: edit the phrase list and run this step again, no need to re-run Stanza.
 
@@ -18,6 +22,7 @@ Output: JSON lines with 'text_no_boilerplate' and 'title_no_boilerplate' fields
 import bisect
 import json
 import re
+from collections import Counter, defaultdict
 from pathlib import Path
 import sys
 
@@ -61,11 +66,13 @@ def load_boilerplate_phrases(phrases_file):
 SKIP_UPOS = {'AUX', 'PUNCT', 'SYM'}
 
 
-def remove_boilerplate(sentences, boilerplate_patterns):
+def remove_boilerplate(sentences, boilerplate_patterns, underscore_counts=None):
     """Remove boilerplate phrases (matched on word forms) and return the remaining lemmas.
 
     sentences: list of sentences, each a list of [word, lemma, upos] triples.
     A word is removed only if a phrase match covers the whole word.
+    Words with an underscore lemma are dropped; if underscore_counts (lemma -> Counter of
+    word forms) is given, each dropped word is counted there.
     Returns lemmas as text, one sentence per line.
     """
     if not sentences:
@@ -96,8 +103,13 @@ def remove_boilerplate(sentences, boilerplate_patterns):
     lines, i = [], 0
     for sentence in sentences:
         lemmas = []
-        for _, lemma, upos in sentence:
-            if not removed[i] and upos not in SKIP_UPOS:
+        for form, lemma, upos in sentence:
+            if removed[i] or upos in SKIP_UPOS:
+                pass
+            elif '_' in lemma:
+                if underscore_counts is not None:
+                    underscore_counts[lemma][form] += 1
+            else:
                 lemmas.append(lemma)
             i += 1
         if lemmas:
@@ -106,7 +118,18 @@ def remove_boilerplate(sentences, boilerplate_patterns):
     return '\n'.join(lines)
 
 
-def process_temporal_bin(input_file, output_file, boilerplate_patterns):
+def save_underscore_counts(underscore_counts, output_file):
+    """Write dropped underscore lemmas, most frequent first, with their word forms."""
+    rows = sorted(underscore_counts.items(), key=lambda item: -sum(item[1].values()))
+    summary = {
+        lemma: {'count': sum(forms.values()), 'forms': dict(forms.most_common())}
+        for lemma, forms in rows
+    }
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(summary, f, ensure_ascii=False, indent=2)
+
+
+def process_temporal_bin(input_file, output_file, boilerplate_patterns, underscore_counts):
     """Process one temporal bin: remove boilerplate from body and title."""
     motion_count = 0
     malformed_count = 0
@@ -122,8 +145,8 @@ def process_temporal_bin(input_file, output_file, boilerplate_patterns):
                     malformed_count += 1
                     continue
 
-                motion['text_no_boilerplate'] = remove_boilerplate(motion.pop('tokens', []), boilerplate_patterns)
-                motion['title_no_boilerplate'] = remove_boilerplate(motion.pop('title_tokens', []), boilerplate_patterns)
+                motion['text_no_boilerplate'] = remove_boilerplate(motion.pop('tokens', []), boilerplate_patterns, underscore_counts)
+                motion['title_no_boilerplate'] = remove_boilerplate(motion.pop('title_tokens', []), boilerplate_patterns, underscore_counts)
                 # The per-word Stanza output stays in data/output/lemmatized/; later steps only need the lemmas
 
                 # Write to output
@@ -168,6 +191,8 @@ def main():
 
     total_motions = 0
     total_malformed = 0
+    # Dropped underscore lemmas across all bins: lemma -> Counter of word forms
+    underscore_counts = defaultdict(Counter)
 
     print("=" * 60)
     print("STEP 3: Removing parliamentary boilerplate (body and title)")
@@ -184,12 +209,16 @@ def main():
             print(f"Error: {input_file} not found")
             continue
 
-        count, malformed = process_temporal_bin(input_file, output_file, BOILERPLATE_PATTERNS)
+        count, malformed = process_temporal_bin(input_file, output_file, BOILERPLATE_PATTERNS, underscore_counts)
         total_motions += count
         total_malformed += malformed
 
     print("=" * 60)
     print(f"Total: {total_motions} motions processed")
+    underscore_file = OUTPUT_DIR / 'underscore_lemmas.json'
+    save_underscore_counts(underscore_counts, underscore_file)
+    dropped = sum(sum(forms.values()) for forms in underscore_counts.values())
+    print(f"Underscore lemmas dropped: {dropped} words, {len(underscore_counts)} distinct -> {underscore_file.name}")
     if total_malformed > 0:
         print(f"⚠️  Warning: {total_malformed} malformed JSON lines skipped")
     print(f"Output saved to: {OUTPUT_DIR}")
