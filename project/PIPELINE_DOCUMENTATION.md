@@ -92,6 +92,8 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - **Input:** `text_no_stopwords` (body only, no title weighting)
 - **Vectorizer:** `CountVectorizer(max_df=0.5, min_df=5, max_features=10000)`, default token pattern
 - **LDA:** scikit-learn `LatentDirichletAllocation`, 44 topics, `max_iter=50`, `learning_method='online'`, `random_state=42`, `n_jobs=2`
+- **Shared settings:** the topic count, LDA settings, title weight, stability seeds and the text-loading and title-weighting functions live in one module, `modeling/lda_common.py`. Every model (07, 10, 06) and every stability test (09, 13) imports them from there, so the stability tests always measure the same model that is reported
+- **No convergence check:** with `learning_method='online'` and sklearn's default `evaluate_every=-1`, every fit runs exactly `max_iter=50` passes; the printed iteration count (always 50) confirms the setting, not convergence
 - **Output:** `models/baseline_lda_44/baseline_lda_44_topics.pkl`, `models/baseline_lda_44/baseline_vectorizer.pkl`, `results/document_topic_distribution.csv`
 - The baseline vectorizer is reused by the weighted model and the stability tests, so they share one vocabulary
 - **Diagnostic metric:** training perplexity (diagnostic only, not evidence of generalization)
@@ -99,7 +101,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 ### 8b. Title-Weighted LDA — current model (`modeling/10_fit_title_weighted_lda.py`)
 - **Weighted document:** `text_no_stopwords` + `title_processed` appended **5 times**. The title heading is removed from the body at extraction, so the title counts exactly 5× (plus any genuine mentions of the title phrase in the body text). Documents without a title use body text only.
 - **Vectorizer:** loads `models/baseline_lda_44/baseline_vectorizer.pkl` (run 8a first)
-- **LDA:** same settings as the baseline (44 topics, seed 42)
+- **LDA:** same settings as the baseline (44 topics, seed 42), from `modeling/lda_common.py`
 - **Output:** `models/title_weighted_lda_44/title_weighted_lda_44_topics.pkl`, `models/title_weighted_lda_44/title_weighting_stats.txt`, `results/document_topic_distribution.csv`
 - ⚠️ Writes the same `results/document_topic_distribution.csv` as 8a and overwrites it. `12_generate_weighted_wordclouds.py` expects the weighted version, so run 10 after 07.
 
@@ -125,10 +127,15 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 | `topic_matching.py` | Module: Hungarian-algorithm topic matching between two LDA models; cosine similarity (full distributions) + Jaccard (top words) | — |
 | `test_topic_matching.py` | Unit tests for `topic_matching.py` (identical, permuted, synthetic models) | stdout |
 | `11_validate_matching_quick.py` | Smoke test on 2,000 real documents + synthetic permutation test (8 topics) | stdout |
+| `seed_stability.py` | Module: shared seed-stability procedure (fit one model per seed, match every pair, write the report) used by 09 and both 13 scripts | — |
 | `09_test_lda_stability.py` | Seed stability of the 44-topic baseline | `results/BASELINE_STABILITY_44TOPICS_CORRECTED.md` |
 | `13_seed_stability_3x_weighted.py` | Seed stability with 3× title weighting | `results/SEED_STABILITY_3X_WEIGHTED_CORRECTED.md` |
 | `13_seed_stability_5x_weighted.py` | Seed stability with 5× title weighting (matches the current model) | `results/SEED_STABILITY_5X_WEIGHTED_CORRECTED.md` |
 | `compare_weighted_vs_baseline.py` | ⚠️ **Deprecated** — unvalidated coherence metric; use the stability tests instead | — |
+
+**Seed-stability reports** list, per seed, the training perplexity and iteration count, then cosine and Jaccard statistics for each of the 10 seed pairs, then pooled statistics over all 440 matched topic pairs.
+
+**Interpreting the pooled statistics:** the 440 matched topic pairs are not independent. Each seed's model appears in 4 of the 10 pairs, so the same topics are counted several times. The pooled mean is a fair summary, but the pooled standard deviation understates the real uncertainty. For the spread across runs, report the 10 per-pair means (or their range) rather than the pooled standard deviation.
 
 ## Configuration Files
 
@@ -282,12 +289,14 @@ project/
 │   ├── 10_fit_title_weighted_lda.py
 │   ├── 11_display_weighted_lda_topics.py
 │   ├── 12_generate_weighted_wordclouds.py
-│   └── 13_extract_topics_and_update_wordcloud.py
+│   ├── 13_extract_topics_and_update_wordcloud.py
+│   └── lda_common.py                     (shared LDA settings, title weighting, text loading)
 ├── tests/
 │   └── test_preprocessing.py             (unit tests for steps 01, 03, 04, 05)
 ├── analysis/
 │   ├── check_pipeline_output.py          (sanity checks on pipeline output)
 │   ├── topic_matching.py
+│   ├── seed_stability.py                 (shared seed-stability procedure and report)
 │   ├── test_topic_matching.py
 │   ├── 09_test_lda_stability.py
 │   ├── 11_validate_matching_quick.py

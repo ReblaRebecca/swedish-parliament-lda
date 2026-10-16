@@ -1,84 +1,26 @@
 #!/usr/bin/env python3
 """
 Fit title-weighted LDA model for comparison with baseline.
-Strategy: Append processed title words five additional times to body text.
+Strategy: Append processed title words TITLE_WEIGHT (5) times to body text (modeling/lda_common.py).
 The title heading is removed from the body at extraction, so title words count exactly 5x
 (plus any genuine mentions in the body text).
 This weights document-topic inference toward title content without changing vocabulary.
 
 Input: Preprocessed motions (stopword_removed) with text_no_stopwords and title_processed fields
-Output: Title-weighted LDA model, weighted vectorizer, document-topic distribution
+Output: Title-weighted LDA model, document-topic distribution, title weighting statistics
+(the baseline vectorizer is reused, so both models share one vocabulary)
 Configuration: 44 topics, same settings as baseline for fair comparison
 """
 
-import json
 import csv
 from pathlib import Path
-import sys
 import pickle
+import sys
 
-try:
-    from sklearn.feature_extraction.text import CountVectorizer
-    from sklearn.decomposition import LatentDirichletAllocation
-except ImportError:
-    print("Error: scikit-learn not installed")
-    sys.exit(1)
-
-
-def load_texts_with_titles(input_dir):
-    """Load final preprocessed text and processed titles from all temporal bins.
-
-    Creates weighted documents by appending processed title words five additional times.
-    Note: The title heading is removed from the body at extraction, so the title counts exactly 5x.
-    Returns: texts (list), metadata (list), title_stats (dict)
-    """
-    print("Loading texts with title processing...")
-    texts = []
-    metadata = []
-    title_stats = {'empty': 0, 'weighted': 0, 'total': 0}
-
-    for bin_file in sorted(input_dir.glob('group*.jsonl')):
-        print(f"  Loading {bin_file.name}...")
-        with open(bin_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                try:
-                    motion = json.loads(line.strip())
-                    text = motion.get('text_no_stopwords', '')
-                    title = motion.get('title_processed', '')
-
-                    title_stats['total'] += 1
-
-                    # Create weighted document: body + (title * 5)
-                    if title and title.strip():
-                        weighted_text = text + ' ' + (' '.join(title.split()) + ' ') * 5
-                        title_stats['weighted'] += 1
-                    else:
-                        weighted_text = text
-                        title_stats['empty'] += 1
-
-                    if weighted_text.strip():
-                        texts.append(weighted_text)
-                        metadata.append({
-                            'doc_id': motion.get('dok_id', 'unknown'),
-                            'title': motion.get('title', ''),
-                            'year': motion.get('date', '')[:4] if motion.get('date') else 'unknown'
-                        })
-                except json.JSONDecodeError:
-                    continue
-
-    print(f"  Loaded {len(texts)} documents")
-    print(f"  Documents with titles: {title_stats['weighted']} / {title_stats['total']}")
-    print(f"  Empty titles: {title_stats['empty']}")
-
-    return texts, metadata, title_stats
-
-
-def load_baseline_vectorizer(vectorizer_path):
-    """Load the baseline vectorizer for consistent vocabulary."""
-    with open(vectorizer_path, "rb") as f:
-        vectorizer = pickle.load(f)
-    print(f"Loaded baseline vectorizer with vocabulary size: {len(vectorizer.get_feature_names_out())}")
-    return vectorizer
+# Shared LDA settings, title weighting and text loading (also used by the stability tests)
+from lda_common import (
+    LDA_PARAMS, NUM_TOPICS, TITLE_WEIGHT, fit_lda_model, load_baseline_vectorizer, load_weighted_texts,
+)
 
 
 def transform_weighted_texts(texts, vectorizer):
@@ -87,20 +29,6 @@ def transform_weighted_texts(texts, vectorizer):
     doc_term_matrix = vectorizer.transform(texts)
     print(f"Document-term matrix shape: {doc_term_matrix.shape}")
     return doc_term_matrix
-
-
-def fit_lda_model(doc_term_matrix, num_topics, random_state=42):
-    """Fit LDA model with given number of topics."""
-    lda = LatentDirichletAllocation(
-        n_components=num_topics,
-        random_state=random_state,
-        max_iter=50,
-        learning_method='online',
-        n_jobs=2,
-        verbose=0,
-    )
-    lda.fit(doc_term_matrix)
-    return lda
 
 
 def main():
@@ -115,23 +43,24 @@ def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    NUM_TOPICS = 44
-
     print("=" * 60)
-    print("Fitting Title-Weighted LDA Model (44 topics)")
+    print(f"Fitting Title-Weighted LDA Model ({NUM_TOPICS} topics, titles {TITLE_WEIGHT}x)")
     print(f"Input: {INPUT_DIR}")
     print(f"Output: {OUTPUT_DIR}")
     print("=" * 60)
 
     # Load baseline vectorizer for consistent vocabulary
-    if not BASELINE_VECTORIZER_PATH.exists():
-        print(f"Error: Baseline vectorizer not found at {BASELINE_VECTORIZER_PATH}")
-        sys.exit(1)
-
     vectorizer = load_baseline_vectorizer(BASELINE_VECTORIZER_PATH)
+    print(f"Loaded baseline vectorizer with vocabulary size: {len(vectorizer.get_feature_names_out())}")
 
     # Load texts with title weighting
-    texts, metadata, title_stats = load_texts_with_titles(INPUT_DIR)
+    print(f"Loading texts with titles appended {TITLE_WEIGHT} times...")
+    texts, metadata, title_stats = load_weighted_texts(INPUT_DIR, TITLE_WEIGHT)
+    print(f"  Loaded {len(texts)} documents")
+    print(f"  Documents with titles: {title_stats['weighted']} / {title_stats['total']}")
+    print(f"  Empty titles: {title_stats['empty']}")
+    if title_stats['malformed']:
+        print(f"⚠️  Warning: {title_stats['malformed']} malformed JSON lines skipped")
 
     if not texts:
         print("Error: No texts loaded")
@@ -151,7 +80,7 @@ def main():
 
     print("\n" + "=" * 60)
     print(f"Model: {NUM_TOPICS} topics")
-    print(f"Iterations: {lda.n_iter_} / 50 (max_iter)")
+    print(f"Iterations: {lda.n_iter_} / {LDA_PARAMS['max_iter']} (max_iter)")
     print(f"Training Perplexity: {perplexity_score:.4f}")
     print("(Note: Training perplexity is diagnostic only)")
     print("=" * 60)
@@ -203,9 +132,8 @@ def main():
         f.write(f"Documents with processed titles: {title_stats['weighted']}\n")
         f.write(f"Documents with empty titles: {title_stats['empty']}\n")
         f.write(f"Title coverage: {100*title_stats['weighted']/title_stats['total']:.2f}%\n")
-        f.write(f"\nTitle weighting strategy: Five additional copies appended\n")
-        f.write(f"(Processed title words appended 5 more times after body text)\n")
-        f.write(f"Note: Title heading removed from body at extraction; title counts exactly 5x\n")
+        f.write(f"\nTitle weighting strategy: processed title words appended {TITLE_WEIGHT} times after body text\n")
+        f.write(f"Note: Title heading removed from body at extraction; title counts exactly {TITLE_WEIGHT}x\n")
 
     print(f"✅ Title statistics saved to: {stats_file}")
 

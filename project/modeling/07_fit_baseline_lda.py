@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Fit baseline LDA model with 44 topics (FIXED).
-Input: Normalized motion text (all 4 temporal bins combined).
+Input: Final preprocessed text (text_no_stopwords, all 4 temporal bins combined).
 Output: 44-topic LDA model, vectorizer, perplexity score.
 
 Note: 44 topics selected as providing good balance between vocabulary coverage
@@ -10,7 +10,6 @@ This script fits ONLY 44 topics (no optimization). For temporal analysis,
 separate models will be fit with 11 topics per temporal bin.
 """
 
-import json
 import csv
 from pathlib import Path
 import sys
@@ -18,51 +17,12 @@ import pickle
 
 try:
     from sklearn.feature_extraction.text import CountVectorizer
-    from sklearn.decomposition import LatentDirichletAllocation
 except ImportError:
     print("Error: scikit-learn not installed. Install with: pip install scikit-learn")
     sys.exit(1)
 
-
-def load_normalized_text(input_dir):
-    """Load final preprocessed text (lemmatized) and metadata from all temporal bins.
-
-    Input field: text_no_stopwords (output of complete preprocessing pipeline)
-
-    Returns:
-        texts: List of text strings
-        metadata: List of dicts with doc_id, title, year (same order as texts)
-    """
-    print("Loading normalized text from all bins...")
-    texts = []
-    metadata = []
-    total_motions = 0
-    malformed_count = 0
-
-    for bin_file in sorted(input_dir.glob('group*.jsonl')):
-        print(f"  Loading {bin_file.name}...")
-        with open(bin_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                try:
-                    motion = json.loads(line.strip())
-                    text = motion.get('text_no_stopwords', '')
-                    if text:
-                        texts.append(text)
-                        # Preserve metadata in same order
-                        metadata.append({
-                            'doc_id': motion.get('dok_id', 'unknown'),
-                            'title': motion.get('title', ''),
-                            'year': motion.get('date', '')[:4] if motion.get('date') else 'unknown'
-                        })
-                        total_motions += 1
-                except json.JSONDecodeError:
-                    malformed_count += 1
-                    continue
-
-    print(f"Loaded {total_motions} motions")
-    if malformed_count > 0:
-        print(f"⚠️  Warning: {malformed_count} malformed JSON lines skipped")
-    return texts, metadata
+# Shared LDA settings and text loading (also used by the weighted model and the stability tests)
+from lda_common import LDA_PARAMS, NUM_TOPICS, fit_lda_model, load_body_texts
 
 
 def create_vectorizer_and_corpus(texts):
@@ -84,20 +44,6 @@ def create_vectorizer_and_corpus(texts):
     print(f"Document-term matrix shape: {doc_term_matrix.shape}")
 
     return vectorizer, doc_term_matrix
-
-
-def fit_lda_model(doc_term_matrix, num_topics, random_state=42):
-    """Fit LDA model with given number of topics."""
-    lda = LatentDirichletAllocation(
-        n_components=num_topics,
-        random_state=random_state,
-        max_iter=50,  # Increased from 20 for better convergence on 13k+ documents
-        learning_method='online',
-        n_jobs=2,
-        verbose=0,
-    )
-    lda.fit(doc_term_matrix)
-    return lda
 
 
 def calculate_perplexity(lda, doc_term_matrix):
@@ -128,17 +74,18 @@ def main():
     # Create output directory (with parents in case path doesn't exist)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Fixed topic count (selected from topic concentration testing, not semantic coherence)
-    NUM_TOPICS = 44
-
     print("=" * 60)
-    print("Fitting Baseline LDA Model (44 topics)")
+    print(f"Fitting Baseline LDA Model ({NUM_TOPICS} topics)")
     print(f"Input: {INPUT_DIR}")
     print(f"Output: {OUTPUT_DIR}")
     print("=" * 60)
 
     # Load normalized text and metadata
-    texts, metadata = load_normalized_text(INPUT_DIR)
+    print("Loading final text from all bins...")
+    texts, metadata, malformed = load_body_texts(INPUT_DIR)
+    print(f"Loaded {len(texts)} motions")
+    if malformed:
+        print(f"⚠️  Warning: {malformed} malformed JSON lines skipped")
 
     if not texts:
         print("Error: No texts loaded")
@@ -149,10 +96,9 @@ def main():
 
     # Fit 44-topic LDA model
     print("\n" + "=" * 60)
-    print(f"Fitting 44-topic LDA model...")
+    print(f"Fitting LDA with {NUM_TOPICS} topics...")
     print("=" * 60)
 
-    print(f"\nFitting LDA with {NUM_TOPICS} topics...")
     lda = fit_lda_model(doc_term_matrix, NUM_TOPICS)
 
     print(f"Calculating perplexity...")
@@ -160,7 +106,7 @@ def main():
 
     print("\n" + "=" * 60)
     print(f"Model: {NUM_TOPICS} topics")
-    print(f"Iterations: {lda.n_iter_} / 50 (max_iter)")
+    print(f"Iterations: {lda.n_iter_} / {LDA_PARAMS['max_iter']} (max_iter)")
     print(f"Training Perplexity: {perplexity_score:.4f}")
     print("(Note: Training perplexity is diagnostic only, not evidence of generalization)")
     print("=" * 60)

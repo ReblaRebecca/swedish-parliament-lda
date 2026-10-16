@@ -15,10 +15,12 @@ import pickle
 
 try:
     from sklearn.feature_extraction.text import CountVectorizer
-    from sklearn.decomposition import LatentDirichletAllocation
 except ImportError:
     print("Error: scikit-learn not installed")
     sys.exit(1)
+
+# Shared LDA settings and title weighting (same as the main models)
+from lda_common import LDA_PARAMS, NUM_TOPICS, TITLE_WEIGHT, fit_lda_model, weight_document
 
 
 def load_texts_and_titles(input_dir):
@@ -101,36 +103,19 @@ def create_baseline_corpus(metadata):
 
 
 def create_weighted_corpus(metadata):
-    """Create corpus for weighted model: body + five title copies."""
-    print("\nCreating weighted corpus (body + 5× titles)...")
-    texts = []
-    for meta in metadata:
-        body = meta['body']
-        title = meta['title_processed']
-        # Five additional copies of title
-        if title and title.strip():
-            weighted_text = body + ' ' + (' '.join(title.split()) + ' ') * 5
-        else:
-            weighted_text = body
-        texts.append(weighted_text)
+    """Create corpus for weighted model: body + title words TITLE_WEIGHT times."""
+    print(f"\nCreating weighted corpus (body + {TITLE_WEIGHT}× titles)...")
+    texts = [weight_document(meta['body'], meta['title_processed']) for meta in metadata]
     print(f"  {len(texts)} documents")
     return texts
 
 
-def fit_lda_model(doc_term_matrix, num_topics, model_name, random_state=42):
-    """Fit LDA model."""
+def fit_and_report(doc_term_matrix, num_topics, model_name):
+    """Fit LDA model with the shared settings and print diagnostics."""
     print(f"Fitting {model_name} LDA model ({num_topics} topics)...")
-    lda = LatentDirichletAllocation(
-        n_components=num_topics,
-        random_state=random_state,
-        max_iter=50,
-        learning_method='online',
-        n_jobs=2,
-        verbose=0,
-    )
-    lda.fit(doc_term_matrix)
+    lda = fit_lda_model(doc_term_matrix, num_topics)
     perplexity = lda.perplexity(doc_term_matrix)
-    print(f"  Iterations: {lda.n_iter_} / 50 (max)")
+    print(f"  Iterations: {lda.n_iter_} / {LDA_PARAMS['max_iter']} (max)")
     print(f"  Perplexity: {perplexity:.4f}")
     return lda
 
@@ -148,8 +133,6 @@ def main():
     BASELINE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     WEIGHTED_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-
-    NUM_TOPICS = 44
 
     print("=" * 70)
     print("Build Shared Vocabulary and Fit Baseline + Weighted LDA Models")
@@ -190,7 +173,7 @@ def main():
     baseline_matrix = vectorizer.transform(baseline_texts)
     print(f"Document-term matrix shape: {baseline_matrix.shape}")
 
-    baseline_lda = fit_lda_model(baseline_matrix, NUM_TOPICS, "Baseline", random_state=42)
+    baseline_lda = fit_and_report(baseline_matrix, NUM_TOPICS, "Baseline")
 
     # Save baseline model
     baseline_model_path = BASELINE_OUTPUT_DIR / f'baseline_lda_{NUM_TOPICS}_topics.pkl'
@@ -203,14 +186,14 @@ def main():
 
     # ============ WEIGHTED MODEL ============
     print("\n" + "=" * 70)
-    print("WEIGHTED MODEL (body + 5× titles)")
+    print(f"WEIGHTED MODEL (body + {TITLE_WEIGHT}× titles)")
     print("=" * 70)
 
     weighted_texts = create_weighted_corpus(metadata)
     weighted_matrix = vectorizer.transform(weighted_texts)
     print(f"Document-term matrix shape: {weighted_matrix.shape}")
 
-    weighted_lda = fit_lda_model(weighted_matrix, NUM_TOPICS, "Weighted", random_state=42)
+    weighted_lda = fit_and_report(weighted_matrix, NUM_TOPICS, "Weighted")
 
     # Save weighted model
     weighted_model_path = WEIGHTED_OUTPUT_DIR / f'weighted_lda_{NUM_TOPICS}_topics.pkl'
