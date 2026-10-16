@@ -329,7 +329,13 @@ project/
 2. **Title weighting helps a little.** Both weighted variants are about 0.014 above the baseline in mean cosine, and the per-pair ranges overlap with the baseline's, so the gain is small. The weighted variants do, however, give more topics that are found in every seed (7 and 10 vs. 5), and those are substantive education themes (gender equality, teacher education, language, sport) rather than budget or administrative topics.
 3. **3× vs. 5×.** The two weights have the same mean cosine (0.539). 3× is the more even across seed pairs (range 0.521–0.554, vs. 0.506–0.573) and has the most topics found in all four other models (10, vs. 7 and 5), but these differences are small.
 4. **Caveats.** All differences come from one set of 5 seeds; the *found* counts depend on the 0.70 threshold and are counted for the seed-42 model only; the pooled statistics are not independent (each seed appears in 4 of 10 pairs).
-5. **Many seed-dependent topics** suggest that 44 topics split the corpus more finely than the data supports. This is relevant to the topic count of the period models (see *Plan* below) and to the progress seminar.
+5. **Many seed-dependent topics** suggest that 44 topics split the corpus more finely than the data supports. For the whole-corpus model this matters less (see *What the whole-corpus instability means* below), but it is a warning for the period models (see *Plan*, *Topic count per period*).
+
+**What the whole-corpus instability means**
+- **The topic count stays at 44.** As in Gordon, the whole-corpus model is mainly a point of comparison: it is rated with the same rubric as the period models. Gordon chose k=60 = 4 × 15 so that it matches four periods of 15 topics; 44 = 4 × 11 follows the same logic. Unstable whole-corpus topics are also the very finding Gordon uses to motivate period models, so they support the design rather than undermine it.
+- **Where it does matter:**
+  - *Prominence* (mean topic share per period from the whole-corpus model): seed-dependent topics give seed-dependent trends. Restrict the prominence analysis to stable topics, or report it with the range over seeds.
+  - *Mapping period topics onto whole-corpus topics* (the proposed extension): the mapping becomes noisy for unstable whole-corpus topics.
 
 **Decision: no title weighting.** The gain (≈0.014 in mean cosine, overlapping ranges) is too small to justify an extra modelling choice. A first decision for 3× (the most even and with the most fully stable topics) was reversed the same day for this reason. All further models, whole-corpus and period models, use the body text only; titles are kept in the data for later use.
 
@@ -369,6 +375,23 @@ Separate LDA models will be fitted for each of the four periods and their topics
 3. **Shared settings.** The period models use the LDA settings and text loading from `modeling/lda_common.py`, like the whole-corpus model (body text only).
 4. **Test.** A unit test that the four period models are fitted with an identical vocabulary (same words, same order).
 
+**Topic count per period: test seed stability before fixing it**
+
+The period models have about as many motions per topic as the whole-corpus model (~3,500 motions / 11 topics ≈ 13,900 / 44 ≈ 316), so they may be just as unstable. That matters more here, because the cross-period chains are built from period topics: a chain through a topic that exists only with seed 42 and disappears with other seeds is a chance effect, not thematic development.
+
+Procedure, for each of the four periods:
+1. Fit the period's LDA model with the same 5 seeds (42, 123, 456, 789, 999), shared settings from `lda_common.py`, shared vocabulary.
+2. Match topics between every pair of seeds with the Hungarian algorithm and compute cosine and Jaccard, as in the whole-corpus seed test (`analysis/seed_stability.py` already does this for any document-term matrix and topic count).
+3. Count how many of the period's topics are found again in the other seeds' models (matched cosine ≥ 0.70).
+4. Repeat for a few topic counts, e.g. 8, 11 and 15 per period.
+
+Choosing the count:
+- Fewer topics are nearly always more stable but coarser; more topics are finer but more seed-dependent. The aim is the **highest count at which most topics are still stable and interpretable**, not simply the most stable one.
+- **The same count in all four periods** is simplest to compare and to justify, and is what Gordon does (15 per period). If the result is a count other than 11, use it in all periods.
+- Cost: 4 periods × 3 counts × 5 seeds = 60 fits, each on about a quarter of the motions and with fewer topics, so roughly 15 whole-corpus fits or less: at most about three whole-corpus seed tests (each about an hour).
+
+Alternative: fix 11 per period (like Gordon's fixed 15) and use the seed test only to flag uncertain topics and chains. Simpler, but leaves open whether 11 suits this data.
+
 **Consequences to keep in mind**
 - **Words absent from a period** get near-zero weight in that period's topics (only the LDA prior). That is correct, but it means period-specific vocabulary also contributes to topics looking different across periods; this should be noted when interpreting similarities.
 - **Vocabulary thresholds** (`min_df=5`, `max_df=0.5`, `max_features=10000`) are applied to the full corpus, not per period. A word frequent in one period but rare overall is still included; a word used in more than half of all motions is excluded everywhere.
@@ -378,8 +401,6 @@ Separate LDA models will be fitted for each of the four periods and their topics
 0. **Act on the first model review** (`MODEL_REVIEW.md`, 2026-10-16): the first models on the Stanza pipeline are fitted and reviewed; the review's vocabulary fixes (boilerplate gaps, abbreviation matching in step 03, artifact stopwords, Stanza lemma errors) are done; a few small leftovers remain (see the review)
 1. ✅ **Seed-stability tests** for the 44-topic model on body text and with 3×/5× title weighting (2026-10-16; see *Seed-Stability Results*)
 2. ✅ **Evaluate:** title weighting gives only a small stability gain; **no title weighting**, weighting code removed
-3. **Decision point:** proceed to either
-   - **Temporal binning** (4 separate models, ~11 topics each, one shared vocabulary; see *Plan: Period Models* above), or
-   - **Extended topic-count testing** with the best approach
+3. **Period models** (4 separate models, one shared vocabulary; see *Plan: Period Models* above), starting with the seed-stability test per period at a few topic counts (e.g. 8, 11, 15) to choose the count per period
 4. **Topic alignment and trajectory analysis**
 5. **Publication:** document findings for thesis/paper
