@@ -16,6 +16,7 @@ Technical detail is in `PIPELINE_DOCUMENTATION.md` and `MODEL_REVIEW.md`.
 
 **Contents**
 
+0. Att få svar på under seminariet
 1. Status
 2. Decisions to make
    - 2.1 Title weighting (decided: not used)
@@ -31,6 +32,55 @@ Technical detail is in `PIPELINE_DOCUMENTATION.md` and `MODEL_REVIEW.md`.
    - 2.11 Smaller open points
 3. Questions for the seminar (summary)
 4. Next steps
+
+---
+
+## 0. Att få svar på under seminariet
+
+The three questions below block the next implementation step, the period models. Everything else in section 2 can be settled later. For each: what has to be decided, what each answer means in practice, and what I would do by default if there is no clear answer.
+
+### 0.1 Vocabulary for the period models (details in 2.2)
+
+**To decide:** how the four period models get comparable topic-word vectors.
+
+- **A: one global vocabulary.** One vectorizer is built on the whole corpus and used for all four periods. Every period model has the same 10,000 columns in the same order, so topics can be compared directly.
+  - *In practice:* works with the existing code (the whole-corpus vectorizer and `topic_matching.py`) with no extra steps.
+  - *Cost:* frequency thresholds are computed over 40 years. A word typical of one period but rare overall (*nyanländ*, *digitalisering*) may be crowded out of the 10,000 most frequent words, and a word used in more than half of all motions is excluded in every period. Words absent from a period still have a column there with near-zero weight, which lowers cosine between periods.
+- **B: per-period vocabularies, compared over shared words (Gordon).** Each period gets its own vocabulary with thresholds applied within the period. Two adjacent periods are compared only over the words both vocabularies contain, re-normalized.
+  - *In practice:* one vectorizer per period, plus a step that builds the intersection and reorders both vectors before matching. The existing safety check still applies at that point.
+  - *Cost:* more code; and since only shared words are compared, words that appear or disappear must be reported separately (e.g. the share of a topic's probability mass outside the intersection).
+- **Why it matters now:** the choice decides how the period models are fitted (one vectorizer or four), not just how they are compared, so it must be settled before the period-model code is written.
+- **Default without a clear answer:** B, since the proposal follows Gordon (as suggested in 2.2), with the out-of-intersection mass reported. If speed matters more, A, since it works with the current code.
+- **Questions:** Is replicating Gordon's intersection method important, or is a global vocabulary acceptable as a documented simplification? If B, is the out-of-intersection mass a sufficient report of vocabulary change?
+
+### 0.2 Place names (details in 2.7)
+
+**To decide:** what to do with place names such as *Skövde, Umeå, Karlstad, Södertörn*.
+
+- **Why it matters:** about 8 of 44 whole-corpus topics are organized around places, coming from motions about universities and programmes in a particular region. They are also among the least stable topics across seeds. In the period models (about 11 topics each) such topics would take a larger share, and cross-period chains could follow towns rather than themes.
+- **Options:**
+  1. **Keep** (current). Regional distribution of higher education stays visible, including which regions were discussed.
+  2. **Drop all proper nouns** (`PROPN`). Simplest (one line in step 03), closest to Gordon, but also removes *Sverige*, *EU*, *SOU*, *UHÄ* and organization names.
+  3. **Drop only place names**, from a list of municipalities, regions and towns. Keeps *Sverige*, *EU* and organizations.
+  4. **Merge place names into one token** (e.g. `ort`). The model still sees that a motion is regional, without splitting the theme by town.
+- **In practice:** options 2–4 change step 03 and require re-running 03–05 (minutes) and the models; option 3 or 4 needs a place-name list.
+- **Default without a clear answer:** option 4, which keeps the regional theme as one theme. Option 3 as the second choice.
+- **Questions:** Are place-name topics a theme (regional higher-education policy) or noise (constituency representation, like Gordon's author signal)? Is removing or merging place names a departure from Gordon worth making?
+
+### 0.3 Remaining vocabulary leftovers (details in 2.11)
+
+**To decide:** two small cleaning questions, best settled before the period models so the models do not have to be re-fitted.
+
+- ***miljard/miljarder*** (about 1,300 occurrences). *miljon* and its abbreviations are already removed as boilerplate, since an amount says nothing about the theme.
+  - *Remove:* consistent with *miljon*.
+  - *Keep:* it may signal budget motions, which can be a theme of their own.
+  - *Default:* remove, for consistency with *miljon*.
+- **Party abbreviations `fp`, `kd`, `mp`** remaining in 59–109 motions, probably from compounds such as *kd-ledamöter*. The standalone abbreviations are already removed as boilerplate.
+  - *Remove:* party is not a theme, and party names are already removed.
+  - *Keep:* the counts are small and none reaches a topic's top words.
+  - *Default:* remove, by adding them as stopwords at step 05.
+- **In practice:** both are one-line changes to the boilerplate or stopword list followed by re-running 03–05 (minutes).
+- **Question:** remove both, as with *miljon* and the party names?
 
 ---
 
