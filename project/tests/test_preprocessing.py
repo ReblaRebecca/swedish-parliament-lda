@@ -273,6 +273,22 @@ class TestRemoveBoilerplate(unittest.TestCase):
         self.assertEqual(boilerplate.remove_boilerplate([sentence], self.patterns, lemma_corrections={'kompet': 'kompetens'}),
                          'kompetens sakna')
 
+    def test_lemma_corrections_in_compounds(self):
+        corrections = {'*kompet': 'kompetens', 'anslagen': 'anslag'}
+        self.assertEqual(boilerplate.correct_lemma('kompet', corrections), 'kompetens')
+        self.assertEqual(boilerplate.correct_lemma('gymnasiekompet', corrections), 'gymnasiekompetens')
+        self.assertEqual(boilerplate.correct_lemma('IT-kompet', corrections), 'it-kompetens')
+        self.assertEqual(boilerplate.correct_lemma('anslagen', corrections), 'anslag')
+        # Without '*' only the whole lemma is corrected
+        self.assertEqual(boilerplate.correct_lemma('sammanslagen', corrections), 'sammanslagen')
+        self.assertEqual(boilerplate.correct_lemma('lärare', corrections), 'lärare')
+
+    def test_real_corrections_on_compounds(self):
+        corrections = boilerplate.load_lemma_corrections(PROJECT_ROOT / 'config' / 'lemma_corrections.txt')
+        self.assertEqual(boilerplate.correct_lemma('lärarkompet', corrections), 'lärarkompetens')
+        self.assertEqual(boilerplate.correct_lemma('skolbibliotekarium', corrections), 'skolbibliotekarie')
+        self.assertEqual(boilerplate.correct_lemma('sammanslagen', corrections), 'sammanslagen')
+
     def test_lemma_corrections_file(self):
         corrections_file = Path(self.tmp.name) / 'corrections.txt'
         corrections_file.write_text('# comment\n\nkompet  kompetens  # kompetens\nkåre kår\n', encoding='utf-8')
@@ -280,8 +296,9 @@ class TestRemoveBoilerplate(unittest.TestCase):
 
     def test_real_lemma_corrections_file_loads(self):
         corrections = boilerplate.load_lemma_corrections(PROJECT_ROOT / 'config' / 'lemma_corrections.txt')
-        self.assertEqual(corrections['kompet'], 'kompetens')
+        self.assertEqual(corrections['*kompet'], 'kompetens')
         self.assertEqual(corrections['anslagen'], 'anslag')
+        self.assertNotIn('*anslagen', corrections)  # would turn 'sammanslagen' into 'sammanslag'
 
     def test_real_phrase_file_loads(self):
         patterns = boilerplate.load_boilerplate_phrases(PROJECT_ROOT / 'config' / 'boilerplate_phrases.txt')

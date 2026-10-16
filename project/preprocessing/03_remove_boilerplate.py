@@ -65,7 +65,11 @@ def load_boilerplate_phrases(phrases_file):
 
 
 def load_lemma_corrections(corrections_file):
-    """Load 'wrong correct' lemma pairs (one per line, # comments) into a dict."""
+    """Load 'wrong correct' lemma pairs (one per line, # comments) into a dict.
+
+    A wrong lemma written with a leading '*' ('*kompet kompetens') is also corrected at the end
+    of a compound ('gymnasiekompet' -> 'gymnasiekompetens'); the key keeps the '*'.
+    """
     corrections = {}
     if not corrections_file.exists():
         print(f"Warning: {corrections_file} not found, no lemma corrections applied")
@@ -87,13 +91,26 @@ SKIP_UPOS = {'AUX', 'PUNCT', 'SYM'}
 TRAILING_PUNCTUATION = re.compile(r'\W+$')
 
 
+def correct_lemma(lemma, corrections):
+    """Apply the lemma corrections (case-insensitive): whole lemma first, then '*' entries as suffixes."""
+    lower = lemma.lower()
+    if lower in corrections:
+        return corrections[lower]
+    if '*' + lower in corrections:
+        return corrections['*' + lower]
+    for key, correct in corrections.items():
+        if key.startswith('*') and lower.endswith(key[1:]):
+            return lower[:len(lower) - len(key) + 1] + correct
+    return lemma
+
+
 def remove_boilerplate(sentences, boilerplate_patterns, underscore_counts=None, lemma_corrections=None):
     """Remove boilerplate phrases (matched on word forms) and return the remaining lemmas.
 
     sentences: list of sentences, each a list of [word, lemma, upos] triples.
     A word is removed only if a phrase match covers the whole word, apart from trailing
     punctuation (the phrase 'mot' removes the abbreviation 'mot.').
-    Lemmas found in lemma_corrections (wrong -> correct) are replaced.
+    Lemmas found in lemma_corrections (wrong -> correct) are replaced; see correct_lemma.
     Words with an underscore lemma are dropped; if underscore_counts (lemma -> Counter of
     word forms) is given, each dropped word is counted there.
     Returns lemmas as text, one sentence per line.
@@ -135,8 +152,7 @@ def remove_boilerplate(sentences, boilerplate_patterns, underscore_counts=None, 
                 if underscore_counts is not None:
                     underscore_counts[lemma][form] += 1
             elif lemma_corrections:
-                # Case-insensitive: Stanza keeps the capital of a sentence-initial word ('Kompet')
-                lemmas.append(lemma_corrections.get(lemma.lower(), lemma))
+                lemmas.append(correct_lemma(lemma, lemma_corrections))
             else:
                 lemmas.append(lemma)
             i += 1
