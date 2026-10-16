@@ -88,6 +88,7 @@ hemställans
 hemställer
 hemställde
 hemställt
+hemställs
 betänkande
 betänkandet
 observera
@@ -123,6 +124,7 @@ anföra
 anföras
 anfördes
 anfört
+anförda
 anförts
 anförande
 anförandet
@@ -432,6 +434,7 @@ kronor
 miljoner
 kr
 milj
+milj.kr
 antal
 antalet
 antalen
@@ -491,6 +494,11 @@ ny demokratis
 s
 m
 sd
+fp
+mp
+kd
+vpk
+nyd
 c
 fp
 l

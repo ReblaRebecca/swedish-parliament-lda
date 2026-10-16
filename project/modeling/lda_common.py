@@ -63,7 +63,8 @@ def motion_metadata(motion):
 def load_body_texts(input_dir):
     """Load final body text (no title weighting) from all temporal bins, for the baseline model.
 
-    Input field: text_no_stopwords (output of 05_remove_stopwords.py). Empty texts are skipped.
+    Input field: text_no_stopwords (output of 05_remove_stopwords.py). Texts with no words are skipped
+    (e.g. withdrawn motions titled 'Utgår', whose body is only a line break after preprocessing).
     Returns: texts (list), metadata (list, same order), malformed_count (int)
     """
     texts = []
@@ -79,7 +80,8 @@ def load_body_texts(input_dir):
                     malformed_count += 1
                     continue
                 text = motion.get('text_no_stopwords', '')
-                if text:
+                # strip(): a text with no words left can still hold line breaks
+                if text.strip():
                     texts.append(text)
                     metadata.append(motion_metadata(motion))
 
@@ -90,12 +92,14 @@ def load_weighted_texts(input_dir, title_weight=TITLE_WEIGHT):
     """Load final text and titles from all temporal bins and build title-weighted documents.
 
     Input fields: text_no_stopwords, title_processed (output of 05_remove_stopwords.py).
-    Documents that are empty after weighting are skipped.
-    Returns: texts (list), metadata (list, same order), title_stats (dict)
+    Motions with empty body text are skipped, as in load_body_texts, so the baseline and the
+    weighted model are fitted on exactly the same motions.
+    Returns: texts (list), metadata (list, same order), title_stats (dict; 'total', 'weighted'
+             and 'empty' count the kept motions, 'empty_body' the skipped ones)
     """
     texts = []
     metadata = []
-    title_stats = {'empty': 0, 'weighted': 0, 'total': 0, 'malformed': 0}
+    title_stats = {'empty': 0, 'weighted': 0, 'total': 0, 'empty_body': 0, 'malformed': 0}
 
     for bin_file in sorted(input_dir.glob('group*.jsonl')):
         with open(bin_file, 'r', encoding='utf-8') as f:
@@ -108,16 +112,19 @@ def load_weighted_texts(input_dir, title_weight=TITLE_WEIGHT):
 
                 text = motion.get('text_no_stopwords', '')
                 title = motion.get('title_processed', '')
+                # Same rule as load_body_texts: a motion without body text is not used
+                if not text.strip():
+                    title_stats['empty_body'] += 1
+                    continue
+
                 title_stats['total'] += 1
                 if title and title.strip():
                     title_stats['weighted'] += 1
                 else:
                     title_stats['empty'] += 1
 
-                weighted_text = weight_document(text, title, title_weight)
-                if weighted_text.strip():
-                    texts.append(weighted_text)
-                    metadata.append(motion_metadata(motion))
+                texts.append(weight_document(text, title, title_weight))
+                metadata.append(motion_metadata(motion))
 
     return texts, metadata, title_stats
 

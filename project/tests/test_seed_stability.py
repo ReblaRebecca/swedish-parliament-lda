@@ -96,12 +96,28 @@ class TestTitleWeighting(unittest.TestCase):
             write_bin(tmp, motions, extra_lines=['{not json'])
             texts, metadata, stats = lda_common.load_weighted_texts(Path(tmp), title_weight=5)
 
-        self.assertEqual([m['doc_id'] for m in metadata], ['A', 'B', 'C'])  # D is empty and skipped
+        # C (title but no body) and D (empty) are skipped, as in the baseline
+        self.assertEqual([m['doc_id'] for m in metadata], ['A', 'B'])
         self.assertEqual(Counter(texts[0].split()), {'skola': 1, 'lärare': 1 + 5})
         self.assertEqual(texts[1], 'elev')
-        self.assertEqual(Counter(texts[2].split()), {'betyg': 5})
         self.assertEqual(metadata[0], {'doc_id': 'A', 'title': 'Lärarna', 'year': '1990'})
-        self.assertEqual(stats, {'empty': 2, 'weighted': 2, 'total': 4, 'malformed': 1})
+        self.assertEqual(stats, {'empty': 1, 'weighted': 1, 'total': 2, 'empty_body': 2, 'malformed': 1})
+
+    def test_baseline_and_weighted_use_the_same_motions(self):
+        motions = [
+            {'dok_id': 'A', 'text_no_stopwords': 'skola', 'title_processed': 'lärare'},
+            {'dok_id': 'B', 'text_no_stopwords': '', 'title_processed': 'betyg'},
+            {'dok_id': 'C', 'text_no_stopwords': 'elev', 'title_processed': ''},
+            {'dok_id': 'D', 'text_no_stopwords': '', 'title_processed': ''},
+            # Withdrawn motion: no words left, only a line break
+            {'dok_id': 'E', 'text_no_stopwords': '\n', 'title_processed': 'utgå'},
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            write_bin(tmp, motions)
+            _, body_metadata, _ = lda_common.load_body_texts(Path(tmp))
+            _, weighted_metadata, _ = lda_common.load_weighted_texts(Path(tmp))
+        self.assertEqual(body_metadata, weighted_metadata)
+        self.assertEqual([m['doc_id'] for m in body_metadata], ['A', 'C'])
 
     def test_load_body_texts(self):
         motions = [
@@ -165,7 +181,7 @@ class TestSharedSettings(unittest.TestCase):
 
             def fake_load(input_dir, title_weight=lda_common.TITLE_WEIGHT):
                 calls.append(title_weight)
-                return [], [], {'empty': 0, 'weighted': 0, 'total': 0, 'malformed': 0}
+                return [], [], {'empty': 0, 'weighted': 0, 'total': 0, 'empty_body': 0, 'malformed': 0}
 
             # With no texts loaded, main() stops before fitting anything
             with mock.patch.object(module, 'load_weighted_texts', fake_load):

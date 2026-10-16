@@ -1,0 +1,20 @@
+# Corrections for known Stanza lemma errors, applied in 03_remove_boilerplate.py
+#
+# Stanza guesses lemmas for words it has not seen in training, and some guesses are truncated
+# ('kompetens' -> 'kompet'). This list corrects those known errors; it does not replace the
+# lemmatizer. Found in the model review of 2026-10-16 (MODEL_REVIEW.md).
+#
+# Format: one pair per line, the wrong lemma then the correct lemma, separated by whitespace.
+# After editing, re-run steps 03-05 (no need to re-run Stanza).
+
+kompet          kompetens       # kompetens
+lärosät         lärosäte        # lärosäten, lärosätet
+anslagen        anslag          # anslaget; otherwise split from 'anslag'
+läraryrk        läraryrke       # läraryrket
+trakasserie     trakasseri      # trakasserier
+handlingspla    handlingsplan   # handlingsplan
+kåre            kår             # kåren, kårerna
+spelregl        spelregel       # spelregler
+barnsköta       barnskötare     # barnskötarna
+bibliotekarium  bibliotekarie   # bibliotekarier
+stärk           stärka          # stärkt

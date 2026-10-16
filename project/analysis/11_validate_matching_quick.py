@@ -23,7 +23,7 @@ except ImportError:
 
 
 def load_sample_texts(input_dir, max_docs=2000):
-    """Load a small sample of normalized text for quick testing."""
+    """Load a small sample of the final preprocessed text (as used by the models) for quick testing."""
     texts = []
     for bin_file in sorted(input_dir.glob('group*.jsonl')):
         with open(bin_file, 'r', encoding='utf-8') as f:
@@ -32,7 +32,7 @@ def load_sample_texts(input_dir, max_docs=2000):
                     return texts
                 try:
                     motion = json.loads(line.strip())
-                    text = motion.get('text_normalized', '')
+                    text = motion.get('text_no_stopwords', '')
                     if text:
                         texts.append(text)
                 except json.JSONDecodeError:
@@ -43,7 +43,7 @@ def load_sample_texts(input_dir, max_docs=2000):
 def main():
     SCRIPT_DIR = Path(__file__).parent
     PROJECT_ROOT = SCRIPT_DIR.parent
-    INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'normalized'
+    INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
 
     NUM_TOPICS = 8
     SEEDS = [42, 123]

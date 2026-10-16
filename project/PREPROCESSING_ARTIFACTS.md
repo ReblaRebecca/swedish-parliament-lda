@@ -73,6 +73,7 @@ Several tokens in the lists above and in `TWO_LETTER_WORDS.txt` are real words o
 
 - Re-run the pipeline from `01_extract_from_xml.py` and rebuild the vocabulary
 - Re-check the vocabulary for remaining fragments before keeping the artifact stopwords
+- **Done 2026-10-16:** the fragment stopwords were removed from `05_remove_stopwords.py` (almost all occurred in 0–6 motions after the fix) and the content abbreviations `fn`, `eg`, `ky`, `ib` were taken off the list; see `MODEL_REVIEW.md`
 
 ## Impact on Analysis
 

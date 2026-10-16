@@ -33,8 +33,10 @@ def get_swedish_stopwords():
         stop_words = set(stopwords.words('swedish'))
 
     # Add Swedish general words missing from NLTK
-    # Parliamentary document abbreviations (metadata)
-    supplementary_stops = {'ub', 'dvs', 'etc', 'osv', 'resp', 'eg', 'ca', 'frn', 'ky', 'et', 'tt', 'ib', 'ds', 'qz', 'iq', 'uö', 'fn', 'of', 'mr', 'ar'}
+    # Parliamentary document abbreviations (metadata).
+    # Not listed, because they are education-policy content: fn (FN), eg (EG), ky (kvalificerad
+    # yrkesutbildning), ib (International Baccalaureate); see MODEL_REVIEW.md
+    supplementary_stops = {'ub', 'dvs', 'etc', 'osv', 'resp', 'ca', 'frn', 'et', 'ds', 'qz', 'iq', 'uö', 'of', 'mr', 'ar'}
     # Spatial/directional words (structural, not content) - NOTE: many duplicated with boilerplate
     # Auxiliary verbs
     supplementary_stops.update({'ska', 'skall', 'blir', 'varit', 'blivit'})
@@ -52,10 +54,10 @@ def get_swedish_stopwords():
     supplementary_stops.update({'stora', 'rätt', 'bra', 'hos', 'se', 'går', 'bara', 'ser', 'både', 'samt'})
     # More filler words and generic discourse markers (some in boilerplate)
     supplementary_stops.update({'trots', 'hela', 'komma', 'flera', 'första', 'flesta', 'själva', 'heller', 'bland', 'exempel', 'såväl', 'kring', 'även', 'mycket'})
-    # Two-letter word artifacts from preprocessing (boilerplate removal, tokenization errors)
-    supplementary_stops.update({'br', 'de', 'dg', 'di', 'fj', 'fr', 'ga', 'gg', 'gr', 'hb', 'hj', 'jd', 'ka', 'ld', 'lt', 'mf', 'nd', 'ne', 'ng', 'nk', 'ns', 'nt', 'oh', 'po', 'rb', 'rd', 'rk', 'rl', 'rn', 'rr', 'rs', 'rt', 'sa', 'sf', 'sj', 'sk', 'sl', 'sm', 'te', 'tg', 'tj', 'tr', 'tt', 'ut', 'vs'})
-    # Longer preprocessing artifacts (3-4+ characters): truncated words and character boundary errors
-    supplementary_stops.update({'ggare', 'tt', 'tta', 'ttas', 'ttre', 'rs', 'rn', 'rns', 'rd', 'rda', 'ret', 'rer', 'ng', 'ngd', 'ngs'})
+    # Short generic words: 'te' (te sig, appear), 'ut' (out).
+    # The former extraction-fragment stopwords ('tt', 'rn', 'ngd', ...) are no longer needed since the
+    # extraction fix (almost all occur in 0-6 motions); several were real abbreviations (MODEL_REVIEW.md)
+    supplementary_stops.update({'te', 'ut'})
     # Lemma forms of the inflected stop words above, as produced by Stanza (text is lemmatized in step 2)
     supplementary_stops.update({'behöva', 'vilja', 'kunna', 'visa', 'hålla', 'sätta', 'gå', 'röra', 'ny', 'stor', 'olik', 'hel', 'mången'})
     stop_words.update(supplementary_stops)

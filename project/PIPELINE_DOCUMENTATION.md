@@ -61,11 +61,12 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - **Runtime:** CPU-heavy; expect hours for the full corpus
 
 ### 3. Boilerplate Removal (`preprocessing/03_remove_boilerplate.py`)
-- **Phrases:** loaded from `config/boilerplate_phrases.txt` (432 entries, one explicit word or phrase per line, no wildcards), matched case-insensitively against the **original word forms** saved by step 2, so the list keeps its surface forms (`riksdagen`, `med anledning av`). A word is removed only if a phrase match covers the whole word; phrases never match across sentences
+- **Phrases:** loaded from `config/boilerplate_phrases.txt` (440 entries, one explicit word or phrase per line, no wildcards), matched case-insensitively against the **original word forms** saved by step 2, so the list keeps its surface forms (`riksdagen`, `med anledning av`). A word is removed only if a phrase match covers the whole word, apart from trailing punctuation (Stanza keeps the full stop in abbreviations, so the phrase `mot` removes `Mot.`); phrases never match across sentences
 - **Categories:** OCR/scanning artifacts, government and parliamentary institutions, parliamentary document/reference terms, procedural language, party names, etc.
 - **Output is lemmas** of the remaining words, one sentence per line
 - **Dropped tokens:** auxiliary verbs (UPOS `AUX`), punctuation and symbols. Stanza lemmatizes the modal *ska/skall/skulle* to `skola`, which would merge with the noun *skola* (school); all auxiliaries are stopwords anyway
 - **Dropped abbreviation lemmas:** words whose lemma contains an underscore. Stanza expands abbreviations into multi-word lemmas (`t.ex.` → `till_exempel`, `bl.a.` → `bland_annat`, `s.k.` → `så_kallad`, `dvs` → `det_vill_säga`, `m.fl.` → `med_flera`), sometimes garbled (`få_cetera`); the underscore would otherwise make each one a single token in the model. Every dropped word is counted in `data/output/boilerplate_removed/underscore_lemmas.json` (lemma → total count and word forms, most frequent first) for manual review of whether any are worth keeping
+- **Lemma corrections:** known Stanza lemma errors are corrected from `config/lemma_corrections.txt` (`kompet` → `kompetens`, `lärosät` → `lärosäte`, `anslagen` → `anslag`, …). Stanza guesses lemmas for words it has not seen in training, and some guesses are truncated; the list corrects those errors found in the model review (`MODEL_REVIEW.md`), it does not replace the lemmatizer
 - **Rationale:** remove domain-specific metadata and structural language that doesn't represent education policy content
 - The per-word Stanza output is not copied further; it stays in `data/output/lemmatized/`
 - **Output fields:** `text_no_boilerplate`, `title_no_boilerplate`
@@ -77,7 +78,8 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 
 ### 5. Stopword Removal (`preprocessing/05_remove_stopwords.py`)
 - **Base list:** NLTK Swedish stop words
-- **Supplementary (hard-coded):** parliamentary abbreviations (ub, dvs, osv, …), auxiliary verbs (ska, skall, blir, …), generic connectors, verbs and adjectives identified from LDA inspection (kommer, enligt, olika, göra, …), two-letter and longer fragment artifacts (see `PREPROCESSING_ARTIFACTS.md` and `TWO_LETTER_WORDS.txt`), and the **lemma forms** of inflected entries (behöva, vilja, kunna, ny, stor, olik, mången, …), since the text is lemmatized
+- **Supplementary (hard-coded):** parliamentary abbreviations (ub, dvs, osv, …), auxiliary verbs (ska, skall, blir, …), generic connectors, verbs and adjectives identified from LDA inspection (kommer, enligt, olika, göra, …), and the **lemma forms** of inflected entries (behöva, vilja, kunna, ny, stor, olik, mången, …), since the text is lemmatized
+- **Removed 2026-10-16:** the stopwords added to hide extraction fragments (`tt`, `rn`, `ngd`, …), no longer needed since the extraction fix, and the content abbreviations `fn`, `eg`, `ky`, `ib`, which are education-policy terms (see `MODEL_REVIEW.md`)
 - **Output fields:** `text_no_stopwords` and `title_processed` — the final body and title text used by all models
 
 ### Duplicate count — for the report, not a pipeline step (`analysis/count_duplicates.py`)
@@ -99,7 +101,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - **Diagnostic metric:** training perplexity (diagnostic only, not evidence of generalization)
 
 ### 8b. Title-Weighted LDA — current model (`modeling/10_fit_title_weighted_lda.py`)
-- **Weighted document:** `text_no_stopwords` + `title_processed` appended **5 times**. The title heading is removed from the body at extraction, so the title counts exactly 5× (plus any genuine mentions of the title phrase in the body text). Documents without a title use body text only.
+- **Weighted document:** `text_no_stopwords` + `title_processed` appended **5 times**. The title heading is removed from the body at extraction, so the title counts exactly 5× (plus any genuine mentions of the title phrase in the body text). Documents without a title use body text only. Motions with empty body text are skipped, exactly as in the baseline, so both models are fitted on the same motions (4 motions have no body text left after preprocessing).
 - **Vectorizer:** loads `models/baseline_lda_44/baseline_vectorizer.pkl` (run 8a first)
 - **LDA:** same settings as the baseline (44 topics, seed 42), from `modeling/lda_common.py`
 - **Output:** `models/title_weighted_lda_44/title_weighted_lda_44_topics.pkl`, `models/title_weighted_lda_44/title_weighting_stats.txt`, `results/document_topic_distribution.csv`
@@ -139,7 +141,10 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 ## Configuration Files
 
 ### `config/boilerplate_phrases.txt`
-432 explicit words/phrases, one per line, grouped by category with `#` comment headers. Loaded by `03_remove_boilerplate.py` and matched against original word forms (body and title). An alternative file can be passed as the 3rd argument to `03_remove_boilerplate.py`. After editing it, re-run steps 03–06 (no need to re-run Stanza).
+440 explicit words/phrases, one per line, grouped by category with `#` comment headers. Loaded by `03_remove_boilerplate.py` and matched against original word forms (body and title). An alternative file can be passed as the 3rd argument to `03_remove_boilerplate.py`. After editing it, re-run steps 03–05 (no need to re-run Stanza).
+
+### `config/lemma_corrections.txt`
+Corrections for known Stanza lemma errors, one `wrong correct` pair per line with `#` comments. Applied in `03_remove_boilerplate.py` to body and title. After editing it, re-run steps 03–05.
 
 ### Stop words
 Hard-coded in `preprocessing/05_remove_stopwords.py` (NLTK base + supplementary list, including lemma forms).
@@ -180,8 +185,8 @@ Known trade-offs of the current approach (seen when testing on example sentences
 | Temporal bins | 4 | 1986-1993, 1994-2004, 2005-2014, 2015-2025 |
 | Duplicates detected | 133 (0.92%) | Earlier pipeline; flagged, kept in dataset |
 | Vocabulary | 10,000 (baseline/weighted), 20,000 (shared-vocab variant) | `max_features` |
-| Stop words | NLTK + 135 supplementary | |
-| Boilerplate phrases | 432 | Explicit phrases, no wildcards |
+| Stop words | NLTK (114) + 85 supplementary | |
+| Boilerplate phrases | 440 | Explicit phrases, no wildcards |
 | Lemmatizer | Stanza | Swedish Talbanken model; auxiliaries dropped |
 | LDA topics | 44 | Baseline and title-weighted |
 | Title weighting | 5× | Current model |
@@ -312,7 +317,8 @@ project/
 │   ├── count_duplicates.py               (duplicate count for the report)
 │   └── compare_weighted_vs_baseline.py   (deprecated)
 ├── config/
-│   └── boilerplate_phrases.txt
+│   ├── boilerplate_phrases.txt
+│   └── lemma_corrections.txt              (corrections for known Stanza lemma errors)
 ├── results/
 │   └── topics_wordclouds.html            (template for the word cloud scripts; other results are regenerated)
 ├── data/                                  (not in git)
@@ -325,6 +331,8 @@ project/
 │   └── weighted_lda_44_shared_vocab/
 ├── PIPELINE_DOCUMENTATION.md
 ├── PREPROCESSING_ARTIFACTS.md
+├── MODEL_REVIEW.md                        (review of the first models on the Stanza pipeline)
+├── PROGRESS_SEMINAR_1.md                  (status and open decisions, seminar 2026-10-19)
 └── TWO_LETTER_WORDS.txt
 ```
 
@@ -364,12 +372,31 @@ project/
 
 **Relation to Gordon's approach:** Gordon found similar whole-corpus instability (Jaccard 0.26–0.31) and addressed it with temporal binning, which constrains each period's vocabulary and author mix.
 
+## Plan: Period Models and Cross-Period Comparison (not yet implemented)
+
+Separate LDA models will be fitted for each of the four periods and their topics compared across periods with cosine similarity. Cosine similarity between two topic-word vectors is only meaningful if both vectors refer to **the same words in the same order** (supervisor's comment, 2026-10-16). The design below guarantees that.
+
+**Already in place**
+- `analysis/topic_matching.py` refuses to compute similarities unless both models have an identical vocabulary in identical column order (`np.array_equal`); different or reordered vocabularies raise a `ValueError`. This is tested in `tests/test_topic_matching.py` (vocabulary mismatch, reordered vocabulary), so a misaligned comparison cannot pass silently.
+- The whole-corpus models (baseline, title-weighted, all seed-stability runs) already share one vocabulary: the vectorizer saved by `07_fit_baseline_lda.py`.
+
+**Design for the period models**
+1. **One shared vocabulary for all four periods.** Fit a single `CountVectorizer` once on the full corpus (or reuse the baseline vectorizer), then transform each period's motions with it before fitting that period's LDA model. Every period model's `components_` then has the same columns, in the same order, and topics can be compared across periods directly.
+2. **Same matching code.** Cross-period comparisons go through `match_and_evaluate` in `topic_matching.py`, which enforces the vocabulary check. With the same number of topics per period (about 11), the Hungarian matching gives a one-to-one alignment; matching with different topic counts is possible with `require_same_n_topics=False`.
+3. **Shared settings.** The period models use the LDA settings and title weighting from `modeling/lda_common.py`, like the whole-corpus models.
+4. **Test.** A unit test that the four period models are fitted with an identical vocabulary (same words, same order).
+
+**Consequences to keep in mind**
+- **Words absent from a period** get near-zero weight in that period's topics (only the LDA prior). That is correct, but it means period-specific vocabulary also contributes to topics looking different across periods; this should be noted when interpreting similarities.
+- **Vocabulary thresholds** (`min_df=5`, `max_df=0.5`, `max_features=10000`) are applied to the full corpus, not per period. A word frequent in one period but rare overall is still included; a word used in more than half of all motions is excluded everywhere.
+
 ## Next Steps
 
+0. **Act on the first model review** (`MODEL_REVIEW.md`, 2026-10-16): the first baseline and weighted models on the Stanza pipeline are fitted and reviewed; the review's vocabulary fixes (boilerplate gaps, abbreviation matching in step 03, artifact stopwords, Stanza lemma errors) are done; a few small leftovers remain (see the review)
 1. **Run seed-stability tests** for the 44-topic baseline and the 3×/5× title-weighted models
 2. **Evaluate:** if title weighting improves stability → use the weighted model as primary; otherwise keep the baseline
 3. **Decision point:** proceed to either
-   - **Temporal binning** (4 separate models, ~11 topics each), or
+   - **Temporal binning** (4 separate models, ~11 topics each, one shared vocabulary; see *Plan: Period Models* above), or
    - **Extended topic-count testing** with the best approach
 4. **Topic alignment and trajectory analysis**
 5. **Publication:** document findings for thesis/paper

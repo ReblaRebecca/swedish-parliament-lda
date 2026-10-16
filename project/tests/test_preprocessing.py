@@ -245,6 +245,38 @@ class TestRemoveBoilerplate(unittest.TestCase):
         self.assertEqual(list(saved), ['till_exempel', 'med_flera'])
         self.assertEqual(saved['till_exempel'], {'count': 4, 'forms': {'t.ex.': 3, 'T.ex.': 1}})
 
+    def test_trailing_punctuation_does_not_block_removal(self):
+        # Stanza keeps the full stop in abbreviations ('mot.', 'prop.'); the phrase still removes the word
+        sentence = tokens(('riksdagen.', 'riksdag', 'NOUN'), ('skolan', 'skola', 'NOUN'))
+        self.assertEqual(boilerplate.remove_boilerplate([sentence], self.patterns), 'skola')
+
+    def test_trailing_punctuation_rule_keeps_longer_words(self):
+        sentence = tokens(('riksdagens.', 'riksdag', 'NOUN'), ('skolan', 'skola', 'NOUN'))
+        self.assertEqual(boilerplate.remove_boilerplate([sentence], self.patterns), 'riksdag skola')
+
+    def test_abbreviation_with_inner_and_trailing_full_stops(self):
+        # 'milj.kr.' (miljoner kronor) is removed by the phrase 'milj.kr'
+        patterns = boilerplate.load_boilerplate_phrases(PROJECT_ROOT / 'config' / 'boilerplate_phrases.txt')
+        sentence = tokens(('500', '500', 'NUM'), ('milj.kr.', 'milj.kru', 'NOUN'), ('till', 'till', 'ADP'),
+                          ('skolan', 'skola', 'NOUN'))
+        self.assertNotIn('milj', boilerplate.remove_boilerplate([sentence], patterns))
+
+    def test_lemma_corrections_applied(self):
+        sentence = tokens(('kompetensen', 'kompet', 'NOUN'), ('lärarna', 'lärare', 'NOUN'))
+        corrections = {'kompet': 'kompetens'}
+        self.assertEqual(boilerplate.remove_boilerplate([sentence], self.patterns, lemma_corrections=corrections),
+                         'kompetens lärare')
+
+    def test_lemma_corrections_file(self):
+        corrections_file = Path(self.tmp.name) / 'corrections.txt'
+        corrections_file.write_text('# comment\n\nkompet  kompetens  # kompetens\nkåre kår\n', encoding='utf-8')
+        self.assertEqual(boilerplate.load_lemma_corrections(corrections_file), {'kompet': 'kompetens', 'kåre': 'kår'})
+
+    def test_real_lemma_corrections_file_loads(self):
+        corrections = boilerplate.load_lemma_corrections(PROJECT_ROOT / 'config' / 'lemma_corrections.txt')
+        self.assertEqual(corrections['kompet'], 'kompetens')
+        self.assertEqual(corrections['anslagen'], 'anslag')
+
     def test_real_phrase_file_loads(self):
         patterns = boilerplate.load_boilerplate_phrases(PROJECT_ROOT / 'config' / 'boilerplate_phrases.txt')
         self.assertGreater(len(patterns), 0)
@@ -286,7 +318,7 @@ class TestStopwords(unittest.TestCase):
 
     def test_content_words_are_not_stopwords(self):
         # 'skola' is the lemma of both the noun (school) and the modal ska; it must stay
-        for word in ['skola', 'lärare', 'elev', 'utbildning', 'förskola', 'högskola', 'sfi', 'csn']:
+        for word in ['skola', 'lärare', 'elev', 'utbildning', 'förskola', 'högskola', 'sfi', 'csn', 'fn', 'eg', 'ky', 'ib']:
             self.assertNotIn(word, self.stop_words)
 
     def test_remove_stopwords_keeps_lines(self):

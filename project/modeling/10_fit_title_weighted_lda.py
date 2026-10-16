@@ -59,6 +59,7 @@ def main():
     print(f"  Loaded {len(texts)} documents")
     print(f"  Documents with titles: {title_stats['weighted']} / {title_stats['total']}")
     print(f"  Empty titles: {title_stats['empty']}")
+    print(f"  Skipped (empty body text, as in the baseline): {title_stats['empty_body']}")
     if title_stats['malformed']:
         print(f"⚠️  Warning: {title_stats['malformed']} malformed JSON lines skipped")
 
@@ -131,6 +132,7 @@ def main():
         f.write(f"Total documents: {title_stats['total']}\n")
         f.write(f"Documents with processed titles: {title_stats['weighted']}\n")
         f.write(f"Documents with empty titles: {title_stats['empty']}\n")
+        f.write(f"Motions skipped for empty body text (as in the baseline): {title_stats['empty_body']}\n")
         f.write(f"Title coverage: {100*title_stats['weighted']/title_stats['total']:.2f}%\n")
         f.write(f"\nTitle weighting strategy: processed title words appended {TITLE_WEIGHT} times after body text\n")
         f.write(f"Note: Title heading removed from body at extraction; title counts exactly {TITLE_WEIGHT}x\n")
