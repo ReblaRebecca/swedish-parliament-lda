@@ -507,6 +507,7 @@ These should be stated explicitly in the methods section.
 - **Billions:** *miljard/miljarder* (about 1,300 occurrences) is the same kind of amount word as *miljoner*, which is removed. Remove it too, or keep it as a signal of budget motions?
 - **Leftover fragments:** some remain from line-end hyphenation in older scanned motions (*utbild- Mot. 1988/89 ningsmoment* gives `utbild` and `ning`, in 75–180 motions), and from Swedish compound ellipsis (*skol- och språkexpertis* gives `skol`). Accepted for now; none reach the top words of any topic.
 - **Party abbreviations:** a few remain in 59–109 motions (`fp`, `kd`, `mp`, probably from forms like *kd-ledamöter*).
+- **Truncated lemmas in compounds:** Stanza truncates *kompetens* to `kompet` also inside compounds (*gymnasiekompetens* → `gymnasiekompet`, *IT-kompetens* → `it-kompet`), where the whole-word correction table does not apply. A fix that applies the corrections to the end of a lemma is proposed (`MODEL_REVIEW.md`, *After the Fixes*); a few hundred motions are affected.
 
 ---
 

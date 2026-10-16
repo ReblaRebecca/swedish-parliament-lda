@@ -135,7 +135,8 @@ def remove_boilerplate(sentences, boilerplate_patterns, underscore_counts=None, 
                 if underscore_counts is not None:
                     underscore_counts[lemma][form] += 1
             elif lemma_corrections:
-                lemmas.append(lemma_corrections.get(lemma, lemma))
+                # Case-insensitive: Stanza keeps the capital of a sentence-initial word ('Kompet')
+                lemmas.append(lemma_corrections.get(lemma.lower(), lemma))
             else:
                 lemmas.append(lemma)
             i += 1

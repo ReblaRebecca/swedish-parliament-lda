@@ -92,3 +92,50 @@ The extra stopwords added in `05_remove_stopwords.py` to hide extraction fragmen
 5. **Display formats:** make 08 and 11 write the same CSV layout.
 
 After 1–4, re-run steps 03–05 (minutes) and refit the models (about 10 minutes) before the stability tests.
+
+## After the Fixes (2026-10-16)
+
+Fixes 1–4 were made and the pipeline re-run twice (steps 03–05, sanity check, both models). The second run added the boilerplate phrase *milj.kr* (*miljoner kronor* written as one word: *milj.kr.* 227×, *milj.kr* 152×) and made the lemma corrections case-insensitive.
+
+### Run
+
+| | Baseline | Title-weighted 5× |
+|---|---|---|
+| Motions | 13,913 | 13,913 |
+| Training perplexity | 2,174 | 2,105 |
+| Sanity check | 0 failed, 3 warnings (4 withdrawn motions with no text; 34 motions with no title words; known hyphenation fragments) | |
+
+The number of motions with no title words rose from 16 to 34. These titles were truncated in the source (*med anledning av prop. 1988/89:90 om*); the only word left before was Stanza's guess `propessor` for *prop.*, which is now removed. Body only is correct for them.
+
+### Effect on the vocabulary
+
+Motions containing each word in the final text:
+
+| Word | Before fixes | After |
+|---|---|---|
+| `hemställa` | 5,022 | 6 |
+| `anförd` | 4,346 | 2 |
+| `motent` / `propessor` | 1,513 / 215 | 0 / 0 |
+| `milj` | 415 | 0 |
+| `fp` / `kd` / `mp` | 796 / 164 / 213 | 109 / 95 / 59 |
+| `kompet` | 3,160 | 75 (`kompetens`: 3,429) |
+| `fn` / `eg` / `ky` / `ib` | 0 (stopwords) | 336 / 213 / 151 / 34 |
+
+None of `hemställa`, `anförd`, `motent`, `propessor`, `fp`, `kd`, `kompet` is among the top 20 words of any topic any more; the corrected forms (`kompetens`, `lärosäte`, `läraryrke`, `anslag`, `handlingsplan`) and the restored `fn`, `eg` are.
+
+### Remaining: truncated lemmas inside compounds
+
+The 75 remaining `kompet` were first attributed to sentence-initial capitals (*Kompetens*). That was wrong: Stanza already lemmatizes *Kompetens* to lowercase `kompet`, which the table corrects. The case-insensitive lookup is harmless but was not needed.
+
+The real source is **compounds**, where the correction table (which matches whole lemmas) does not apply:
+
+| Word form | Stanza lemma | Occurrences | Result in final text |
+|---|---|---|---|
+| *gymnasiekompetens* | `gymnasiekompet` | 195 | truncated word in the vocabulary |
+| *lärarkompetens* | `lärarkompet` | 173 | truncated word |
+| *yrkeskompetens* | `yrkeskompet` | 120 | truncated word |
+| *HBT-kompetens*, *IT-kompetens*, *it-kompetens*, … | `hbt-kompet`, `it-kompet`, … | about 120 | split by normalization into `hbt`/`it` + `kompet` (the 75 motions) |
+
+The same truncation probably affects compounds of the other corrected words (e.g. *-lärosäten*, *-handlingsplan*); not yet checked.
+
+**Proposed fix (not done):** apply each correction to the **end** of a lemma, so every lemma ending in `kompet` gets `kompetens` (`gymnasiekompet` → `gymnasiekompetens`, `it-kompet` → `it-kompetens`), and likewise for the other entries. Checked against the current table, no entry would produce a wrong word as a suffix (e.g. `förstärk` → `förstärka` is correct). Requires a re-run of steps 03–05 and the models (about 20 minutes). Affects a few hundred motions, so it is unlikely to change topic stability.

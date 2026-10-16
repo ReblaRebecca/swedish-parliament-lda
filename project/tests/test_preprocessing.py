@@ -267,6 +267,12 @@ class TestRemoveBoilerplate(unittest.TestCase):
         self.assertEqual(boilerplate.remove_boilerplate([sentence], self.patterns, lemma_corrections=corrections),
                          'kompetens lärare')
 
+    def test_lemma_corrections_ignore_case(self):
+        # A sentence-initial word keeps its capital in the lemma ('Kompetens' -> 'Kompet')
+        sentence = tokens(('Kompetensen', 'Kompet', 'NOUN'), ('saknas', 'sakna', 'VERB'))
+        self.assertEqual(boilerplate.remove_boilerplate([sentence], self.patterns, lemma_corrections={'kompet': 'kompetens'}),
+                         'kompetens sakna')
+
     def test_lemma_corrections_file(self):
         corrections_file = Path(self.tmp.name) / 'corrections.txt'
         corrections_file.write_text('# comment\n\nkompet  kompetens  # kompetens\nkåre kår\n', encoding='utf-8')
