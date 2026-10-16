@@ -125,7 +125,6 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 | Script | Purpose | Output |
 |---|---|---|
 | `topic_matching.py` | Module: Hungarian-algorithm topic matching between two LDA models; cosine similarity (full distributions) + Jaccard (top words) | — |
-| `test_topic_matching.py` | Unit tests for `topic_matching.py` (identical, permuted, synthetic models) | stdout |
 | `11_validate_matching_quick.py` | Smoke test on 2,000 real documents + synthetic permutation test (8 topics) | stdout |
 | `seed_stability.py` | Module: shared seed-stability procedure (fit one model per seed, match every pair, write the report) used by 09 and both 13 scripts | — |
 | `09_test_lda_stability.py` | Seed stability of the 44-topic baseline | `results/BASELINE_STABILITY_44TOPICS_CORRECTED.md` |
@@ -249,7 +248,6 @@ python modeling/11_display_weighted_lda_topics.py
 python modeling/12_generate_weighted_wordclouds.py
 
 # Stability tests
-python analysis/test_topic_matching.py
 python analysis/09_test_lda_stability.py
 python analysis/13_seed_stability_5x_weighted.py
 ```
@@ -261,7 +259,8 @@ python analysis/13_seed_stability_5x_weighted.py
 ```bash
 cd project
 
-# Unit tests: hand-written examples for steps 01, 03, 04, 05 (seconds, no corpus or Stanza model needed)
+# Unit tests: preprocessing, topic matching and the seed-stability code
+# (about 10 seconds; synthetic examples only, no corpus, Stanza model or fitted models needed)
 python -m unittest discover -s tests -v
 
 # Sanity checks on the pipeline output after running 01-05 (about a minute; read-only)
@@ -269,6 +268,13 @@ python analysis/check_pipeline_output.py
 ```
 
 - **`tests/test_preprocessing.py`** — HTML parsing (words split across spans are joined), character repair, title heading removal, motion number and author name removal, period boundaries, boilerplate matching on word forms (and AUX `ska` dropped while the noun `skola` is kept), normalization, and the stopword list (lemma forms included, content words such as `skola`, `lärare`, `utbildning` excluded)
+- **`tests/test_topic_matching.py`** — Hungarian matching on synthetic topic matrices: identical models match with cosine 1, a known permutation is recovered, mismatched or reordered vocabularies and mismatched topic counts are rejected, summary statistics equal the per-topic values
+- **`tests/test_seed_stability.py`** — the seed-stability tests and the shared LDA code:
+  - **Title weighting:** title words appear exactly 5 extra times (3 in the 3× test), empty titles give body only, loaders skip empty documents and count malformed lines
+  - **No drift:** the models (07, 10, 06) and stability tests (09, 13) use the very same functions from `lda_common.py`; no other script creates its own LDA model or title weighting; fitted models carry the shared settings; each 13 script loads with its own weight; the reported seed (42) is among the tested seeds
+  - **Seeds:** the same seed reproduces the model exactly, a different seed changes it
+  - **Planted topics:** on a synthetic corpus with three clearly separated topics, the full procedure (fit three seeds, match, measure) finds cosine > 0.99 for every matched topic, so it can detect stability when it is there
+  - **Report:** 10 pairs and 440 matched topic pairs for 5 seeds × 44 topics; per-pair and pooled statistics equal those computed directly; per-seed table and the notes on convergence and pooled statistics are present
 - **`analysis/check_pipeline_output.py`** — for each stage that has been run: all four period files present, no malformed lines, required fields present, no `dok_id` written twice, the same motions as extraction. Plus stage-specific checks: no soft hyphens or broken diacritics after extraction; Stanza output well-formed and every text tagged; final text lowercase letters only with no digits, punctuation, single-character words or stopwords left. Warns about empty texts or titles and frequent known extraction fragments. `FAIL` means the output is wrong; exit code 1 if any check fails. Optional argument: `[data_dir]`
 
 ## File Organization
@@ -292,12 +298,13 @@ project/
 │   ├── 13_extract_topics_and_update_wordcloud.py
 │   └── lda_common.py                     (shared LDA settings, title weighting, text loading)
 ├── tests/
-│   └── test_preprocessing.py             (unit tests for steps 01, 03, 04, 05)
+│   ├── test_preprocessing.py             (unit tests for steps 01, 03, 04, 05)
+│   ├── test_topic_matching.py            (unit tests for analysis/topic_matching.py)
+│   └── test_seed_stability.py            (seed-stability tests and shared LDA code)
 ├── analysis/
 │   ├── check_pipeline_output.py          (sanity checks on pipeline output)
 │   ├── topic_matching.py
 │   ├── seed_stability.py                 (shared seed-stability procedure and report)
-│   ├── test_topic_matching.py
 │   ├── 09_test_lda_stability.py
 │   ├── 11_validate_matching_quick.py
 │   ├── 13_seed_stability_3x_weighted.py
