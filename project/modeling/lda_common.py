@@ -5,7 +5,8 @@ Shared LDA configuration and helpers.
 Every script that fits an LDA model imports from here, so the fitted model and the stability
 test cannot drift apart:
     modeling/07_fit_baseline_lda.py, analysis/09_test_lda_stability.py,
-    modeling/14_generate_topic_explorer.py
+    modeling/14_generate_topic_explorer.py, modeling/15_fit_period_lda.py,
+    analysis/16_seed_stability_periods.py
 
 The model uses body text only. Titles are kept as a separate field (title_processed) in the
 data for later use; title weighting was tested and dropped (2026-10-16, see PIPELINE_DOCUMENTATION.md).
@@ -14,6 +15,7 @@ data for later use; title weighting was tested and dropped (2026-10-16, see PIPE
 import json
 import pickle
 import sys
+from pathlib import Path
 
 try:
     from sklearn.decomposition import LatentDirichletAllocation
@@ -24,6 +26,10 @@ except ImportError:
 
 # Number of topics in the whole-corpus models
 NUM_TOPICS = 44
+
+# Number of topics in each period model (44 = 4 periods x 11, as Gordon's 60 = 4 x 15).
+# Provisional: to be chosen with the seed-stability test per period (16_seed_stability_periods.py).
+PERIOD_TOPICS = 11
 
 # Seed of the reported models
 DEFAULT_SEED = 42
@@ -51,8 +57,8 @@ def motion_metadata(motion):
     }
 
 
-def load_body_texts(input_dir):
-    """Load final body text (titles not added) from all temporal bins.
+def read_bin_body_texts(bin_file):
+    """Load final body text (titles not added) from one temporal-bin file.
 
     Input field: text_no_stopwords (output of 05_remove_stopwords.py). Texts with no words are skipped
     (e.g. withdrawn motions titled 'Utgår', whose body is only a line break after preprocessing).
@@ -61,22 +67,55 @@ def load_body_texts(input_dir):
     texts = []
     metadata = []
     malformed_count = 0
-
-    for bin_file in sorted(input_dir.glob('group*.jsonl')):
-        with open(bin_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                try:
-                    motion = json.loads(line.strip())
-                except json.JSONDecodeError:
-                    malformed_count += 1
-                    continue
-                text = motion.get('text_no_stopwords', '')
-                # strip(): a text with no words left can still hold line breaks
-                if text.strip():
-                    texts.append(text)
-                    metadata.append(motion_metadata(motion))
-
+    with open(bin_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            try:
+                motion = json.loads(line.strip())
+            except json.JSONDecodeError:
+                malformed_count += 1
+                continue
+            text = motion.get('text_no_stopwords', '')
+            # strip(): a text with no words left can still hold line breaks
+            if text.strip():
+                texts.append(text)
+                metadata.append(motion_metadata(motion))
     return texts, metadata, malformed_count
+
+
+def period_label(bin_file):
+    """Period of a temporal-bin file: 'group2_1994-2004.jsonl' -> '1994-2004'."""
+    return Path(bin_file).stem.split('_', 1)[-1]
+
+
+def load_body_texts(input_dir):
+    """Load final body text from all temporal bins combined, for the whole-corpus model.
+
+    Same selection rule as the period models (read_bin_body_texts), so both use the same motions.
+    Returns: texts (list), metadata (list, same order), malformed_count (int)
+    """
+    texts = []
+    metadata = []
+    malformed_count = 0
+    for bin_file in sorted(input_dir.glob('group*.jsonl')):
+        bin_texts, bin_metadata, bin_malformed = read_bin_body_texts(bin_file)
+        texts += bin_texts
+        metadata += bin_metadata
+        malformed_count += bin_malformed
+    return texts, metadata, malformed_count
+
+
+def load_period_body_texts(input_dir):
+    """Load final body text per period, for the period models.
+
+    Returns: {period label: (texts, metadata)} in period order, and the total malformed count.
+    """
+    periods = {}
+    malformed_count = 0
+    for bin_file in sorted(input_dir.glob('group*.jsonl')):
+        texts, metadata, malformed = read_bin_body_texts(bin_file)
+        periods[period_label(bin_file)] = (texts, metadata)
+        malformed_count += malformed
+    return periods, malformed_count
 
 
 def load_baseline_vectorizer(vectorizer_path):

@@ -23,7 +23,10 @@ data/output/stopword_removed/         fields: text_no_stopwords, title_processed
     └── modeling/07_fit_baseline_lda.py        → models/baseline_lda_44/
             ├── modeling/08_display_lda_topics.py       → results/44_TOPICS_FINAL.csv
             ├── modeling/14_generate_topic_explorer.py  → results/topic_explorer.html
-            └── analysis/09_test_lda_stability.py       → results/BASELINE_STABILITY_44TOPICS_CORRECTED.md
+            ├── analysis/09_test_lda_stability.py       → results/BASELINE_STABILITY_44TOPICS_CORRECTED.md
+            │   (period models: same vocabulary, the vectorizer saved by 07)
+            ├── modeling/15_fit_period_lda.py           → models/period_lda_11/, results/period_11_topics.csv
+            └── analysis/16_seed_stability_periods.py   → results/PERIOD_SEED_STABILITY_SUMMARY.md, results/period_stability/
 ```
 
 Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl`, `group2_1994-2004.jsonl`, `group3_2005-2014.jsonl`, `group4_2015-2025.jsonl`. Each stage adds fields and keeps earlier ones, so metadata (`dok_id`, title, date, author names) is carried through to the models. All of `data/` is ignored by git.
@@ -80,7 +83,11 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - MD5 hash of the whitespace-normalized final text (`text_no_stopwords`); one hash dictionary shared across all bins, so duplicates are detected across time periods
 - Prints duplicates per bin, the total and percentage, and each duplicate → original `dok_id`; writes no data
 - The count depends on the final text, so re-run it after changing the boilerplate or stopword lists
-- Last recorded result: 133 duplicates (0.92%), measured on the earlier normalized-text pipeline; re-check after re-running
+- Last result (2026-10-16, current pipeline): **515 duplicates of 13,917 motions (3.70%)** in 404 groups of identical texts; per period 11 / 25 / 177 / 302, so mostly after 2005
+  - Almost all are the **same motion resubmitted in a later year** (only 26 of the 515 copies share the year of their original), e.g. *Forskningsreaktor i Oskarshamn* 2015–2017, *Barnomsorg på obekväm arbetstid* 2018–2021
+  - Most are full-length texts (307 copies over 100 words, 200 of 21–100 words); 8 are near-empty bodies (e.g. only `sakna`)
+  - The earlier count (133, 0.92%) was on the pre-Stanza pipeline. The rise is expected: motion numbers and author names are now removed at extraction, so a resubmitted motion becomes identical to its original
+  - Relevance: a resubmitted motion counts once per year it was submitted, which weights recurring proposals in prominence; whether to keep them is an open point in the seminar notes (2.10)
 - Optional argument: `[input_dir]` (default `data/output/stopword_removed`)
 
 ### 8. LDA Model (`modeling/07_fit_baseline_lda.py`)
@@ -97,6 +104,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 | Script | Reads | Writes |
 |---|---|---|
 | `modeling/08_display_lda_topics.py [model_dir]` | `models/baseline_lda_44/` | `results/44_TOPICS_FINAL.csv` (top 20 words/topic) |
+| `modeling/15_fit_period_lda.py [num_topics]` | `data/output/stopword_removed/`, baseline vectorizer | `models/period_lda_<k>/` (one model per period + `vocabulary.txt`), `results/period_<k>_topics.csv` (top 20 words per topic and period). See *Plan: Period Models* |
 | `modeling/14_generate_topic_explorer.py` | `models/baseline_lda_44/`, `data/output/stopword_removed/`, template `modeling/topic_explorer_template.html` | `results/topic_explorer.html`: word cloud per topic, share overall and per period, top 8 motions with year/party/id, party concentration among the top 5 motions. Reads the model directly. Replaces the earlier word cloud scripts (12, 13) and their template |
 
 - Word weights are shown as normalized probabilities P(word | topic)
@@ -110,6 +118,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 | `11_validate_matching_quick.py` | Smoke test on 2,000 real documents + synthetic permutation test (8 topics) | stdout |
 | `seed_stability.py` | Module: shared seed-stability procedure (fit one model per seed, match every pair, write the report) used by 09 | — |
 | `09_test_lda_stability.py` | Seed stability of the 44-topic baseline | `results/BASELINE_STABILITY_44TOPICS_CORRECTED.md` |
+| `16_seed_stability_periods.py [k ...]` | Seed stability of the period models for several topic counts (default 8, 11, 15), to choose the count per period | `results/PERIOD_SEED_STABILITY_SUMMARY.md`; full report and per-topic CSV per period and count in `results/period_stability/` |
 
 **Seed-stability reports** list, per seed, the training perplexity and iteration count; then the **stability per topic** of the reference model (seed 42, the seed of the reported model); then cosine and Jaccard statistics for each of the 10 seed pairs; then pooled statistics over all 440 matched topic pairs.
 
@@ -164,7 +173,7 @@ Known trade-offs of the current approach (seen when testing on example sentences
 |--------|-------|------|
 | Total motions | 13,917 | 13,957 UbU files; 40 without body text or outside 1986–2025 |
 | Temporal bins | 4 | 1986-1993, 1994-2004, 2005-2014, 2015-2025 |
-| Duplicates detected | 133 (0.92%) | Earlier pipeline; flagged, kept in dataset |
+| Duplicates detected | 515 (3.70%) | Mostly resubmissions in later years; kept in dataset |
 | Vocabulary | 10,000 | `max_features` |
 | Stop words | NLTK (114) + 85 supplementary | |
 | Boilerplate phrases | 440 | Explicit phrases, no wildcards |
@@ -231,6 +240,10 @@ python modeling/14_generate_topic_explorer.py   # word clouds
 
 # Stability test (5 seeds; about 1 hour)
 python analysis/09_test_lda_stability.py
+
+# Period models (run after 07: they use its vectorizer)
+python analysis/16_seed_stability_periods.py    # choose the topic count first: 60 fits, roughly 1-3 hours
+python modeling/15_fit_period_lda.py 11         # then fit with the chosen count
 ```
 
 `01_extract_from_xml.py` accepts `[xml_dir] [output_dir]`; preprocessing scripts 02–05 and `07_fit_baseline_lda.py` accept `[input_dir] [output_dir]` arguments to override the defaults.
@@ -249,6 +262,10 @@ python analysis/check_pipeline_output.py
 ```
 
 - **`tests/test_preprocessing.py`** — HTML parsing (words split across spans are joined), character repair, title heading removal, motion number and author name removal, period boundaries, boilerplate matching on word forms (and AUX `ska` dropped while the noun `skola` is kept), normalization, and the stopword list (lemma forms included, content words such as `skola`, `lärare`, `utbildning` excluded)
+- **`tests/test_period_models.py`** — the period models:
+  - **Loading:** the periods together hold exactly the motions of the whole-corpus model, in the same order, with the same skip rule; periods come in order with their labels
+  - **Shared vocabulary:** one model per period with the shared settings; every model has the same vocabulary in the same order; a word absent from a period still has a column there with only prior weight; a reordered vocabulary is rejected; adjacent periods can be matched with `topic_matching.py`. A mutation check (giving each period its own vectorizer) makes these tests fail
+  - **Stability summary:** per-pair means, found-in-all/none and stable counts computed correctly; one summary row per period and count
 - **`tests/test_topic_matching.py`** — Hungarian matching on synthetic topic matrices: identical models match with cosine 1, a known permutation is recovered, mismatched or reordered vocabularies and mismatched topic counts are rejected, summary statistics equal the per-topic values
 - **`tests/test_seed_stability.py`** — the seed-stability tests and the shared LDA code:
   - **Text loading:** body text only (titles not added), motions without body text skipped, malformed lines counted
@@ -273,17 +290,20 @@ project/
 │   ├── 07_fit_baseline_lda.py
 │   ├── 08_display_lda_topics.py
 │   ├── 14_generate_topic_explorer.py
+│   ├── 15_fit_period_lda.py              (one model per period, shared vocabulary)
 │   ├── topic_explorer_template.html
 │   └── lda_common.py                     (shared LDA settings, text loading)
 ├── tests/
 │   ├── test_preprocessing.py             (unit tests for steps 01, 03, 04, 05)
 │   ├── test_topic_matching.py            (unit tests for analysis/topic_matching.py)
-│   └── test_seed_stability.py            (seed-stability tests and shared LDA code)
+│   ├── test_seed_stability.py            (seed-stability tests and shared LDA code)
+│   └── test_period_models.py             (period models and their seed-stability test)
 ├── analysis/
 │   ├── check_pipeline_output.py          (sanity checks on pipeline output)
 │   ├── topic_matching.py
 │   ├── seed_stability.py                 (shared seed-stability procedure and report)
 │   ├── 09_test_lda_stability.py
+│   ├── 16_seed_stability_periods.py      (seed stability per period and topic count)
 │   ├── 11_validate_matching_quick.py
 │   └── count_duplicates.py               (duplicate count for the report)
 ├── config/
@@ -361,13 +381,15 @@ project/
 
 **Relation to Gordon's approach:** Gordon found similar whole-corpus instability (Jaccard 0.26–0.31) and addressed it with temporal binning, which constrains each period's vocabulary and author mix.
 
-## Plan: Period Models and Cross-Period Comparison (not yet implemented)
+## Plan: Period Models and Cross-Period Comparison (code ready, not yet run)
 
 Separate LDA models will be fitted for each of the four periods and their topics compared across periods with cosine similarity. Cosine similarity between two topic-word vectors is only meaningful if both vectors refer to **the same words in the same order** (supervisor's comment, 2026-10-16). The design below guarantees that.
 
 **Already in place**
 - `analysis/topic_matching.py` refuses to compute similarities unless both models have an identical vocabulary in identical column order (`np.array_equal`); different or reordered vocabularies raise a `ValueError`. This is tested in `tests/test_topic_matching.py` (vocabulary mismatch, reordered vocabulary), so a misaligned comparison cannot pass silently.
 - The whole-corpus model and all seed-stability runs already share one vocabulary: the vectorizer saved by `07_fit_baseline_lda.py`.
+- **Period models (2026-10-16):** `modeling/15_fit_period_lda.py` fits one model per period with that same vectorizer (option A below; design points 1–4 implemented), checks that all period models have the same vocabulary in the same order, and saves the models and the vocabulary. `analysis/16_seed_stability_periods.py` runs the seed-stability test per period and topic count. Both are tested in `tests/test_period_models.py`. Neither has been run on the corpus yet.
+- **Vocabulary option still open** (seminar notes, 0.1/2.2): the code uses option A, one global vocabulary. If option B (per-period vocabularies compared over shared words, as Gordon) is chosen, `period_vectorizers()` in 15 changes to fit one vectorizer per period, and a step is added that restricts two periods' topic vectors to their shared words before matching; the vocabulary check would then apply to that restricted pair.
 
 **Design for the period models**
 1. **One shared vocabulary for all four periods.** Fit a single `CountVectorizer` once on the full corpus (or reuse the baseline vectorizer), then transform each period's motions with it before fitting that period's LDA model. Every period model's `components_` then has the same columns, in the same order, and topics can be compared across periods directly.
@@ -401,6 +423,6 @@ Alternative: fix 11 per period (like Gordon's fixed 15) and use the seed test on
 0. **Act on the first model review** (`MODEL_REVIEW.md`, 2026-10-16): the first models on the Stanza pipeline are fitted and reviewed; the review's vocabulary fixes (boilerplate gaps, abbreviation matching in step 03, artifact stopwords, Stanza lemma errors) are done; a few small leftovers remain (see the review)
 1. ✅ **Seed-stability tests** for the 44-topic model on body text and with 3×/5× title weighting (2026-10-16; see *Seed-Stability Results*)
 2. ✅ **Evaluate:** title weighting gives only a small stability gain; **no title weighting**, weighting code removed
-3. **Period models** (4 separate models, one shared vocabulary; see *Plan: Period Models* above), starting with the seed-stability test per period at a few topic counts (e.g. 8, 11, 15) to choose the count per period
+3. **Period models** (see *Plan: Period Models* above): code ready and tested (15, 16). After the seminar's answer on the vocabulary (option A or B): run 16 to choose the topic count per period, then fit with 15
 4. **Topic alignment and trajectory analysis**
 5. **Publication:** document findings for thesis/paper
