@@ -67,7 +67,7 @@ Not fixed (genuine source damage): 2 motions from 1997 (e.g. GL02Ub807) have å/
 
 ## Not All Listed Tokens Are Artifacts
 
-Several tokens in the lists above and in `TWO_LETTER_WORDS.txt` are real words or abbreviations: `k`/`p` (from `s.k.`, `p.g.a.`), `malm` (ore), `el` (electricity, El Sistema), `sa` (said), `te` (appear), `sj`, `nt`, `hb`, `oh`, `rs` (acronyms). After re-running extraction, the artifact stopwords in `05_remove_stopwords.py` (also used for titles) should be re-evaluated, since some remove real words.
+Several tokens in the lists above (and in the former list of two-letter words) are real words or abbreviations: `k`/`p` (from `s.k.`, `p.g.a.`), `malm` (ore), `el` (electricity, El Sistema), `sa` (said), `te` (appear), `sj`, `nt`, `hb`, `oh`, `rs` (acronyms). After re-running extraction, the artifact stopwords in `05_remove_stopwords.py` (also used for titles) should be re-evaluated, since some remove real words.
 
 ## Recommendation
 

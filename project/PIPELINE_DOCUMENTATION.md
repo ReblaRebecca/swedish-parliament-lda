@@ -25,12 +25,11 @@ data/output/stopword_removed/         fields: text_no_stopwords, title_processed
     │
     ├── modeling/10_fit_title_weighted_lda.py  → models/title_weighted_lda_44/
     │       ↓ modeling/11_display_weighted_lda_topics.py → results/weighted_44_TOPICS_FINAL.csv
-    │       ↓ modeling/12_generate_weighted_wordclouds.py → results/weighted_topics_wordclouds.html
+    │
+    │   (after 07 and 10) modeling/14_generate_topic_explorer.py → results/topic_explorer.html
     │
     └── modeling/06_build_shared_vocabulary_and_fit_models.py  (alternative: shared 20k vocabulary)
             → models/baseline_lda_44_shared_vocab/, models/weighted_lda_44_shared_vocab/
-            ↓ modeling/13_extract_topics_and_update_wordcloud.py
-              → results/weighted_44_TOPICS_SHARED_VOCAB.csv, results/weighted_topics_wordclouds_shared_vocab.html
 ```
 
 Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl`, `group2_1994-2004.jsonl`, `group3_2005-2014.jsonl`, `group4_2015-2025.jsonl`. Each stage adds fields and keeps earlier ones, so metadata (`dok_id`, title, date, author names) is carried through to the models. All of `data/` is ignored by git.
@@ -105,7 +104,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 - **Vectorizer:** loads `models/baseline_lda_44/baseline_vectorizer.pkl` (run 8a first)
 - **LDA:** same settings as the baseline (44 topics, seed 42), from `modeling/lda_common.py`
 - **Output:** `models/title_weighted_lda_44/title_weighted_lda_44_topics.pkl`, `models/title_weighted_lda_44/title_weighting_stats.txt`, `results/document_topic_distribution.csv`
-- ⚠️ Writes the same `results/document_topic_distribution.csv` as 8a and overwrites it. `12_generate_weighted_wordclouds.py` expects the weighted version, so run 10 after 07.
+- ⚠️ Writes the same `results/document_topic_distribution.csv` as 8a and overwrites it. The topic explorer (14) does not use this file; it reads both models directly.
 
 ### 8c. Shared-Vocabulary Variant (`modeling/06_build_shared_vocabulary_and_fit_models.py`)
 - Builds a separate 20,000-feature vocabulary from body + one title copy, then fits both a baseline (body only) and a weighted (body + 5× title) 44-topic model on it
@@ -116,8 +115,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 |---|---|---|
 | `modeling/08_display_lda_topics.py [model_dir]` | `models/baseline_lda_44/` | `results/44_TOPICS_FINAL.csv` (top 20 words/topic) |
 | `modeling/11_display_weighted_lda_topics.py` | `models/title_weighted_lda_44/` + baseline vectorizer | `results/weighted_44_TOPICS_FINAL.csv` |
-| `modeling/12_generate_weighted_wordclouds.py` | `weighted_44_TOPICS_FINAL.csv`, `document_topic_distribution.csv`, template `results/topics_wordclouds.html` | `results/weighted_topics_wordclouds.html`, `results/topic_statistics.csv` |
-| `modeling/13_extract_topics_and_update_wordcloud.py` | `models/weighted_lda_44_shared_vocab/` | `results/weighted_44_TOPICS_SHARED_VOCAB.csv`, `results/weighted_topics_wordclouds_shared_vocab.html` |
+| `modeling/14_generate_topic_explorer.py` | `models/baseline_lda_44/`, `models/title_weighted_lda_44/`, `data/output/stopword_removed/`, template `modeling/topic_explorer_template.html` | `results/topic_explorer.html`: word cloud per topic for both models (switchable), share overall and per period, top 8 motions with year/party/id, party concentration among the top 5 motions. Reads the models directly. Replaces the earlier word cloud scripts (12, 13) and their template |
 
 - Word weights are shown as normalized probabilities P(word | topic)
 - Topics use neutral names (Topic 1–44, no interpretive labels) so they can be inspected without prior bias
@@ -250,7 +248,7 @@ python modeling/08_display_lda_topics.py
 # Title-weighted model (run after 07)
 python modeling/10_fit_title_weighted_lda.py
 python modeling/11_display_weighted_lda_topics.py
-python modeling/12_generate_weighted_wordclouds.py
+python modeling/14_generate_topic_explorer.py   # word clouds for both models
 
 # Stability tests
 python analysis/09_test_lda_stability.py
@@ -299,8 +297,8 @@ project/
 │   ├── 08_display_lda_topics.py
 │   ├── 10_fit_title_weighted_lda.py
 │   ├── 11_display_weighted_lda_topics.py
-│   ├── 12_generate_weighted_wordclouds.py
-│   ├── 13_extract_topics_and_update_wordcloud.py
+│   ├── 14_generate_topic_explorer.py
+│   ├── topic_explorer_template.html
 │   └── lda_common.py                     (shared LDA settings, title weighting, text loading)
 ├── tests/
 │   ├── test_preprocessing.py             (unit tests for steps 01, 03, 04, 05)
@@ -319,8 +317,7 @@ project/
 ├── config/
 │   ├── boilerplate_phrases.txt
 │   └── lemma_corrections.txt              (corrections for known Stanza lemma errors)
-├── results/
-│   └── topics_wordclouds.html            (template for the word cloud scripts; other results are regenerated)
+├── results/                               (not in git; regenerated by the scripts)
 ├── data/                                  (not in git)
 │   ├── input/extracted_text_xml/
 │   └── output/{lemmatized,boilerplate_removed,normalized,stopword_removed}/
@@ -332,8 +329,7 @@ project/
 ├── PIPELINE_DOCUMENTATION.md
 ├── PREPROCESSING_ARTIFACTS.md
 ├── MODEL_REVIEW.md                        (review of the first models on the Stanza pipeline)
-├── PROGRESS_SEMINAR_1.md                  (status and open decisions, seminar 2026-10-19)
-└── TWO_LETTER_WORDS.txt
+└── PROGRESS_SEMINAR_1.md                  (status and open decisions, seminar 2026-10-19)
 ```
 
 ## Current Phase: Title-Weighted Stability Testing (2026-10-14)

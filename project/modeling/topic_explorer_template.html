@@ -1,0 +1,402 @@
+<title>UbU Topic Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: masthead, sticky control bar, then one column of topic cards; each card puts the
+     word cloud beside a period chart and the topic's top motions, stacking on narrow screens. */
+  :root {
+    --paper: #f4f6f8;
+    --surface: #ffffff;
+    --ink: #17202b;
+    --muted: #5a6575;
+    --rule: #dbe1e8;
+    --accent: #1d5a8c;
+    --accent-soft: #e2ecf5;
+    --gold: #a8761c;
+    --gold-soft: #f5ead2;
+    --word-mid: #2b3a4d;
+    --word-low: #7a8697;
+    --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+    --font-body: "Source Sans 3", "Helvetica Neue", Arial, sans-serif;
+    --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --step--1: 0.8125rem;
+    --step-0: 1rem;
+    --step-1: 1.25rem;
+    --step-2: 1.75rem;
+    --step-3: 2.5rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #10151c;
+      --surface: #171f29;
+      --ink: #e5eaf0;
+      --muted: #9ba7b6;
+      --rule: #2a3543;
+      --accent: #84b6e2;
+      --accent-soft: #1c2f42;
+      --gold: #e2b65e;
+      --gold-soft: #3a2e17;
+      --word-mid: #d3dbe5;
+      --word-low: #8995a6;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #10151c;
+    --surface: #171f29;
+    --ink: #e5eaf0;
+    --muted: #9ba7b6;
+    --rule: #2a3543;
+    --accent: #84b6e2;
+    --accent-soft: #1c2f42;
+    --gold: #e2b65e;
+    --gold-soft: #3a2e17;
+    --word-mid: #d3dbe5;
+    --word-low: #8995a6;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: var(--step-0);
+    line-height: 1.5;
+    padding-inline: 20px;
+  }
+  .page { max-width: 1180px; margin-inline: auto; display: grid; gap: 24px; padding-block: 32px 56px; }
+
+  .masthead { display: grid; gap: 8px; }
+  .eyebrow { font-family: var(--font-data); font-size: var(--step--1); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-family: var(--font-display); font-weight: 700; font-size: var(--step-3); line-height: 1.1; text-wrap: balance; }
+  .lede { color: var(--muted); max-width: 65ch; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  .controls {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+    background: var(--paper); border-bottom: 1px solid var(--rule);
+    padding-block: 12px;
+  }
+  .segmented { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .segmented input { position: absolute; opacity: 0; pointer-events: none; }
+  .segmented label { padding: 7px 14px; cursor: pointer; font-weight: 600; font-size: 0.9375rem; color: var(--muted); }
+  .segmented label + input + label { border-left: 1px solid var(--rule); }
+  .segmented input:checked + label { background: var(--accent); color: var(--surface); }
+  .segmented input:focus-visible + label { outline: 2px solid var(--gold); outline-offset: -2px; }
+  .field { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9375rem; color: var(--muted); }
+  .field select, .field input {
+    font: inherit; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--rule); border-radius: 8px; padding: 6px 10px;
+  }
+  .field input { width: 13rem; max-width: 100%; }
+  .field select:focus-visible, .field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .count { margin-left: auto; font-family: var(--font-data); font-size: var(--step--1); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 28px; color: var(--muted); font-size: 0.9375rem; }
+  .howto dt { font-weight: 600; color: var(--ink); }
+  .howto dd { margin: 0; }
+
+  .grid { display: grid; gap: 16px; }
+  .topic {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 16px 18px; display: grid; gap: 10px;
+  }
+  .topic-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+  .topic-head h2 { font-family: var(--font-display); font-weight: 700; font-size: var(--step-1); }
+  .share { font-family: var(--font-data); font-size: 0.875rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .chip {
+    margin-left: auto; font-family: var(--font-data); font-size: 0.8125rem; font-weight: 500;
+    padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .chip.concentrated { background: var(--gold-soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--gold); }
+
+  .topic-body { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .topic-body { grid-template-columns: minmax(0, 1fr); } }
+
+  .cloud { width: 100%; height: auto; display: block; }
+  .cloud text { font-family: var(--font-display); font-weight: 500; }
+  .cloud .w1 { fill: var(--accent); font-weight: 700; }
+  .cloud .w2 { fill: var(--word-mid); }
+  .cloud .w3 { fill: var(--word-low); }
+  .cloud .hl { fill: var(--gold); }
+
+  .side { display: grid; gap: 14px; }
+  .periods figcaption, .motions-head { font-family: var(--font-data); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .periods svg { width: 100%; max-width: 320px; height: auto; display: block; }
+  .periods .bar { fill: var(--accent); }
+  .periods .val { fill: var(--ink); font-family: var(--font-data); font-size: 11px; }
+  .periods .lab { fill: var(--muted); font-family: var(--font-data); font-size: 10.5px; }
+  .periods .base { stroke: var(--rule); stroke-width: 1; }
+
+  .motions { list-style: none; display: grid; gap: 6px; padding: 0; margin: 0; }
+  .motions li { display: grid; gap: 1px; }
+  .m-title { font-size: 0.9375rem; line-height: 1.3; overflow-wrap: anywhere; }
+  .m-meta { font-family: var(--font-data); font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .empty { color: var(--muted); padding: 24px 0; }
+  footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid var(--rule); padding-top: 14px; max-width: 80ch; }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <p class="eyebrow">Riksdagen · Utbildningsutskottet (UbU) · Motions 1986–2025</p>
+    <h1>Topics in education motions</h1>
+    <p class="lede" id="lede">Two 44-topic LDA models fitted on the same motions.</p>
+  </header>
+
+  <div class="controls" role="group" aria-label="Display options">
+    <div class="segmented" role="radiogroup" aria-label="Model">
+      <input type="radio" name="model" id="model-baseline" value="baseline" checked>
+      <label for="model-baseline">Baseline</label>
+      <input type="radio" name="model" id="model-weighted" value="weighted">
+      <label for="model-weighted" id="label-weighted">Titles ×5</label>
+    </div>
+    <label class="field" for="sort">Sort
+      <select id="sort">
+        <option value="num">Topic number</option>
+        <option value="share">Overall share</option>
+        <option value="rise">Rise (last vs first period)</option>
+        <option value="fall">Fall (last vs first period)</option>
+        <option value="party">Party concentration</option>
+      </select>
+    </label>
+    <label class="field" for="search">Find word
+      <input type="search" id="search" placeholder="e.g. förskola" autocomplete="off" spellcheck="false">
+    </label>
+    <span class="count" id="count" aria-live="polite"></span>
+  </div>
+
+  <dl class="howto">
+    <div><dt>Word size</dt><dd>The word's probability in the topic, square-root scaled. Top 30 words.</dd></div>
+    <div><dt>Share</dt><dd>Mean topic proportion over the motions; every motion counts equally. The bars split it by period.</dd></div>
+    <div><dt>Party chip</dt><dd id="party-help">How many of the topic's top 5 motions share the first signatory's party.</dd></div>
+    <div><dt>Top motions</dt><dd>The motions with the highest proportion θ of this topic, with year, party and document id.</dd></div>
+  </dl>
+
+  <main class="grid" id="grid" aria-live="polite"></main>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>const DATA = __TOPIC_DATA__;</script>
+<script>
+(function () {
+  const grid = document.getElementById('grid');
+  const sortSelect = document.getElementById('sort');
+  const searchInput = document.getElementById('search');
+  const count = document.getElementById('count');
+  const W = 560, H = 300;
+  const layoutCache = {};
+
+  const store = {
+    get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
+    set(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* storage unavailable */ } },
+  };
+
+  const pct = v => (v * 100).toFixed(1) + '%';
+  const canvas = document.createElement('canvas').getContext('2d');
+  function measure(text, size, weight) {
+    canvas.font = `${weight} ${size}px "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif`;
+    return { w: canvas.measureText(text).width, h: size * 0.92 };
+  }
+
+  // Spiral word placement. Every word must fit: if one does not, all sizes shrink and the layout restarts.
+  function layoutCloud(words) {
+    const pmax = words[0][1], pmin = words[words.length - 1][1];
+    const sq = p => pmax === pmin ? 1 : (Math.sqrt(p) - Math.sqrt(pmin)) / (Math.sqrt(pmax) - Math.sqrt(pmin));
+    let maxSize = 58, minSize = 13;
+    for (let attempt = 0; attempt < 14; attempt++) {
+      const placed = [];
+      let failed = false;
+      for (let i = 0; i < words.length; i++) {
+        const [text, p] = words[i];
+        const size = minSize + sq(p) * (maxSize - minSize);
+        const weight = i < 3 ? 700 : 500;
+        const m = measure(text, size, weight);
+        const bw = m.w + 4, bh = m.h + 2;
+        let spot = null;
+        for (let t = 0; t < 900 && !spot; t += 0.12) {
+          const r = 3.2 * t;
+          const x = W / 2 + r * Math.cos(t) * 1.6 - bw / 2;
+          const y = H / 2 + r * Math.sin(t) - bh / 2;
+          if (x < 2 || y < 2 || x + bw > W - 2 || y + bh > H - 2) { if (r > W) break; continue; }
+          if (placed.every(q => x + bw <= q.x || q.x + q.w <= x || y + bh <= q.y || q.y + q.h <= y)) {
+            spot = { x, y, w: bw, h: bh };
+          }
+        }
+        if (!spot) { failed = true; break; }
+        placed.push({ ...spot, text, p, size, weight, rank: i });
+      }
+      if (!failed) return placed;
+      maxSize *= 0.9;
+      minSize = Math.max(10, minSize * 0.95);
+    }
+    return [];
+  }
+
+  function svgEl(name, attrs) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', name);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+
+  function cloudSvg(topic, modelKey, query) {
+    const key = modelKey + ':' + topic.num;
+    if (!layoutCache[key]) layoutCache[key] = layoutCloud(topic.words);
+    const svg = svgEl('svg', { class: 'cloud', viewBox: `0 0 ${W} ${H}`, role: 'img',
+      'aria-label': 'Word cloud: ' + topic.words.slice(0, 10).map(w => w[0]).join(', ') });
+    for (const w of layoutCache[key]) {
+      const tier = w.rank < 3 ? 'w1' : (w.rank < 12 ? 'w2' : 'w3');
+      const hl = query && w.text.includes(query) ? ' hl' : '';
+      const t = svgEl('text', { x: (w.x + w.w / 2).toFixed(1), y: (w.y + w.h / 2).toFixed(1),
+        'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': w.size.toFixed(1), class: tier + hl });
+      t.textContent = w.text;
+      const tip = svgEl('title', {});
+      tip.textContent = `${w.text}: ${(w.p * 100).toFixed(2)}%`;
+      t.appendChild(tip);
+      svg.appendChild(t);
+    }
+    return svg;
+  }
+
+  function periodChart(topic) {
+    const cw = 320, ch = 120, top = 18, bottom = 22, left = 4;
+    const max = Math.max(...topic.periods) || 1;
+    const slot = (cw - left * 2) / topic.periods.length;
+    const barW = slot * 0.56;
+    const svg = svgEl('svg', { viewBox: `0 0 ${cw} ${ch}`, role: 'img',
+      'aria-label': 'Share by period: ' + DATA.periods.map((p, i) => `${p} ${pct(topic.periods[i])}`).join(', ') });
+    const plotH = ch - top - bottom;
+    topic.periods.forEach((v, i) => {
+      const h = Math.max(1, (v / max) * plotH);
+      const x = left + i * slot + (slot - barW) / 2;
+      svg.appendChild(svgEl('rect', { class: 'bar', x: x.toFixed(1), y: (top + plotH - h).toFixed(1), width: barW.toFixed(1), height: h.toFixed(1), rx: 2 }));
+      const val = svgEl('text', { class: 'val', x: (x + barW / 2).toFixed(1), y: (top + plotH - h - 5).toFixed(1), 'text-anchor': 'middle' });
+      val.textContent = pct(v);
+      svg.appendChild(val);
+      const lab = svgEl('text', { class: 'lab', x: (x + barW / 2).toFixed(1), y: ch - 6, 'text-anchor': 'middle' });
+      lab.textContent = DATA.periods[i];
+      svg.appendChild(lab);
+    });
+    svg.appendChild(svgEl('line', { class: 'base', x1: left, x2: cw - left, y1: top + plotH + 0.5, y2: top + plotH + 0.5 }));
+    return svg;
+  }
+
+  function card(topic, modelKey, query) {
+    const art = document.createElement('article');
+    art.className = 'topic';
+    art.id = `topic-${modelKey}-${topic.num}`;
+
+    const head = document.createElement('header');
+    head.className = 'topic-head';
+    const h2 = document.createElement('h2');
+    h2.textContent = `Topic ${topic.num}`;
+    const share = document.createElement('span');
+    share.className = 'share';
+    share.textContent = `share ${pct(topic.share)}`;
+    const chip = document.createElement('span');
+    chip.className = 'chip' + (topic.partyCount >= 4 ? ' concentrated' : '');
+    chip.textContent = `${topic.party} ${topic.partyCount}/5`;
+    chip.title = `${topic.partyCount} of the top 5 motions have a first signatory from ${topic.party}`;
+    head.append(h2, share, chip);
+
+    const body = document.createElement('div');
+    body.className = 'topic-body';
+    const side = document.createElement('div');
+    side.className = 'side';
+
+    const fig = document.createElement('figure');
+    fig.className = 'periods';
+    const cap = document.createElement('figcaption');
+    cap.textContent = 'Share by period';
+    fig.append(cap, periodChart(topic));
+
+    const mh = document.createElement('p');
+    mh.className = 'motions-head';
+    mh.textContent = 'Top motions';
+    const ol = document.createElement('ol');
+    ol.className = 'motions';
+    for (const m of topic.motions) {
+      const li = document.createElement('li');
+      const title = document.createElement('span');
+      title.className = 'm-title';
+      title.textContent = m.title || '(no title)';
+      const meta = document.createElement('span');
+      meta.className = 'm-meta';
+      meta.textContent = `${m.year} · ${m.party || '?'} · ${m.id} · θ ${m.theta.toFixed(2)}`;
+      li.append(title, meta);
+      ol.appendChild(li);
+    }
+    side.append(fig, mh, ol);
+    body.append(cloudSvg(topic, modelKey, query), side);
+    art.append(head, body);
+    return art;
+  }
+
+  function currentModel() {
+    return document.querySelector('input[name="model"]:checked').value;
+  }
+
+  function render() {
+    const modelKey = currentModel();
+    const model = DATA.models[modelKey];
+    const query = searchInput.value.trim().toLowerCase();
+    let topics = model.topics.slice();
+    const change = t => t.periods[t.periods.length - 1] - t.periods[0];
+    const sorters = {
+      num: (a, b) => a.num - b.num,
+      share: (a, b) => b.share - a.share,
+      rise: (a, b) => change(b) - change(a),
+      fall: (a, b) => change(a) - change(b),
+      party: (a, b) => b.partyCount - a.partyCount || b.share - a.share,
+    };
+    topics.sort(sorters[sortSelect.value] || sorters.num);
+    if (query) topics = topics.filter(t => t.words.some(w => w[0].includes(query)));
+
+    grid.replaceChildren(...topics.map(t => card(t, modelKey, query)));
+    if (!topics.length) {
+      const p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = `No topic has “${query}” among its top 30 words in the ${model.label} model.`;
+      grid.appendChild(p);
+    }
+    count.textContent = query ? `${topics.length} of ${model.topics.length} topics` : `${model.topics.length} topics`;
+    store.set('ubu-model', modelKey);
+    store.set('ubu-sort', sortSelect.value);
+  }
+
+  // Static text from the data
+  document.getElementById('label-weighted').textContent = DATA.models.weighted.label;
+  document.getElementById('lede').innerHTML =
+    `Two ${DATA.topics}-topic LDA models fitted on the same <strong>${DATA.motions.toLocaleString('en')} motions</strong>: ` +
+    `the <strong>baseline</strong> on body text only, and a model with the <strong>title appended ${DATA.models.weighted.label.replace('Titles ×', '')} times</strong>. ` +
+    'Switch between them to compare the topics.';
+  document.getElementById('party-help').textContent =
+    "How many of the topic's top 5 motions share the first signatory's party; gold when 4 or 5 do. For reference, first signatories overall: " +
+    DATA.partyShares.map(([p, s]) => `${p} ${Math.round(s * 100)}%`).join(', ') + '.';
+  document.getElementById('footer').textContent =
+    `Generated ${DATA.generated} by modeling/14_generate_topic_explorer.py from models/baseline_lda_44 and models/title_weighted_lda_44 ` +
+    `(scikit-learn LDA, ${DATA.topics} topics). Motions per period: ` +
+    DATA.periods.map((p, i) => `${p} ${DATA.periodCounts[i].toLocaleString('en')}`).join(', ') + '. ' +
+    'Topic numbers are arbitrary and differ between the two models.';
+
+  const savedModel = store.get('ubu-model');
+  if (savedModel && DATA.models[savedModel]) document.getElementById('model-' + savedModel).checked = true;
+  const savedSort = store.get('ubu-sort');
+  if (savedSort && [...sortSelect.options].some(o => o.value === savedSort)) sortSelect.value = savedSort;
+
+  document.querySelectorAll('input[name="model"]').forEach(r => r.addEventListener('change', render));
+  sortSelect.addEventListener('change', render);
+  let timer;
+  searchInput.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(render, 150); });
+
+  // Measure words only once the display font has loaded, so the layout matches what is drawn
+  const fontsReady = document.fonts && document.fonts.load
+    ? Promise.all([document.fonts.load('500 20px "Bricolage Grotesque"'), document.fonts.load('700 20px "Bricolage Grotesque"')]).catch(() => {})
+    : Promise.resolve();
+  Promise.race([fontsReady, new Promise(r => setTimeout(r, 2500))]).then(render);
+})();
+</script>
