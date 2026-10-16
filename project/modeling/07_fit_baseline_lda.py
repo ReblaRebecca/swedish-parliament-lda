@@ -21,7 +21,7 @@ except ImportError:
     print("Error: scikit-learn not installed. Install with: pip install scikit-learn")
     sys.exit(1)
 
-# Shared LDA settings and text loading (also used by the weighted model and the stability tests)
+# Shared LDA settings and text loading (also used by the stability test)
 from lda_common import LDA_PARAMS, NUM_TOPICS, fit_lda_model, load_body_texts
 
 

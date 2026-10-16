@@ -2,6 +2,8 @@
 
 First baseline and title-weighted 44-topic models fitted on the re-extracted, Stanza-lemmatized text. This review covers the run itself, the topics and the vocabulary. Fixes 1–4 at the end were made the same day, and steps 03–05 and both models were re-run; see **After the Fixes**.
 
+> **Note (2026-10-16, later):** title weighting was dropped after the seed-stability runs and the weighted model's scripts (`10`, `11`) were removed; see `PIPELINE_DOCUMENTATION.md`, *Seed-Stability Results*. This review is kept as a record of both models.
+
 ## Run
 
 | | Baseline (`07`) | Title-weighted 5× (`10`) |
@@ -138,4 +140,15 @@ The real source is **compounds**, where the correction table (which matches whol
 
 The same truncation probably affects compounds of the other corrected words (e.g. *-lärosäten*, *-handlingsplan*); not yet checked.
 
-**Proposed fix (not done):** apply each correction to the **end** of a lemma, so every lemma ending in `kompet` gets `kompetens` (`gymnasiekompet` → `gymnasiekompetens`, `it-kompet` → `it-kompetens`), and likewise for the other entries. Checked against the current table, no entry would produce a wrong word as a suffix (e.g. `förstärk` → `förstärka` is correct). Requires a re-run of steps 03–05 and the models (about 20 minutes). Affects a few hundred motions, so it is unlikely to change topic stability.
+**Fix (done 2026-10-16):** corrections can now also apply to the **end** of a lemma, but only for entries marked with `*` in `config/lemma_corrections.txt`. An earlier version of this review claimed a suffix rule would be safe for every entry. A scan of all lemmas showed it is not: `anslagen` → `anslag` would turn *sammanslagen* (merged) into `sammanslag`. The compounds of each entry were therefore checked before marking it:
+
+| Entry | Compounds found (tokens) | Marked `*` |
+|---|---|---|
+| `kompet` | 123 lemmas, 1,258 tokens (*gymnasie-, lärar-, yrkes-, högskole-, forsknings-, IT-, HBT-kompetens*) | yes |
+| `bibliotekarium` | 4 lemmas, 51 tokens (*skol-, folk-, lärarbibliotekarier*) | yes |
+| `anslagen` | *sammanslagen* (8): would be wrong | no |
+| `stärk` | 8 lemmas, 11 tokens, mostly garbled forms (*.2stärk*, *•stärkt*) | no |
+| `läraryrk` | 1 garbled token | no |
+| other entries | none | no |
+
+Steps 03–05 and both models were re-run with the fix, followed by the seed-stability tests.

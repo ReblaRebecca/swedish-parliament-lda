@@ -48,7 +48,7 @@ def main():
 
     report = generate_report(
         f"Seed-Stability Analysis: {NUM_TOPICS}-Topic Baseline LDA",
-        "None (body text only)",
+        "Body text only (titles are not added)",
         NUM_TOPICS, seed_info, pairwise_results,
         closing_lines=[
             "## Key Change from Previous Analysis",

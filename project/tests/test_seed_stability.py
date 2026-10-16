@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Tests for the seed-stability tests and the shared LDA code they rely on
-(modeling/lda_common.py, analysis/seed_stability.py, the 09/13 scripts and the 07/10/06 models).
+(modeling/lda_common.py, analysis/seed_stability.py, 09_test_lda_stability.py and the 07 model).
 Small synthetic data only: no corpus or fitted models needed, runs in about half a minute.
 
 Run from project/:
@@ -16,9 +16,7 @@ import re
 import sys
 import tempfile
 import unittest
-from collections import Counter
 from pathlib import Path
-from unittest import mock
 
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
@@ -41,11 +39,7 @@ def load_script(relative_path):
 
 
 baseline_model = load_script('modeling/07_fit_baseline_lda.py')
-weighted_model = load_script('modeling/10_fit_title_weighted_lda.py')
-shared_vocab_models = load_script('modeling/06_build_shared_vocabulary_and_fit_models.py')
 baseline_stability = load_script('analysis/09_test_lda_stability.py')
-stability_5x = load_script('analysis/13_seed_stability_5x_weighted.py')
-stability_3x = load_script('analysis/13_seed_stability_3x_weighted.py')
 
 
 def quiet(function, *args, **kwargs):
@@ -63,61 +57,22 @@ def write_bin(directory, motions, extra_lines=()):
             f.write(line + '\n')
 
 
-class TestTitleWeighting(unittest.TestCase):
-    """Title words are appended exactly TITLE_WEIGHT times; documents without a title are body only."""
+class TestLoadBodyTexts(unittest.TestCase):
+    """The models are fitted on body text only; motions without body text are skipped."""
 
-    def test_reported_model_weight_is_five(self):
-        self.assertEqual(lda_common.TITLE_WEIGHT, 5)
-
-    def test_title_words_appended_title_weight_times(self):
-        counts = Counter(lda_common.weight_document('skola lärare', 'skola betyg').split())
-        self.assertEqual(counts, {'skola': 1 + 5, 'lärare': 1, 'betyg': 5})
-
-    def test_other_weight(self):
-        counts = Counter(lda_common.weight_document('elev', 'betyg', title_weight=3).split())
-        self.assertEqual(counts, {'elev': 1, 'betyg': 3})
-
-    def test_title_whitespace_normalized(self):
-        self.assertEqual(lda_common.weight_document('elev', '  betyg \n  skola ', 2).split(),
-                         ['elev', 'betyg', 'skola', 'betyg', 'skola'])
-
-    def test_empty_title_gives_body_only(self):
-        self.assertEqual(lda_common.weight_document('skola lärare', ''), 'skola lärare')
-        self.assertEqual(lda_common.weight_document('skola lärare', '   '), 'skola lärare')
-
-    def test_load_weighted_texts(self):
-        motions = [
-            {'dok_id': 'A', 'date': '1990-01-01', 'title': 'Lärarna', 'text_no_stopwords': 'skola lärare', 'title_processed': 'lärare'},
-            {'dok_id': 'B', 'date': '1991-01-01', 'title': '', 'text_no_stopwords': 'elev', 'title_processed': ''},
-            {'dok_id': 'C', 'date': '1992-01-01', 'title': 'Betyg', 'text_no_stopwords': '', 'title_processed': 'betyg'},
-            {'dok_id': 'D', 'date': '1993-01-01', 'title': '', 'text_no_stopwords': '', 'title_processed': ''},
-        ]
-        with tempfile.TemporaryDirectory() as tmp:
-            write_bin(tmp, motions, extra_lines=['{not json'])
-            texts, metadata, stats = lda_common.load_weighted_texts(Path(tmp), title_weight=5)
-
-        # C (title but no body) and D (empty) are skipped, as in the baseline
-        self.assertEqual([m['doc_id'] for m in metadata], ['A', 'B'])
-        self.assertEqual(Counter(texts[0].split()), {'skola': 1, 'lärare': 1 + 5})
-        self.assertEqual(texts[1], 'elev')
-        self.assertEqual(metadata[0], {'doc_id': 'A', 'title': 'Lärarna', 'year': '1990'})
-        self.assertEqual(stats, {'empty': 1, 'weighted': 1, 'total': 2, 'empty_body': 2, 'malformed': 1})
-
-    def test_baseline_and_weighted_use_the_same_motions(self):
+    def test_empty_bodies_skipped(self):
         motions = [
             {'dok_id': 'A', 'text_no_stopwords': 'skola', 'title_processed': 'lärare'},
             {'dok_id': 'B', 'text_no_stopwords': '', 'title_processed': 'betyg'},
             {'dok_id': 'C', 'text_no_stopwords': 'elev', 'title_processed': ''},
-            {'dok_id': 'D', 'text_no_stopwords': '', 'title_processed': ''},
             # Withdrawn motion: no words left, only a line break
             {'dok_id': 'E', 'text_no_stopwords': '\n', 'title_processed': 'utgå'},
         ]
         with tempfile.TemporaryDirectory() as tmp:
             write_bin(tmp, motions)
-            _, body_metadata, _ = lda_common.load_body_texts(Path(tmp))
-            _, weighted_metadata, _ = lda_common.load_weighted_texts(Path(tmp))
-        self.assertEqual(body_metadata, weighted_metadata)
-        self.assertEqual([m['doc_id'] for m in body_metadata], ['A', 'C'])
+            texts, metadata, _ = lda_common.load_body_texts(Path(tmp))
+        self.assertEqual([m['doc_id'] for m in metadata], ['A', 'C'])
+        self.assertEqual(texts, ['skola', 'elev'])  # titles are not added
 
     def test_load_body_texts(self):
         motions = [
@@ -137,23 +92,20 @@ class TestSharedSettings(unittest.TestCase):
     """The models and the stability tests use the same code, so they cannot drift apart."""
 
     def test_models_and_tests_use_the_shared_functions(self):
-        for module in (baseline_model, weighted_model, shared_vocab_models, seed_stability):
+        for module in (baseline_model, seed_stability):
             self.assertIs(module.fit_lda_model, lda_common.fit_lda_model, module.__name__)
-        for module in (weighted_model, stability_5x, stability_3x):
-            self.assertIs(module.load_weighted_texts, lda_common.load_weighted_texts, module.__name__)
         for module in (baseline_model, baseline_stability):
             self.assertIs(module.load_body_texts, lda_common.load_body_texts, module.__name__)
-        self.assertIs(shared_vocab_models.weight_document, lda_common.weight_document)
 
-    def test_no_script_builds_its_own_lda_or_weighting(self):
-        """Only lda_common.py creates LDA models or repeats titles (the quick matching check excepted)."""
+    def test_no_script_builds_its_own_lda(self):
+        """Only lda_common.py creates LDA models (the quick matching check excepted)."""
         allowed = {'lda_common.py', '11_validate_matching_quick.py'}
         offenders = []
         for path in sorted((PROJECT_ROOT / 'modeling').glob('*.py')) + sorted((PROJECT_ROOT / 'analysis').glob('*.py')):
             if path.name in allowed:
                 continue
             source = path.read_text(encoding='utf-8')
-            if 'LatentDirichletAllocation(' in source or re.search(r"\+ ' '\) \* \d", source):
+            if 'LatentDirichletAllocation(' in source:
                 offenders.append(path.name)
         self.assertEqual(offenders, [])
 
@@ -173,21 +125,6 @@ class TestSharedSettings(unittest.TestCase):
         self.assertEqual(len(set(lda_common.STABILITY_SEEDS)), len(lda_common.STABILITY_SEEDS))
         # The reported model's seed is one of the seeds tested
         self.assertIn(lda_common.DEFAULT_SEED, lda_common.STABILITY_SEEDS)
-
-    def test_stability_scripts_load_with_their_weight(self):
-        """Each 13 script asks for its own title weight (5 for the reported model, 3 for the comparison)."""
-        for module, expected_weight in ((stability_5x, lda_common.TITLE_WEIGHT), (stability_3x, 3)):
-            calls = []
-
-            def fake_load(input_dir, title_weight=lda_common.TITLE_WEIGHT):
-                calls.append(title_weight)
-                return [], [], {'empty': 0, 'weighted': 0, 'total': 0, 'empty_body': 0, 'malformed': 0}
-
-            # With no texts loaded, main() stops before fitting anything
-            with mock.patch.object(module, 'load_weighted_texts', fake_load):
-                with self.assertRaises(SystemExit):
-                    quiet(module.main)
-            self.assertEqual(calls, [expected_weight], module.__name__)
 
     def test_missing_vectorizer_gives_clear_message(self):
         output = io.StringIO()
@@ -319,7 +256,7 @@ class TestReport(unittest.TestCase):
                                  'top_words': [[f'ord{k}_{i}' for i in range(8)] for k in range(self.num_topics)]}
                           for seed in self.seeds}
         self.report = seed_stability.generate_report(
-            'Test report', 'Title words are appended five times', self.num_topics,
+            'Test report', 'Body text only', self.num_topics,
             self.seed_info, self.pairwise, closing_lines=['## Closing'])
 
     def section(self, heading):
@@ -363,7 +300,7 @@ class TestReport(unittest.TestCase):
             self.assertIn(f"| {seed} | {1000.0 + seed:.2f} | 50 |", self.report)
         self.assertIn('appears in 4 of the 10 pairs', self.report)
         self.assertIn('does not test for convergence', self.report)
-        self.assertIn('Title words are appended five times', self.report)
+        self.assertIn('**Text:** Body text only', self.report)
         self.assertTrue(self.report.endswith('## Closing'))
 
 

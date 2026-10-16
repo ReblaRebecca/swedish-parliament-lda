@@ -18,7 +18,7 @@ Technical detail is in `PIPELINE_DOCUMENTATION.md` and `MODEL_REVIEW.md`.
 
 1. Status
 2. Decisions to make
-   - 2.1 Title weighting
+   - 2.1 Title weighting (decided: not used)
    - 2.2 Shared vocabulary for cross-period alignment
    - 2.3 Comparing the whole-corpus model with the period models
    - 2.4 What "thematic change" means: vocabulary, prominence, or both
@@ -65,7 +65,7 @@ Technical detail is in `PIPELINE_DOCUMENTATION.md` and `MODEL_REVIEW.md`.
 
 - **Two models, 44 topics each:**
   - a **baseline** on body text only;
-  - a **title-weighted** model, with title words appended 5 times.
+  - a **title-weighted** model, with title words appended 5 times. Title weighting was dropped after the seed-stability runs (2.1); the model used from now on is the baseline.
 - Both use the same 13,913 motions (4 withdrawn motions titled *Utgår* have no text) and the same 10,000-word vocabulary.
 - **First review** (`MODEL_REVIEW.md`): roughly 32–34 of 44 topics in each model are clear education-policy topics, and about 10 are mixed. This is my reading, not a measured score.
   - **Clear topics** include teachers and teacher education, independent schools and school choice, preschool, upper secondary and vocational education, student finance (CSN), SFI and mother-tongue teaching, research and doctoral education, physical education, special needs, values and the curriculum, and bullying.
@@ -82,7 +82,6 @@ Technical detail is in `PIPELINE_DOCUMENTATION.md` and `MODEL_REVIEW.md`.
 
 ### 1.5 Not yet done
 
-- Seed-stability runs (code ready).
 - The period (binned) models.
 - Cross-period alignment and topic chains.
 - Manual evaluation.
@@ -94,6 +93,19 @@ Technical detail is in `PIPELINE_DOCUMENTATION.md` and `MODEL_REVIEW.md`.
 ### 2.1 Title weighting
 
 **Question:** should title words be given extra weight, and if so how much?
+
+**Decided 2026-10-16: no title weighting.** The seed-stability runs (5 seeds, 10 matched pairs each) gave:
+
+| | Body text only | Title ×5 | Title ×3 |
+|---|---|---|---|
+| Mean matched cosine | 0.525 | 0.539 | 0.539 |
+| Range of the 10 per-pair means | 0.486–0.566 | 0.506–0.573 | 0.521–0.554 |
+| Mean Jaccard (top 20) | 0.24 | 0.24 | 0.23 |
+| Topics found in all 4 other seeds (cosine ≥ 0.70) | 5 | 7 | 10 |
+
+Weighting raises stability only slightly, and the ranges overlap, so it is not clearly better (step 3 of *How to decide* below). Option (a) was chosen: the model uses body text only, which follows Gordon and removes a free parameter. Titles are still separated at extraction, preprocessed and kept in the data (`title_processed`) for later use. The weighting code was removed and is in the git history. Full results: `PIPELINE_DOCUMENTATION.md`, *Seed-Stability Results*. The background and arguments below are kept as the reasoning behind the decision.
+
+**For the seminar:** is dropping weighting acceptable, or should the weighted model be reported as a robustness check after all?
 
 #### Background
 
@@ -336,7 +348,7 @@ For each motion d, the model gives θ_d, its topic mixture: a probability for ea
 - Yearly curves show when a change happened, e.g. around a reform. The periods give the summary.
 - The number of motions per year varies from 218 (1998) to 602 (1990), so yearly values are noisier, especially in the late 1990s.
 
-**Which model θ comes from:** title weighting (2.1) changes θ, especially for short motions. The prominence analysis should use the model chosen in 2.1, and state it.
+**Which model θ comes from:** the body-text model (no title weighting, 2.1).
 
 **Suggestion:** both measures, clearly separated in the report. Vocabulary change is the core, following Gordon. Prominence is the extension, measured with the whole-corpus model as the mean topic proportion per period, with yearly curves and seed ranges.
 
@@ -496,7 +508,7 @@ These should be stated explicitly in the methods section.
 | Document unit | Gordon: 1,000-word chunks of books | Whole motions | Decided: motions are natural units of meaning, and most are shorter than 1,000 words |
 | Proper names | Gordon: removed | Kept | Open (2.7) |
 | Duplicates | Proposal: investigate and monitor | Counted for the report, not removed (133 on the earlier pipeline; to recount) | **Open:** keep or drop. Duplicates are typically identical motions submitted in several years, or by several MPs |
-| Title weighting | Not in Gordon | 5× (3× tested) | Open (2.1) |
+| Title weighting | Not in Gordon | Not used (3× and 5× tested) | Decided (2.1): stability gain too small |
 | Seed stability | Gordon: whole-corpus runs only | Hungarian-matched stability for every model, period models included | Extension |
 | Prominence | Not in Gordon | Mean topic proportion per period from the whole-corpus model | Proposed extension (2.4) |
 
@@ -507,13 +519,13 @@ These should be stated explicitly in the methods section.
 - **Billions:** *miljard/miljarder* (about 1,300 occurrences) is the same kind of amount word as *miljoner*, which is removed. Remove it too, or keep it as a signal of budget motions?
 - **Leftover fragments:** some remain from line-end hyphenation in older scanned motions (*utbild- Mot. 1988/89 ningsmoment* gives `utbild` and `ning`, in 75–180 motions), and from Swedish compound ellipsis (*skol- och språkexpertis* gives `skol`). Accepted for now; none reach the top words of any topic.
 - **Party abbreviations:** a few remain in 59–109 motions (`fp`, `kd`, `mp`, probably from forms like *kd-ledamöter*).
-- **Truncated lemmas in compounds:** Stanza truncates *kompetens* to `kompet` also inside compounds (*gymnasiekompetens* → `gymnasiekompet`, *IT-kompetens* → `it-kompet`), where the whole-word correction table does not apply. A fix that applies the corrections to the end of a lemma is proposed (`MODEL_REVIEW.md`, *After the Fixes*); a few hundred motions are affected.
+- **Truncated lemmas in compounds:** Stanza truncates *kompetens* to `kompet` also inside compounds (*gymnasiekompetens* → `gymnasiekompet`, *IT-kompetens* → `it-kompet`), where the whole-word correction table does not apply. Fixed for `kompet` and `bibliotekarium` by corrections that also apply to the end of a lemma, enabled per entry after checking its compounds (a general suffix rule would have turned *sammanslagen* into `sammanslag`); see `MODEL_REVIEW.md`, *After the Fixes*.
 
 ---
 
 ## 3. Questions for the Seminar (Summary)
 
-1. **Title weighting:** is weighting defensible as a departure from Gordon? Weighted as primary, as a robustness check, or not at all? (2.1)
+1. **Title weighting:** dropped after the stability runs (small gain). Is that acceptable, or report the weighted model as a robustness check? (2.1)
 2. **Shared vocabulary:** one global vocabulary, or Gordon's per-period vocabularies compared over shared words? (2.2)
 3. **Baseline comparison:** is Gordon's quality comparison (same rubric for whole-corpus and period models) enough, or should the topic mapping be added? (2.3)
 4. **Thematic change:** vocabulary only (as Gordon), or vocabulary and prominence? Is the mean topic proportion per period the right summary? (2.4)
@@ -528,7 +540,7 @@ These should be stated explicitly in the methods section.
 
 ## 4. Next Steps
 
-1. Run the seed-stability tests (baseline, 3×, 5×) and decide on title weighting (2.1). The reports include the stability of each topic of the reported models (found again in how many of the other 4 seeds' models), so unstable topics can be flagged before interpretation.
+1. ✅ Seed-stability tests run (baseline, 3×, 5×); title weighting dropped (2.1). About 12 of 44 topics are found again in 3–4 of the other 4 seeds and about 19 in none; the per-topic table lets unstable topics be flagged before interpretation, and the many seed-dependent topics are an argument for reconsidering the topic count (2.8).
 2. Settle the alignment design (2.2, 2.5) and the definition of thematic change (2.4).
 3. Implement the period models with the agreed vocabulary design, the alignment with permutation null, and the chains.
 4. If agreed: the topic mapping (2.3.2) and the prevalence analysis (2.4).

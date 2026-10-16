@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Shared seed-stability procedure for the baseline and title-weighted models.
+Shared seed-stability procedure for the whole-corpus LDA model.
 
 Fits one LDA model per seed on the same document-term matrix and vocabulary, matches topics
 between every pair of seeds with the Hungarian algorithm (topic indices are arbitrary between
 runs), and writes a markdown report. The report also gives the stability of each topic of the
 reference model (the seed of the reported model, DEFAULT_SEED): how well it is found again in
 the other seeds' models.
-Used by 09_test_lda_stability.py and 13_seed_stability_{3x,5x}_weighted.py.
+Used by 09_test_lda_stability.py.
 """
 
 import csv
@@ -155,7 +155,7 @@ def stats_lines(values):
     ]
 
 
-def generate_report(title, weighting, num_topics, seed_info, pairwise_results, closing_lines=(),
+def generate_report(title, text_description, num_topics, seed_info, pairwise_results, closing_lines=(),
                     reference_seed=DEFAULT_SEED):
     """Markdown report: method, per-seed fit, per-topic stability of the reference model,
     per-pair similarity, pooled summary."""
@@ -168,7 +168,7 @@ def generate_report(title, weighting, num_topics, seed_info, pairwise_results, c
         "**Matching:** topics are optimally matched across models using the Hungarian algorithm,",
         "accounting for the fact that topic indices are arbitrary across LDA runs.",
         "",
-        f"**Weighting:** {weighting}",
+        f"**Text:** {text_description}",
         "",
         "**Matching criterion:** Cosine similarity over normalized topic-word distributions",
         "",

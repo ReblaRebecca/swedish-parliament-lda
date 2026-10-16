@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Generate the topic explorer: one self-contained HTML page with a word cloud per topic for both
-whole-corpus models (baseline and title-weighted), each topic's share overall and per period,
-its highest-loading motions, and the party concentration among its top 5 motions.
+Generate the topic explorer: one self-contained HTML page with a word cloud per topic of the
+whole-corpus model (body text only), each topic's share overall and per period, its
+highest-loading motions, and the party concentration among its top 5 motions.
 
-Reads the fitted models directly (not the CSV exports), so the page always shows the models
+Reads the fitted model directly (not the CSV export), so the page always shows the model
 in models/. Replaces the earlier word cloud scripts and their template.
 
-Input:  models/baseline_lda_44/, models/title_weighted_lda_44/, data/output/stopword_removed/
+Input:  models/baseline_lda_44/, data/output/stopword_removed/
 Output: results/topic_explorer.html (open in a browser; needs internet for the fonts)
 
 Definitions used on the page:
@@ -26,7 +26,7 @@ from pathlib import Path
 
 import numpy as np
 
-from lda_common import NUM_TOPICS, TITLE_WEIGHT, load_baseline_vectorizer, load_body_texts, load_weighted_texts
+from lda_common import NUM_TOPICS, load_baseline_vectorizer, load_body_texts
 
 PERIODS = [('1986–1993', 1986, 1993), ('1994–2004', 1994, 2004), ('2005–2014', 2005, 2014), ('2015–2025', 2015, 2025)]
 TOP_WORDS = 30
@@ -86,7 +86,6 @@ def main():
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
     BASELINE_DIR = PROJECT_ROOT / 'models' / 'baseline_lda_44'
-    WEIGHTED_DIR = PROJECT_ROOT / 'models' / 'title_weighted_lda_44'
     TEMPLATE = Path(__file__).resolve().parent / 'topic_explorer_template.html'
     OUTPUT = PROJECT_ROOT / 'results' / 'topic_explorer.html'
 
@@ -94,28 +93,22 @@ def main():
     vocab = vectorizer.get_feature_names_out()
     parties = load_first_signatory_parties(INPUT_DIR)
 
-    data = {'periods': [p[0] for p in PERIODS], 'models': {}}
-    specs = [
-        ('baseline', 'Baseline', 'Body text only', BASELINE_DIR / f'baseline_lda_{NUM_TOPICS}_topics.pkl',
-         lambda: load_body_texts(INPUT_DIR)[:2]),
-        ('weighted', f'Titles ×{TITLE_WEIGHT}', f'Body text with the title appended {TITLE_WEIGHT} times',
-         WEIGHTED_DIR / f'title_weighted_lda_{NUM_TOPICS}_topics.pkl',
-         lambda: load_weighted_texts(INPUT_DIR)[:2]),
-    ]
-    for key, label, description, model_path, load in specs:
-        if not model_path.exists():
-            print(f"Error: {model_path} not found. Run 07_fit_baseline_lda.py and 10_fit_title_weighted_lda.py first.")
-            sys.exit(1)
-        with open(model_path, 'rb') as f:
-            lda = pickle.load(f)
-        texts, metadata = load()
-        print(f"{label}: inferring topic proportions for {len(texts)} motions...")
-        theta = lda.transform(vectorizer.transform(texts))
-        theta = theta / theta.sum(axis=1, keepdims=True)
-        data['models'][key] = {'label': label, 'description': description,
-                               'topics': model_data(lda, vocab, theta, metadata, parties)}
-        data['motions'] = len(texts)
-        data['periodCounts'] = [int(sum(1 for m in metadata if period_index(m['year']) == p)) for p in range(len(PERIODS))]
+    model_path = BASELINE_DIR / f'baseline_lda_{NUM_TOPICS}_topics.pkl'
+    if not model_path.exists():
+        print(f"Error: {model_path} not found. Run 07_fit_baseline_lda.py first.")
+        sys.exit(1)
+    with open(model_path, 'rb') as f:
+        lda = pickle.load(f)
+    texts, metadata, _ = load_body_texts(INPUT_DIR)
+    print(f"Inferring topic proportions for {len(texts)} motions...")
+    theta = lda.transform(vectorizer.transform(texts))
+    theta = theta / theta.sum(axis=1, keepdims=True)
+    data = {
+        'periods': [p[0] for p in PERIODS],
+        'topicList': model_data(lda, vocab, theta, metadata, parties),
+        'motions': len(texts),
+        'periodCounts': [int(sum(1 for m in metadata if period_index(m['year']) == p)) for p in range(len(PERIODS))],
+    }
 
     all_parties = Counter(p or '?' for p in parties.values())
     total = sum(all_parties.values())

@@ -146,8 +146,8 @@ TITLE_HEADING_MAX_START = 400
 def remove_title_heading(body, title):
     """Remove the title heading from the start of the body text.
 
-    The title is weighted separately (title words appended to the body), so the heading copy
-    would otherwise count once more. Matching is word by word, ignoring case and punctuation
+    The title is kept as a separate field (for later use), so the body holds only the motion's
+    own text and title words are not counted in it twice. Matching is word by word, ignoring case and punctuation
     differences ("Sfi - uttalets" vs "Sfi – uttalets"). Later repetitions of the title phrase
     belong to the motion's argument and are kept.
     """
@@ -276,7 +276,7 @@ def process_xml_file(xml_path):
         if not body_text:
             return None
 
-        # Remove the title heading so title words are not counted once extra (titles are weighted separately)
+        # Remove the title heading: the title is kept separately, the body holds only the motion's own text
         body_text = remove_title_heading(body_text, titel)
 
         # Extract year from datum (format: YYYY-MM-DD HH:MM:SS)

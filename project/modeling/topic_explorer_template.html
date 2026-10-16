@@ -79,12 +79,6 @@
     background: var(--paper); border-bottom: 1px solid var(--rule);
     padding-block: 12px;
   }
-  .segmented { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--surface); }
-  .segmented input { position: absolute; opacity: 0; pointer-events: none; }
-  .segmented label { padding: 7px 14px; cursor: pointer; font-weight: 600; font-size: 0.9375rem; color: var(--muted); }
-  .segmented label + input + label { border-left: 1px solid var(--rule); }
-  .segmented input:checked + label { background: var(--accent); color: var(--surface); }
-  .segmented input:focus-visible + label { outline: 2px solid var(--gold); outline-offset: -2px; }
   .field { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9375rem; color: var(--muted); }
   .field select, .field input {
     font: inherit; color: var(--ink); background: var(--surface);
@@ -144,16 +138,10 @@
   <header class="masthead">
     <p class="eyebrow">Riksdagen · Utbildningsutskottet (UbU) · Motions 1986–2025</p>
     <h1>Topics in education motions</h1>
-    <p class="lede" id="lede">Two 44-topic LDA models fitted on the same motions.</p>
+    <p class="lede" id="lede">A 44-topic LDA model of the motions.</p>
   </header>
 
   <div class="controls" role="group" aria-label="Display options">
-    <div class="segmented" role="radiogroup" aria-label="Model">
-      <input type="radio" name="model" id="model-baseline" value="baseline" checked>
-      <label for="model-baseline">Baseline</label>
-      <input type="radio" name="model" id="model-weighted" value="weighted">
-      <label for="model-weighted" id="label-weighted">Titles ×5</label>
-    </div>
     <label class="field" for="sort">Sort
       <select id="sort">
         <option value="num">Topic number</option>
@@ -336,15 +324,10 @@
     return art;
   }
 
-  function currentModel() {
-    return document.querySelector('input[name="model"]:checked').value;
-  }
-
   function render() {
-    const modelKey = currentModel();
-    const model = DATA.models[modelKey];
+    const modelKey = 'model';
     const query = searchInput.value.trim().toLowerCase();
-    let topics = model.topics.slice();
+    let topics = DATA.topicList.slice();
     const change = t => t.periods[t.periods.length - 1] - t.periods[0];
     const sorters = {
       num: (a, b) => a.num - b.num,
@@ -360,35 +343,28 @@
     if (!topics.length) {
       const p = document.createElement('p');
       p.className = 'empty';
-      p.textContent = `No topic has “${query}” among its top 30 words in the ${model.label} model.`;
+      p.textContent = `No topic has “${query}” among its top 30 words.`;
       grid.appendChild(p);
     }
-    count.textContent = query ? `${topics.length} of ${model.topics.length} topics` : `${model.topics.length} topics`;
-    store.set('ubu-model', modelKey);
+    count.textContent = query ? `${topics.length} of ${DATA.topicList.length} topics` : `${DATA.topicList.length} topics`;
     store.set('ubu-sort', sortSelect.value);
   }
 
   // Static text from the data
-  document.getElementById('label-weighted').textContent = DATA.models.weighted.label;
   document.getElementById('lede').innerHTML =
-    `Two ${DATA.topics}-topic LDA models fitted on the same <strong>${DATA.motions.toLocaleString('en')} motions</strong>: ` +
-    `the <strong>baseline</strong> on body text only, and a model with the <strong>title appended ${DATA.models.weighted.label.replace('Titles ×', '')} times</strong>. ` +
-    'Switch between them to compare the topics.';
+    `A ${DATA.topics}-topic LDA model fitted on the body text of <strong>${DATA.motions.toLocaleString('en')} motions</strong>.`;
   document.getElementById('party-help').textContent =
     "How many of the topic's top 5 motions share the first signatory's party; gold when 4 or 5 do. For reference, first signatories overall: " +
     DATA.partyShares.map(([p, s]) => `${p} ${Math.round(s * 100)}%`).join(', ') + '.';
   document.getElementById('footer').textContent =
-    `Generated ${DATA.generated} by modeling/14_generate_topic_explorer.py from models/baseline_lda_44 and models/title_weighted_lda_44 ` +
+    `Generated ${DATA.generated} by modeling/14_generate_topic_explorer.py from models/baseline_lda_44 ` +
     `(scikit-learn LDA, ${DATA.topics} topics). Motions per period: ` +
     DATA.periods.map((p, i) => `${p} ${DATA.periodCounts[i].toLocaleString('en')}`).join(', ') + '. ' +
-    'Topic numbers are arbitrary and differ between the two models.';
+    'Topic numbers are arbitrary: a model fitted with another seed numbers its topics differently.';
 
-  const savedModel = store.get('ubu-model');
-  if (savedModel && DATA.models[savedModel]) document.getElementById('model-' + savedModel).checked = true;
   const savedSort = store.get('ubu-sort');
   if (savedSort && [...sortSelect.options].some(o => o.value === savedSort)) sortSelect.value = savedSort;
 
-  document.querySelectorAll('input[name="model"]').forEach(r => r.addEventListener('change', render));
   sortSelect.addEventListener('change', render);
   let timer;
   searchInput.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(render, 150); });

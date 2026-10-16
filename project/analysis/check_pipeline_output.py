@@ -252,7 +252,7 @@ def check_final(report, stage_dir):
     else:
         report.ok("no empty final texts")
     if empty_title:
-        report.warn(f"motions with empty final title (body only in the weighted model): {len(empty_title)}", empty_title)
+        report.warn(f"motions with empty final title (titles are kept for later use; the model uses body text only): {len(empty_title)}", empty_title)
     else:
         report.ok("no empty final titles")
 
