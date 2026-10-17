@@ -516,8 +516,9 @@ Both current models have about 8 topics organized around places (e.g. *Skövde, 
 - 8 is the only count at which at least half of the topics are stable in every period, and it has the highest mean cosine everywhere.
 - The number of robust themes per period is about 4–7 at every count, so more topics mainly add seed-dependent ones (8 → 15 adds 28 topics but only 5 stable ones).
 - All period models are more stable than the 44-topic whole-corpus model (mean cosine 0.525, about 27% stable), which supports Gordon's case for period models.
-- The whole-corpus model follows the period count, as in Gordon (60 = 4 × 15), so the two designs have the same total capacity. It is re-fitted and seed-tested at 32. 32 also coincides with the original topic-concentration choice on the earlier pipeline.
+- The whole-corpus model follows the period count, as in Gordon (60 = 4 × 15), so the two designs have the same total capacity. 32 also coincides with the original topic-concentration choice on the earlier pipeline.
 - Caveats: one set of seeds, the 0.70 threshold, and vocabulary option A (2.2).
+- **The 32-topic whole-corpus model (seed test 2026-10-17)** is more stable than the 44-topic one: mean cosine 0.591 against 0.525, and 12 of 32 topics stable (38%) against 12 of 44 (27%); 8 topics are found in all four other seeds (preschool, independent schools, teachers, research, compulsory/upper secondary school, curriculum, higher-education places, medical research). It remains less stable than the 8-topic period models (0.71–0.76, 59%), as Gordon's argument for period models expects. Unstable: grades (found in no other seed; possibly an artifact of a few motions), SFI/immigrants, two residual topics and the place-name topics.
 
 The original question and options are kept below for reference.
 
@@ -610,7 +611,7 @@ These should be stated explicitly in the methods section.
 ## 4. Next Steps
 
 1. ✅ Seed-stability tests run (baseline, 3×, 5×); title weighting dropped (2.1). About 12 of 44 topics are found again in 3–4 of the other 4 seeds and about 19 in none; the per-topic table lets unstable topics be flagged before interpretation, and the many seed-dependent topics are an argument for reconsidering the topic count (2.8).
-2. ✅ Period models fitted and seed-tested at 8, 11 and 15 topics (global vocabulary); topic count set to 8 per period and 32 for the whole corpus (2.8). Re-fit and seed-test the whole-corpus model at 32.
+2. ✅ Period models fitted and seed-tested at 8, 11 and 15 topics (global vocabulary); topic count set to 8 per period and 32 for the whole corpus (2.8). ✅ Whole-corpus model re-fitted and seed-tested at 32 (mean cosine 0.591, 12 of 32 topics stable).
 3. Settle the alignment design (2.2, 2.5) and the definition of thematic change (2.4).
 4. Re-fit the period models if the vocabulary design changes (2.2); implement the alignment with permutation null, and the chains.
 5. If agreed: the topic mapping (2.3.2) and the prevalence analysis (2.4).

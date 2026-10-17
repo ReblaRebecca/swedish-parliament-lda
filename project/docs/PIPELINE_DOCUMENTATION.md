@@ -122,7 +122,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 | `topic_matching.py` | Module: Hungarian-algorithm topic matching between two LDA models; cosine similarity (full distributions) + Jaccard (top words) | — |
 | `11_validate_matching_quick.py` | Smoke test on 2,000 real documents + synthetic permutation test (8 topics) | stdout |
 | `seed_stability.py` | Module: shared seed-stability procedure (fit one model per seed, match every pair, write the report) used by 09 | — |
-| `09_test_lda_stability.py` | Seed stability of the whole-corpus model | `docs/reports/BASELINE_STABILITY_<k>TOPICS_CORRECTED.md` (44 so far; 32 after the re-run) |
+| `09_test_lda_stability.py` | Seed stability of the whole-corpus model | `docs/reports/BASELINE_STABILITY_<k>TOPICS_CORRECTED.md` (32: current model; 44: before 2026-10-17) |
 | `16_seed_stability_periods.py [k ...]` | Seed stability of the period models for several topic counts (default 8, 11, 15), to choose the count per period | `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`; full report per period and count in `docs/reports/period_stability/`, per-topic CSV in `results/period_stability/` |
 
 **Seed-stability reports** list, per seed, the training perplexity and iteration count; then the **stability per topic** of the reference model (seed 42, the seed of the reported model); then cosine and Jaccard statistics for each of the 10 seed pairs; then pooled statistics over all 440 matched topic pairs.
@@ -376,6 +376,37 @@ project/
 
 ---
 
+## Seed-Stability Results: 32-Topic Whole-Corpus Model (2026-10-17)
+
+**Setup:** as for the 44-topic test above: body text only, baseline vectorizer (the same 10,000 words in the same order as before), 5 seeds (42, 123, 456, 789, 999), Hungarian matching between every pair (10 pairs, 320 matched topic pairs), cosine over the full topic-word distributions, Jaccard over the top 20 words, *found* = matched cosine ≥ 0.70, counted for the seed-42 model. Report: `docs/reports/BASELINE_STABILITY_32TOPICS_CORRECTED.md` (`analysis/09_test_lda_stability.py`); per-topic CSV in `results/`. All fits ran 50 passes; training perplexity 1691–1704. A joblib warning during seed 789 ("a worker stopped") did not affect the fit.
+
+| | 44 topics (2026-10-16) | 32 topics |
+|---|---|---|
+| Mean cosine (mean of the 10 per-pair means) | 0.525 | **0.591** |
+| Range of the 10 per-pair means | 0.486–0.566 | 0.554–0.646 |
+| Seed-42 topics found in 4 of 4 other models | 5 | **8** |
+| … in 3 of 4 | 7 | 4 |
+| … in 2 of 4 | 7 | 2 |
+| … in 1 of 4 | 6 | 7 |
+| … in 0 of 4 | 19 | 11 |
+| Stable (3–4 of 4) | 12 of 44 (27%) | **12 of 32 (38%)** |
+
+**Topics found in all four other models (8):** preschool/childcare (mean cosine 0.98), independent schools/school choice (0.96), teachers/teacher education (0.94), research/universities (0.89), compulsory and upper secondary school (0.87), society/knowledge/curriculum (0.85), higher-education places (0.84), medical research/health care (0.73). **In 3 of 4 (4):** regional higher education, adult education/labour market, regional development, student finance.
+
+**Interpretation**
+1. **32 topics are more stable than 44**, in mean cosine (+0.07, ranges barely overlapping) and in the share of stable topics (38% vs. 27%). The number of stable topics is the same (12), so, as in the period models, fewer topics mainly remove seed-dependent ones.
+2. **The whole-corpus model is still less stable than the period models** (8 topics per period: mean cosine 0.71–0.76, 59% stable). This supports Gordon's case for period models.
+3. **Unstable topics:**
+   - *Grades* (*betyg, godkänd, betygssystem, mälardalens, ant*): found in no other model, mean cosine 0.015, so the topic does not exist at all with other seeds. With the odd words *mälardalens* and *ant*, it may be a small group of motions with repeated words rather than a theme; to check.
+   - *SFI/immigrants* (*sfi, invandrare, nyanländ*): found in no other model (0.16), although it is a clear policy theme; with other seeds its words are probably spread over other topics.
+   - Residual topics: *idrott, it, västerås, eskilstuna* (0.17) and *stat, statlig, stiftelse* (0.13).
+   - Place-name topics (*Göteborg, Lund, Malmö*; *läkare, Jönköping, Gävle*) remain unstable, as at 44 topics.
+4. **Consequences** as in *What the whole-corpus instability means* above: prominence trends and any mapping of period topics onto whole-corpus topics should use the stable topics, or report the range over seeds.
+
+Caveats: one set of seeds, the 0.70 threshold, found-counts for the seed-42 model only.
+
+---
+
 ## Baseline Stability Testing (Historical - 2026-10-13)
 
 **Finding:** the 32-topic whole-corpus model (non-lemmatized) was **highly unstable** across random seeds. Note: this test appears to predate the "corrected" Hungarian-matching scripts; index-by-index comparison understates stability, so re-run with `09_test_lda_stability.py` before relying on these numbers.
@@ -445,7 +476,7 @@ Alternative: fix 11 per period (like Gordon's fixed 15) and use the seed test on
 - **The number of robust themes per period is roughly constant**, about 4–7, whatever the topic count: going from 8 to 15 topics adds 28 topics but only 5 stable ones.
 - **Stability falls with the topic count** in every period, in mean cosine and in the stable share; 15 (Gordon's count) is the least stable everywhere.
 - **The oldest period (1986–1993) is the least stable at 11 and 15 topics**, although it has the most motions.
-- **Decision (2026-10-17): 8 topics per period, and 32 = 4 × 8 for the whole-corpus model.** 8 is the only tested count at which at least half of the topics are stable in every period (50–75%), and it has the highest mean cosine in every period. 11 gives about as many stable topics (21 vs. 19), but about half of its topics are seed-dependent, and in two periods only 36% are stable. Since the number of robust themes is about the same at every count, 8 loses little substance and avoids many chance topics. The whole-corpus model follows to keep the same total capacity as Gordon (`NUM_TOPICS = 32`, `PERIOD_TOPICS = 8` in `lda_common.py`); it must be re-fitted and seed-tested at 32 (07, 09, then 08 and 14). Caveats: one set of seeds, the 0.70 threshold, and option A; option B may change the numbers somewhat.
+- **Decision (2026-10-17): 8 topics per period, and 32 = 4 × 8 for the whole-corpus model.** 8 is the only tested count at which at least half of the topics are stable in every period (50–75%), and it has the highest mean cosine in every period. 11 gives about as many stable topics (21 vs. 19), but about half of its topics are seed-dependent, and in two periods only 36% are stable. Since the number of robust themes is about the same at every count, 8 loses little substance and avoids many chance topics. The whole-corpus model follows to keep the same total capacity as Gordon (`NUM_TOPICS = 32`, `PERIOD_TOPICS = 8` in `lda_common.py`); re-fitted and seed-tested at 32 on 2026-10-17 (see *Seed-Stability Results: 32-Topic Whole-Corpus Model*). Caveats: one set of seeds, the 0.70 threshold, and option A; option B may change the numbers somewhat.
 
 **Period explorer (`modeling/17_generate_period_explorer.py`)**
 
@@ -468,6 +499,6 @@ A page for inspecting the period models before the formal alignment: `visualizat
 0. **Act on the first model review** (`MODEL_REVIEW.md`, 2026-10-16): the first models on the Stanza pipeline are fitted and reviewed; the review's vocabulary fixes (boilerplate gaps, abbreviation matching in step 03, artifact stopwords, Stanza lemma errors) are done; a few small leftovers remain (see the review)
 1. ✅ **Seed-stability tests** for the 44-topic model on body text and with 3×/5× title weighting (2026-10-16; see *Seed-Stability Results*)
 2. ✅ **Evaluate:** title weighting gives only a small stability gain; **no title weighting**, weighting code removed
-3. **Period models** (see *Period Models* above): fitted and seed-tested with option A for 8, 11 and 15 topics, inspectable in the period explorer. ✅ Topic count chosen: 8 per period, 32 for the whole corpus (2026-10-17). To do: re-fit and seed-test the whole-corpus model at 32 (07, 09) and regenerate its outputs (08, 14); re-run 15/16 if the seminar chooses vocabulary option B
+3. **Period models** (see *Period Models* above): fitted and seed-tested with option A for 8, 11 and 15 topics, inspectable in the period explorer. ✅ Topic count chosen: 8 per period, 32 for the whole corpus (2026-10-17). ✅ Whole-corpus model re-fitted and seed-tested at 32 (2026-10-17: mean cosine 0.591, 12 of 32 topics stable) and topic explorer regenerated (14). To do: regenerate the topic list (08); re-run 15/16 if the seminar chooses vocabulary option B
 4. **Topic alignment and trajectory analysis**
 5. **Publication:** document findings for thesis/paper
