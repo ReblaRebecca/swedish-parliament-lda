@@ -156,7 +156,7 @@
     </label>
     <label class="field" for="sort">Sort
       <select id="sort">
-        <option value="strong" selected>Strongest chain first (weakest link, high to low)</option>
+        <option value="strong" selected>Strongest chain first (mean link, high to low)</option>
         <option value="row">Chain number</option>
         <option value="weak">Weakest link first</option>
         <option value="rise">Rise in share (linked chains only)</option>
@@ -172,8 +172,9 @@
 
   <dl class="howto">
     <div><dt>Rows are chains</dt><dd>Each period model has its own topics. Topics of adjacent periods are matched one-to-one (Hungarian algorithm on cosine similarity), and a row follows these matches from the first period to the last.</dd></div>
+    <div><dt>Chain holds</dt><dd id="holds-help">Gordon's criterion: the mean cosine of the chain's three links is at least 0.50.</dd></div>
     <div><dt>Link</dt><dd id="link-help">The cosine similarity between a topic and the matched topic of the previous period.</dd></div>
-    <div><dt>Share</dt><dd>Mean topic proportion over the period's motions; every motion counts equally. Rise and fall (first vs last period) are computed only for chains linked through all four periods; a change across a weak link may compare unrelated topics. Broken chains are listed after the others.</dd></div>
+    <div><dt>Share</dt><dd>Mean topic proportion over the period's motions; every motion counts equally. Rise and fall (first vs last period) are computed only for chains with every link at or above the threshold, which is stricter than “holds”: a change across a weak link may compare unrelated topics. Broken chains are listed after the others.</dd></div>
     <div><dt>Word size</dt><dd id="size-help">The word's probability in that period's topic, on one scale per chain.</dd></div>
     <div><dt>Word colour</dt><dd id="colour-help">In how many of the chain's four periods the word is among the top words.</dd>
       <dd class="legend">
@@ -317,6 +318,8 @@
     return div;
   }
 
+  // Gordon's chain criterion is the mean of the links; rise and fall use the stricter every-link test
+  const meanLink = row => row.links.reduce((a, b) => a + b, 0) / row.links.length;
   const linkedThrough = row => row.links.every(c => c >= DATA.chainCosine);
 
   function card(row, k, query, showChange) {
@@ -327,6 +330,10 @@
     const h2 = document.createElement('h2');
     h2.textContent = `Chain ${row.row}`;
     const weakest = Math.min(...row.links);
+    const mean = meanLink(row);
+    const holds = mean >= DATA.chainCosine;
+    const verdict = span('chip' + (holds ? '' : ' unstable'), holds ? 'holds' : 'does not hold');
+    verdict.title = `Mean cosine of the three links ${mean.toFixed(2)}; Gordon's criterion is at least ${DATA.chainCosine.toFixed(2)}`;
     const weakLinks = row.links.filter(c => c < DATA.chainCosine).length;
     // Continuous segments: runs of periods joined by links at or above the chain criterion
     const segments = [[0]];
@@ -334,15 +341,15 @@
     const span_ = seg => seg.length > 1 ? `${DATA.periods[seg[0]].slice(0, 4)}–${DATA.periods[seg[seg.length - 1]].slice(-4)}` : null;
     const linked = segments.map(span_).filter(Boolean);
     let summary;
-    if (!weakLinks) summary = 'linked through all periods';
+    if (!weakLinks) summary = 'every link strong';
     else if (!linked.length) summary = 'no link at or above ' + DATA.chainCosine.toFixed(2) + ': forced matches, not a continuous topic';
-    else summary = `linked ${linked.join(' and ')} only · ${weakLinks} weak link${weakLinks > 1 ? 's' : ''}`;
-    head.append(h2, span('meta', `weakest link ${weakest.toFixed(2)} · ${summary}`));
+    else summary = `${weakLinks} weak link${weakLinks > 1 ? 's' : ''}: strongly linked ${linked.join(' and ')} only`;
+    head.append(h2, verdict, span('meta', `mean link ${mean.toFixed(2)} · weakest ${weakest.toFixed(2)} · ${summary}`));
     if (showChange) {
       const first = row.cells[0].share, last = row.cells[row.cells.length - 1].share;
       head.appendChild(span('meta', linkedThrough(row)
         ? `share ${pct(first)} → ${pct(last)} (${last >= first ? '+' : '−'}${(Math.abs(last - first) * 100).toFixed(1)} points)`
-        : 'no change computed: chain broken'));
+        : 'no change computed: a weak link in the chain'));
     }
     const periods = document.createElement('div');
     periods.className = 'periods';
@@ -369,7 +376,7 @@
     };
     const sorters = {
       row: (a, b) => a.row - b.row,
-      strong: (a, b) => weakest(b) - weakest(a),
+      strong: (a, b) => meanLink(b) - meanLink(a) || weakest(b) - weakest(a),
       weak: (a, b) => weakest(a) - weakest(b),
       rise: byChange(1),
       fall: byChange(-1),
@@ -404,9 +411,12 @@
     (DATA.sets[DATA.chosen] ? `The analysis uses <strong>${DATA.chosen} topics per period</strong>; the other counts are shown for comparison, to see which chains hold whatever the number of topics.` : '');
   document.getElementById('link-help').textContent =
     `The cosine similarity between a topic and the matched topic of the previous period. Below ${DATA.chainCosine.toFixed(2)} ` +
-    "(Gordon's chain criterion) the link is weak and shown in gold: the Hungarian matching pairs every topic, " +
-    'so a weak link may join two unrelated topics. The row is broken there: the accent bar stops, a dashed gold rule ' +
-    'separates the cells, and the cell says that the alignment is uncertain.';
+    'the link is weak and shown in gold: the Hungarian matching pairs every topic, so a weak link may join two unrelated ' +
+    'topics. The row is broken there: the accent bar stops, a dashed gold rule separates the cells, and the cell says that ' +
+    'the alignment is uncertain. A chain can hold on the mean and still have one weak link.';
+  document.getElementById('holds-help').textContent =
+    `Gordon's criterion: the mean cosine of the chain's three links is at least ${DATA.chainCosine.toFixed(2)}. ` +
+    'Gold “does not hold” otherwise.';
   const topN = DATA.sets[Object.keys(DATA.sets)[0]].rows[0].cells[0].words.length;
   document.getElementById('search-hint').innerHTML =
     `Searches only the top ${topN} words shown in each cloud, also as part of longer words (<em>skola</em> finds <em>gymnasieskola</em>). ` +

@@ -6,7 +6,8 @@ for each period, for the period models with 8, 11 and 15 topics (switchable on t
 Each period model has its own topics, so "topic 3" in one period is not topic 3 in the next. The
 rows are therefore chains: topics of adjacent periods are matched one-to-one with the Hungarian
 algorithm on cosine similarity (topic_matching.py), and each row follows the matches from the first
-period to the last. The cosine of every link is shown; links below CHAIN_COSINE are marked weak.
+period to the last. A chain holds if the mean cosine of its links is at least CHAIN_COSINE (Gordon);
+the cosine of every link is shown, and single links below CHAIN_COSINE are marked weak.
 This is a provisional alignment for inspection, without Gordon's permutation null.
 Word colour shows persistence: in how many of the chain's periods the word is among the top
 TOP_WORDS words (computed on the page).
@@ -37,7 +38,8 @@ from topic_matching import match_and_evaluate  # noqa: E402
 
 TOPIC_COUNTS = [8, 11, 15]
 TOP_WORDS = 20
-# Gordon's chain criterion: adjacent topics with cosine at least this are linked
+# Gordon's chain criterion: a chain holds if the mean cosine of its links is at least this.
+# The page also marks each single link below it as weak.
 CHAIN_COSINE = 0.50
 # Top words compared with the stability CSV to make sure it describes the same model
 STABILITY_CHECK_WORDS = 8
