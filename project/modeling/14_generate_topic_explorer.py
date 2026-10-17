@@ -11,7 +11,7 @@ Input:  models/<BASELINE_MODEL_DIR>/, data/output/stopword_removed/
 Output: visualizations/topic_explorer.html (open in a browser; needs internet for the fonts)
 
 Definitions used on the page:
-- Word size: P(word | topic), square-root scaled, top 30 words.
+- Word size: P(word | topic), square-root scaled, top 30 words, on one scale for all clouds (comparable between topics).
 - Share: mean topic proportion over the motions (every motion counts equally).
 - Party concentration: share of the topic's top 5 motions whose first signatory belongs to
   the most frequent party among them (parliamentary analogue of Gordon's author concentration).

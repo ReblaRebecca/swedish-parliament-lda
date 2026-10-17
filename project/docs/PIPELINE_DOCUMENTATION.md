@@ -111,6 +111,9 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 
 - Word weights are shown as normalized probabilities P(word | topic)
 - Topics use neutral names (Topic 1–32, no interpretive labels) so they can be inspected without prior bias
+- **Topic explorer layout:** per topic, two columns: the word cloud with the share-by-period chart under it on the left, the top motions on the right (stacked on narrow screens)
+- **Topic explorer word size:** square root of P(word | topic) on one scale for all clouds, so sizes can be compared between topics; if a word does not fit, all clouds shrink together. A topic spread over many words has a smaller, sparser cloud. The tooltip gives the exact probability
+- **Topic explorer order and search:** opens sorted by overall share, largest first (topic numbers are arbitrary). Rise and fall compare the first and last period of the same topic, which is valid here since the whole-corpus model has one set of topics for all periods, but they ignore the middle periods. The search covers only the top 30 words shown (also as part of longer words), as stated next to the search box: a word that is not found can still have some probability in the topic
 
 ## Analysis Scripts (`analysis/`)
 

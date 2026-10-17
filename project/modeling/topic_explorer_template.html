@@ -4,7 +4,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
   /* Layout: masthead, sticky control bar, then one column of topic cards; each card puts the
-     word cloud beside a period chart and the topic's top motions, stacking on narrow screens. */
+     word cloud with the period chart under it in the left column and the topic's top motions in the
+     right column, stacking on narrow screens. */
   :root {
     --paper: #f4f6f8;
     --surface: #ffffff;
@@ -86,6 +87,7 @@
   }
   .field input { width: 13rem; max-width: 100%; }
   .field select:focus-visible, .field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .hint { flex-basis: 100%; font-size: var(--step--1); color: var(--muted); margin-top: -6px; }
   .count { margin-left: auto; font-family: var(--font-data); font-size: var(--step--1); color: var(--muted); font-variant-numeric: tabular-nums; }
 
   .howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 28px; color: var(--muted); font-size: 0.9375rem; }
@@ -107,8 +109,9 @@
   }
   .chip.concentrated { background: var(--gold-soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--gold); }
 
-  .topic-body { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .topic-body { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 24px; align-items: start; }
   @media (max-width: 760px) { .topic-body { grid-template-columns: minmax(0, 1fr); } }
+  .left { display: grid; gap: 12px; }
 
   .cloud { width: 100%; height: auto; display: block; }
   .cloud text { font-family: var(--font-display); font-weight: 500; }
@@ -117,7 +120,6 @@
   .cloud .w3 { fill: var(--word-low); }
   .cloud .hl { fill: var(--gold); }
 
-  .side { display: grid; gap: 14px; }
   .periods figcaption, .motions-head { font-family: var(--font-data); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
   .periods svg { width: 100%; max-width: 320px; height: auto; display: block; }
   .periods .bar { fill: var(--accent); }
@@ -138,27 +140,28 @@
   <header class="masthead">
     <p class="eyebrow">Riksdagen · Utbildningsutskottet (UbU) · Motions 1986–2025</p>
     <h1>Topics in education motions</h1>
-    <p class="lede" id="lede">A 44-topic LDA model of the motions.</p>
+    <p class="lede" id="lede">An LDA model of the motions.</p>
   </header>
 
   <div class="controls" role="group" aria-label="Display options">
     <label class="field" for="sort">Sort
       <select id="sort">
+        <option value="share" selected>Overall share (largest first)</option>
         <option value="num">Topic number</option>
-        <option value="share">Overall share</option>
         <option value="rise">Rise (last vs first period)</option>
         <option value="fall">Fall (last vs first period)</option>
         <option value="party">Party concentration</option>
       </select>
     </label>
     <label class="field" for="search">Find word
-      <input type="search" id="search" placeholder="e.g. förskola" autocomplete="off" spellcheck="false">
+      <input type="search" id="search" placeholder="e.g. förskola" autocomplete="off" spellcheck="false" aria-describedby="search-hint">
     </label>
     <span class="count" id="count" aria-live="polite"></span>
+    <p class="hint" id="search-hint">Searches only the top words shown in each cloud, also as part of longer words.</p>
   </div>
 
   <dl class="howto">
-    <div><dt>Word size</dt><dd>The word's probability in the topic, square-root scaled. Top 30 words.</dd></div>
+    <div><dt>Word size</dt><dd id="size-help">The word's probability in the topic, square-root scaled, on one scale for all clouds.</dd></div>
     <div><dt>Share</dt><dd>Mean topic proportion over the motions; every motion counts equally. The bars split it by period.</dd></div>
     <div><dt>Party chip</dt><dd id="party-help">How many of the topic's top 5 motions share the first signatory's party.</dd></div>
     <div><dt>Top motions</dt><dd>The motions with the highest proportion θ of this topic, with year, party and document id.</dd></div>
@@ -179,11 +182,6 @@
   const W = 560, H = 300;
   const layoutCache = {};
 
-  const store = {
-    get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
-    set(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* storage unavailable */ } },
-  };
-
   const pct = v => (v * 100).toFixed(1) + '%';
   const canvas = document.createElement('canvas').getContext('2d');
   function measure(text, size, weight) {
@@ -191,38 +189,47 @@
     return { w: canvas.measureText(text).width, h: size * 0.92 };
   }
 
-  // Spiral word placement. Every word must fit: if one does not, all sizes shrink and the layout restarts.
-  function layoutCloud(words) {
-    const pmax = words[0][1], pmin = words[words.length - 1][1];
+  // Spiral word placement of one cloud at the given sizes; null if some word does not fit
+  function placeWords(words, sizeOf) {
+    const placed = [];
+    for (let i = 0; i < words.length; i++) {
+      const [text, p] = words[i];
+      const size = sizeOf(p);
+      const weight = i < 3 ? 700 : 500;
+      const m = measure(text, size, weight);
+      const bw = m.w + 4, bh = m.h + 2;
+      let spot = null;
+      for (let t = 0; t < 900 && !spot; t += 0.12) {
+        const r = 3.2 * t;
+        const x = W / 2 + r * Math.cos(t) * 1.6 - bw / 2;
+        const y = H / 2 + r * Math.sin(t) - bh / 2;
+        if (x < 2 || y < 2 || x + bw > W - 2 || y + bh > H - 2) { if (r > W) break; continue; }
+        if (placed.every(q => x + bw <= q.x || q.x + q.w <= x || y + bh <= q.y || q.y + q.h <= y)) {
+          spot = { x, y, w: bw, h: bh };
+        }
+      }
+      if (!spot) return null;
+      placed.push({ ...spot, text, p, size, weight, rank: i });
+    }
+    return placed;
+  }
+
+  // All clouds share one size scale (square root of the probability, between the smallest and largest
+  // probability shown on the page), so word sizes can be compared between topics. If a word does not
+  // fit in some cloud, all clouds shrink together and the layout restarts.
+  function layoutAll(topics) {
+    const ps = topics.flatMap(t => t.words.map(w => w[1]));
+    const pmax = Math.max(...ps), pmin = Math.min(...ps);
     const sq = p => pmax === pmin ? 1 : (Math.sqrt(p) - Math.sqrt(pmin)) / (Math.sqrt(pmax) - Math.sqrt(pmin));
     let maxSize = 58, minSize = 13;
     for (let attempt = 0; attempt < 14; attempt++) {
-      const placed = [];
-      let failed = false;
-      for (let i = 0; i < words.length; i++) {
-        const [text, p] = words[i];
-        const size = minSize + sq(p) * (maxSize - minSize);
-        const weight = i < 3 ? 700 : 500;
-        const m = measure(text, size, weight);
-        const bw = m.w + 4, bh = m.h + 2;
-        let spot = null;
-        for (let t = 0; t < 900 && !spot; t += 0.12) {
-          const r = 3.2 * t;
-          const x = W / 2 + r * Math.cos(t) * 1.6 - bw / 2;
-          const y = H / 2 + r * Math.sin(t) - bh / 2;
-          if (x < 2 || y < 2 || x + bw > W - 2 || y + bh > H - 2) { if (r > W) break; continue; }
-          if (placed.every(q => x + bw <= q.x || q.x + q.w <= x || y + bh <= q.y || q.y + q.h <= y)) {
-            spot = { x, y, w: bw, h: bh };
-          }
-        }
-        if (!spot) { failed = true; break; }
-        placed.push({ ...spot, text, p, size, weight, rank: i });
-      }
-      if (!failed) return placed;
+      const sizeOf = p => minSize + sq(p) * (maxSize - minSize);
+      const clouds = topics.map(t => placeWords(t.words, sizeOf));
+      if (clouds.every(Boolean)) return Object.fromEntries(topics.map((t, i) => [t.num, clouds[i]]));
       maxSize *= 0.9;
       minSize = Math.max(10, minSize * 0.95);
     }
-    return [];
+    return Object.fromEntries(topics.map(t => [t.num, []]));
   }
 
   function svgEl(name, attrs) {
@@ -232,11 +239,10 @@
   }
 
   function cloudSvg(topic, modelKey, query) {
-    const key = modelKey + ':' + topic.num;
-    if (!layoutCache[key]) layoutCache[key] = layoutCloud(topic.words);
+    if (!layoutCache[modelKey]) layoutCache[modelKey] = layoutAll(DATA.topicList);
     const svg = svgEl('svg', { class: 'cloud', viewBox: `0 0 ${W} ${H}`, role: 'img',
       'aria-label': 'Word cloud: ' + topic.words.slice(0, 10).map(w => w[0]).join(', ') });
-    for (const w of layoutCache[key]) {
+    for (const w of layoutCache[modelKey][topic.num]) {
       const tier = w.rank < 3 ? 'w1' : (w.rank < 12 ? 'w2' : 'w3');
       const hl = query && w.text.includes(query) ? ' hl' : '';
       const t = svgEl('text', { x: (w.x + w.w / 2).toFixed(1), y: (w.y + w.h / 2).toFixed(1),
@@ -293,8 +299,8 @@
 
     const body = document.createElement('div');
     body.className = 'topic-body';
-    const side = document.createElement('div');
-    side.className = 'side';
+    const left = document.createElement('div');
+    left.className = 'left';
 
     const fig = document.createElement('figure');
     fig.className = 'periods';
@@ -318,8 +324,10 @@
       li.append(title, meta);
       ol.appendChild(li);
     }
-    side.append(fig, mh, ol);
-    body.append(cloudSvg(topic, modelKey, query), side);
+    const motions = document.createElement('div');
+    motions.append(mh, ol);
+    left.append(cloudSvg(topic, modelKey, query), fig);
+    body.append(left, motions);
     art.append(head, body);
     return art;
   }
@@ -336,34 +344,39 @@
       fall: (a, b) => change(a) - change(b),
       party: (a, b) => b.partyCount - a.partyCount || b.share - a.share,
     };
-    topics.sort(sorters[sortSelect.value] || sorters.num);
+    topics.sort(sorters[sortSelect.value] || sorters.share);
     if (query) topics = topics.filter(t => t.words.some(w => w[0].includes(query)));
 
     grid.replaceChildren(...topics.map(t => card(t, modelKey, query)));
     if (!topics.length) {
       const p = document.createElement('p');
       p.className = 'empty';
-      p.textContent = `No topic has “${query}” among its top 30 words.`;
+      p.textContent = `No topic has “${query}” among its top ${DATA.topicList[0].words.length} words. ` +
+        'This does not mean the word is absent from the topics, only that it is not among the words shown.';
       grid.appendChild(p);
     }
-    count.textContent = query ? `${topics.length} of ${DATA.topicList.length} topics` : `${DATA.topicList.length} topics`;
-    store.set('ubu-sort', sortSelect.value);
+    count.textContent = query ? `${topics.length} of ${DATA.topicList.length} topics with “${query}” in the top ${DATA.topicList[0].words.length}` : `${DATA.topicList.length} topics`;
   }
 
   // Static text from the data
   document.getElementById('lede').innerHTML =
     `A ${DATA.topics}-topic LDA model fitted on the body text of <strong>${DATA.motions.toLocaleString('en')} motions</strong>.`;
+  const topN = DATA.topicList[0].words.length;
+  document.getElementById('size-help').textContent =
+    `The word's probability in the topic, square-root scaled. Top ${topN} words. All clouds share one scale, so sizes ` +
+    'can be compared between topics: a topic spread over many words has a smaller, sparser cloud. The tooltip gives the exact probability.';
+  document.getElementById('search-hint').innerHTML =
+    `Searches only the top ${topN} words shown in each cloud, also as part of longer words (<em>skola</em> finds <em>gymnasieskola</em>). ` +
+    'A word that is not found can still have some probability in the topic; it is just not among the top words.';
   document.getElementById('party-help').textContent =
     "How many of the topic's top 5 motions share the first signatory's party; gold when 4 or 5 do. For reference, first signatories overall: " +
     DATA.partyShares.map(([p, s]) => `${p} ${Math.round(s * 100)}%`).join(', ') + '.';
   document.getElementById('footer').textContent =
-    `Generated ${DATA.generated} by modeling/14_generate_topic_explorer.py from models/baseline_lda_44 ` +
+    `Generated ${DATA.generated} by modeling/14_generate_topic_explorer.py from models/baseline_lda_${DATA.topics} ` +
     `(scikit-learn LDA, ${DATA.topics} topics). Motions per period: ` +
     DATA.periods.map((p, i) => `${p} ${DATA.periodCounts[i].toLocaleString('en')}`).join(', ') + '. ' +
     'Topic numbers are arbitrary: a model fitted with another seed numbers its topics differently.';
 
-  const savedSort = store.get('ubu-sort');
-  if (savedSort && [...sortSelect.options].some(o => o.value === savedSort)) sortSelect.value = savedSort;
 
   sortSelect.addEventListener('change', render);
   let timer;
