@@ -15,8 +15,11 @@
     --accent-soft: #e2ecf5;
     --gold: #a8761c;
     --gold-soft: #f5ead2;
-    --word-mid: #2b3a4d;
-    --word-low: #7a8697;
+    /* Word colour = persistence: in how many of the chain's four periods the word is among the top words */
+    --persist-4: #0b3d6e;
+    --persist-3: #2f74b5;
+    --persist-2: #7eaedb;
+    --persist-1: #a3abb5;
     --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
     --font-body: "Source Sans 3", "Helvetica Neue", Arial, sans-serif;
     --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -38,8 +41,10 @@
       --accent-soft: #1c2f42;
       --gold: #e2b65e;
       --gold-soft: #3a2e17;
-      --word-mid: #d3dbe5;
-      --word-low: #8995a6;
+      --persist-4: #a8d5ff;
+      --persist-3: #5f9fd9;
+      --persist-2: #3b6894;
+      --persist-1: #646e7b;
     }
   }
   :root[data-theme="dark"] {
@@ -53,8 +58,10 @@
     --accent-soft: #1c2f42;
     --gold: #e2b65e;
     --gold-soft: #3a2e17;
-    --word-mid: #d3dbe5;
-    --word-low: #8995a6;
+    --persist-4: #a8d5ff;
+    --persist-3: #5f9fd9;
+    --persist-2: #3b6894;
+    --persist-1: #646e7b;
   }
 
   body {
@@ -86,6 +93,7 @@
   }
   .field input { width: 13rem; max-width: 100%; }
   .field select:focus-visible, .field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .hint { flex-basis: 100%; font-size: var(--step--1); color: var(--muted); margin-top: -6px; }
   .count { margin-left: auto; font-family: var(--font-data); font-size: var(--step--1); color: var(--muted); font-variant-numeric: tabular-nums; }
 
   .howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 28px; color: var(--muted); font-size: 0.9375rem; }
@@ -104,7 +112,12 @@
   .periods { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
   @media (max-width: 900px) { .periods { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 480px) { .periods { grid-template-columns: minmax(0, 1fr); } }
-  .cell { display: grid; gap: 4px; align-content: start; border-top: 2px solid var(--rule); padding-top: 6px; }
+  /* Continuity: a solid accent bar runs over the cells joined by links >= the chain criterion; at a weak
+     link the bar stops and a dashed gold rule separates the cells, so the row reads as separate segments. */
+  .cell { display: grid; gap: 4px; align-content: start; border-top: 3px solid var(--rule); padding-top: 6px; }
+  .cell.joined { border-top-color: var(--accent); }
+  .cell.after-break { border-left: 2px dashed var(--gold); padding-left: 10px; margin-left: -8px; }
+  .break-note { flex-basis: 100%; font-family: var(--font-body); font-size: 0.75rem; color: var(--gold); }
   .cell-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-family: var(--font-data); font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .cell-head .period { color: var(--ink); font-weight: 500; letter-spacing: 0.04em; }
   .link { font-family: var(--font-data); font-size: 0.75rem; font-variant-numeric: tabular-nums; color: var(--accent); }
@@ -117,9 +130,13 @@
 
   .cloud { width: 100%; height: auto; display: block; }
   .cloud text { font-family: var(--font-display); font-weight: 500; }
-  .cloud .w1 { fill: var(--accent); font-weight: 700; }
-  .cloud .w2 { fill: var(--word-mid); }
-  .cloud .w3 { fill: var(--word-low); }
+  .cloud .p4 { fill: var(--persist-4); }
+  .cloud .p3 { fill: var(--persist-3); }
+  .cloud .p2 { fill: var(--persist-2); }
+  .cloud .p1 { fill: var(--persist-1); }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
   .cloud .hl { fill: var(--gold); }
 
   .empty { color: var(--muted); padding: 24px 0; }
@@ -139,23 +156,32 @@
     </label>
     <label class="field" for="sort">Sort
       <select id="sort">
+        <option value="strong" selected>Strongest chain first (weakest link, high to low)</option>
         <option value="row">Chain number</option>
-        <option value="strong">Strongest weakest link</option>
         <option value="weak">Weakest link first</option>
-        <option value="rise">Rise in share (last vs first period)</option>
-        <option value="fall">Fall in share (last vs first period)</option>
+        <option value="rise">Rise in share (linked chains only)</option>
+        <option value="fall">Fall in share (linked chains only)</option>
       </select>
     </label>
     <label class="field" for="search">Find word
-      <input type="search" id="search" placeholder="e.g. förskola" autocomplete="off" spellcheck="false">
+      <input type="search" id="search" placeholder="e.g. förskola" autocomplete="off" spellcheck="false" aria-describedby="search-hint">
     </label>
     <span class="count" id="count" aria-live="polite"></span>
+    <p class="hint" id="search-hint">Searches only the top words shown in each cloud, also as part of longer words (<em>skola</em> finds <em>gymnasieskola</em>). A word that is not found can still have some probability in the topic; it is just not among the top words.</p>
   </div>
 
   <dl class="howto">
     <div><dt>Rows are chains</dt><dd>Each period model has its own topics. Topics of adjacent periods are matched one-to-one (Hungarian algorithm on cosine similarity), and a row follows these matches from the first period to the last.</dd></div>
     <div><dt>Link</dt><dd id="link-help">The cosine similarity between a topic and the matched topic of the previous period.</dd></div>
-    <div><dt>Share</dt><dd>Mean topic proportion over the period's motions; every motion counts equally.</dd></div>
+    <div><dt>Share</dt><dd>Mean topic proportion over the period's motions; every motion counts equally. Rise and fall (first vs last period) are computed only for chains linked through all four periods; a change across a weak link may compare unrelated topics. Broken chains are listed after the others.</dd></div>
+    <div><dt>Word size</dt><dd id="size-help">The word's probability in that period's topic, on one scale per chain.</dd></div>
+    <div><dt>Word colour</dt><dd id="colour-help">In how many of the chain's four periods the word is among the top words.</dd>
+      <dd class="legend">
+        <span><i style="background: var(--persist-4)"></i>all 4</span>
+        <span><i style="background: var(--persist-3)"></i>3</span>
+        <span><i style="background: var(--persist-2)"></i>2</span>
+        <span><i style="background: var(--persist-1)"></i>1 period</span>
+      </dd></div>
     <div><dt>Seed chip</dt><dd>In how many of the 4 other seeds' models the topic is found again (cosine ≥ 0.70); gold when fewer than 3.</dd></div>
   </dl>
 
@@ -175,11 +201,6 @@
   const W = 320, H = 210;
   const layoutCache = {};
 
-  const store = {
-    get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
-    set(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* storage unavailable */ } },
-  };
-
   const pct = v => (v * 100).toFixed(1) + '%';
   const canvas = document.createElement('canvas').getContext('2d');
   function measure(text, size, weight) {
@@ -187,38 +208,47 @@
     return { w: canvas.measureText(text).width, h: size * 0.92 };
   }
 
-  // Spiral word placement. Every word must fit: if one does not, all sizes shrink and the layout restarts.
-  function layoutCloud(words) {
-    const pmax = words[0][1], pmin = words[words.length - 1][1];
+  // Spiral word placement of one cloud at the given sizes; null if some word does not fit
+  function placeWords(words, sizeOf) {
+    const placed = [];
+    for (let i = 0; i < words.length; i++) {
+      const [text, p] = words[i];
+      const size = sizeOf(p);
+      const weight = i < 3 ? 700 : 500;
+      const m = measure(text, size, weight);
+      const bw = m.w + 3, bh = m.h + 2;
+      let spot = null;
+      for (let t = 0; t < 900 && !spot; t += 0.12) {
+        const r = 2.4 * t;
+        const x = W / 2 + r * Math.cos(t) * 1.5 - bw / 2;
+        const y = H / 2 + r * Math.sin(t) - bh / 2;
+        if (x < 2 || y < 2 || x + bw > W - 2 || y + bh > H - 2) { if (r > W) break; continue; }
+        if (placed.every(q => x + bw <= q.x || q.x + q.w <= x || y + bh <= q.y || q.y + q.h <= y)) {
+          spot = { x, y, w: bw, h: bh };
+        }
+      }
+      if (!spot) return null;
+      placed.push({ ...spot, text, p, size, weight, rank: i });
+    }
+    return placed;
+  }
+
+  // The four clouds of a chain share one size scale (square root of the probability, between the
+  // chain's smallest and largest shown probability), so sizes are comparable across its periods.
+  // If a word does not fit in some cloud, all four shrink together and the layout restarts.
+  function layoutChain(row) {
+    const ps = row.cells.flatMap(c => c.words.map(w => w[1]));
+    const pmax = Math.max(...ps), pmin = Math.min(...ps);
     const sq = p => pmax === pmin ? 1 : (Math.sqrt(p) - Math.sqrt(pmin)) / (Math.sqrt(pmax) - Math.sqrt(pmin));
     let maxSize = 40, minSize = 12;
     for (let attempt = 0; attempt < 14; attempt++) {
-      const placed = [];
-      let failed = false;
-      for (let i = 0; i < words.length; i++) {
-        const [text, p] = words[i];
-        const size = minSize + sq(p) * (maxSize - minSize);
-        const weight = i < 3 ? 700 : 500;
-        const m = measure(text, size, weight);
-        const bw = m.w + 3, bh = m.h + 2;
-        let spot = null;
-        for (let t = 0; t < 900 && !spot; t += 0.12) {
-          const r = 2.4 * t;
-          const x = W / 2 + r * Math.cos(t) * 1.5 - bw / 2;
-          const y = H / 2 + r * Math.sin(t) - bh / 2;
-          if (x < 2 || y < 2 || x + bw > W - 2 || y + bh > H - 2) { if (r > W) break; continue; }
-          if (placed.every(q => x + bw <= q.x || q.x + q.w <= x || y + bh <= q.y || q.y + q.h <= y)) {
-            spot = { x, y, w: bw, h: bh };
-          }
-        }
-        if (!spot) { failed = true; break; }
-        placed.push({ ...spot, text, p, size, weight, rank: i });
-      }
-      if (!failed) return placed;
+      const sizeOf = p => minSize + sq(p) * (maxSize - minSize);
+      const clouds = row.cells.map(c => placeWords(c.words, sizeOf));
+      if (clouds.every(Boolean)) return clouds;
       maxSize *= 0.9;
       minSize = Math.max(9, minSize * 0.95);
     }
-    return [];
+    return row.cells.map(() => []);
   }
 
   function svgEl(name, attrs) {
@@ -227,18 +257,24 @@
     return el;
   }
 
-  function cloudSvg(cell, key, query) {
-    if (!layoutCache[key]) layoutCache[key] = layoutCloud(cell.words);
+  // Persistence: in how many periods of the chain each word is among the topic's top words
+  function persistence(row) {
+    const n = {};
+    for (const cell of row.cells) for (const [text] of cell.words) n[text] = (n[text] || 0) + 1;
+    return n;
+  }
+
+  function cloudSvg(cell, placed, query, persist) {
     const svg = svgEl('svg', { class: 'cloud', viewBox: `0 0 ${W} ${H}`, role: 'img',
       'aria-label': 'Word cloud: ' + cell.words.slice(0, 10).map(w => w[0]).join(', ') });
-    for (const w of layoutCache[key]) {
-      const tier = w.rank < 3 ? 'w1' : (w.rank < 10 ? 'w2' : 'w3');
+    for (const w of placed) {
+      const n = persist[w.text];
       const hl = query && w.text.includes(query) ? ' hl' : '';
       const t = svgEl('text', { x: (w.x + w.w / 2).toFixed(1), y: (w.y + w.h / 2).toFixed(1),
-        'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': w.size.toFixed(1), class: tier + hl });
+        'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': w.size.toFixed(1), class: 'p' + n + hl });
       t.textContent = w.text;
       const tip = svgEl('title', {});
-      tip.textContent = `${w.text}: ${(w.p * 100).toFixed(2)}%`;
+      tip.textContent = `${w.text}: ${(w.p * 100).toFixed(2)}% · top words in ${n} of ${DATA.periods.length} periods`;
       t.appendChild(tip);
       svg.appendChild(t);
     }
@@ -252,7 +288,7 @@
     return s;
   }
 
-  function cellEl(cell, p, row, k, query) {
+  function cellEl(cell, p, row, placed, query, persist) {
     const div = document.createElement('div');
     div.className = 'cell';
     const head = document.createElement('div');
@@ -264,17 +300,26 @@
       chip.title = `Found again in ${cell.stability.found} of ${cell.stability.of} other seeds' models`;
       head.appendChild(chip);
     }
+    const strong = c => c !== undefined && c >= DATA.chainCosine;
+    if (strong(row.links[p - 1]) || strong(row.links[p])) div.classList.add('joined');
     if (p > 0) {
       const c = row.links[p - 1];
-      const link = span('link' + (c < DATA.chainCosine ? ' weak' : ''), (c < DATA.chainCosine ? '⋯ ' : '← ') + c.toFixed(2));
-      link.title = `Cosine with the matched topic of ${DATA.periods[p - 1]}` + (c < DATA.chainCosine ? ' (weak link)' : '');
+      const weak = c < DATA.chainCosine;
+      const link = span('link' + (weak ? ' weak' : ''), (weak ? '⋯ ' : '← ') + c.toFixed(2));
+      link.title = `Cosine with the matched topic of ${DATA.periods[p - 1]}` + (weak ? ' (weak link: forced match)' : '');
       head.appendChild(link);
+      if (weak) {
+        div.classList.add('after-break');
+        head.appendChild(span('break-note', `Alignment uncertain: not linked to ${DATA.periods[p - 1]}`));
+      }
     }
-    div.append(head, cloudSvg(cell, `${k}:${p}:${cell.topic}`, query));
+    div.append(head, cloudSvg(cell, placed, query, persist));
     return div;
   }
 
-  function card(row, k, query) {
+  const linkedThrough = row => row.links.every(c => c >= DATA.chainCosine);
+
+  function card(row, k, query, showChange) {
     const art = document.createElement('article');
     art.className = 'chain';
     const head = document.createElement('header');
@@ -283,11 +328,28 @@
     h2.textContent = `Chain ${row.row}`;
     const weakest = Math.min(...row.links);
     const weakLinks = row.links.filter(c => c < DATA.chainCosine).length;
-    head.append(h2, span('meta', `weakest link ${weakest.toFixed(2)}` +
-      (weakLinks ? ` · ${weakLinks} weak link${weakLinks > 1 ? 's' : ''}` : ' · linked through all periods')));
+    // Continuous segments: runs of periods joined by links at or above the chain criterion
+    const segments = [[0]];
+    row.links.forEach((c, i) => c >= DATA.chainCosine ? segments[segments.length - 1].push(i + 1) : segments.push([i + 1]));
+    const span_ = seg => seg.length > 1 ? `${DATA.periods[seg[0]].slice(0, 4)}–${DATA.periods[seg[seg.length - 1]].slice(-4)}` : null;
+    const linked = segments.map(span_).filter(Boolean);
+    let summary;
+    if (!weakLinks) summary = 'linked through all periods';
+    else if (!linked.length) summary = 'no link at or above ' + DATA.chainCosine.toFixed(2) + ': forced matches, not a continuous topic';
+    else summary = `linked ${linked.join(' and ')} only · ${weakLinks} weak link${weakLinks > 1 ? 's' : ''}`;
+    head.append(h2, span('meta', `weakest link ${weakest.toFixed(2)} · ${summary}`));
+    if (showChange) {
+      const first = row.cells[0].share, last = row.cells[row.cells.length - 1].share;
+      head.appendChild(span('meta', linkedThrough(row)
+        ? `share ${pct(first)} → ${pct(last)} (${last >= first ? '+' : '−'}${(Math.abs(last - first) * 100).toFixed(1)} points)`
+        : 'no change computed: chain broken'));
+    }
     const periods = document.createElement('div');
     periods.className = 'periods';
-    row.cells.forEach((cell, p) => periods.appendChild(cellEl(cell, p, row, k, query)));
+    const persist = persistence(row);
+    const key = `${k}:${row.row}`;
+    if (!layoutCache[key]) layoutCache[key] = layoutChain(row);
+    row.cells.forEach((cell, p) => periods.appendChild(cellEl(cell, p, row, layoutCache[key][p], query, persist)));
     art.append(head, periods);
     return art;
   }
@@ -298,44 +360,63 @@
     const query = searchInput.value.trim().toLowerCase();
     let rows = set.rows.slice();
     const weakest = r => Math.min(...r.links);
-    const change = r => r.cells[r.cells.length - 1].share - r.cells[0].share;
+    // Rise and fall only for chains linked through all periods; broken chains (change null) go last
+    const change = r => linkedThrough(r) ? r.cells[r.cells.length - 1].share - r.cells[0].share : null;
+    const byChange = sign => (a, b) => {
+      const ca = change(a), cb = change(b);
+      if (ca === null || cb === null) return (ca === null) - (cb === null) || a.row - b.row;
+      return sign * (cb - ca);
+    };
     const sorters = {
       row: (a, b) => a.row - b.row,
       strong: (a, b) => weakest(b) - weakest(a),
       weak: (a, b) => weakest(a) - weakest(b),
-      rise: (a, b) => change(b) - change(a),
-      fall: (a, b) => change(a) - change(b),
+      rise: byChange(1),
+      fall: byChange(-1),
     };
-    rows.sort(sorters[sortSelect.value] || sorters.row);
+    rows.sort(sorters[sortSelect.value] || sorters.strong);
     if (query) rows = rows.filter(r => r.cells.some(c => c.words.some(w => w[0].includes(query))));
 
-    grid.replaceChildren(...rows.map(r => card(r, k, query)));
+    const showChange = sortSelect.value === 'rise' || sortSelect.value === 'fall';
+    grid.replaceChildren(...rows.map(r => card(r, k, query, showChange)));
     if (!rows.length) {
       const p = document.createElement('p');
       p.className = 'empty';
-      p.textContent = `No chain has “${query}” among the top ${set.rows[0].cells[0].words.length} words of any period.`;
+      p.textContent = `No chain has “${query}” among the top ${set.rows[0].cells[0].words.length} words of any period. ` +
+        'This does not mean the word is absent from the topics, only that it is not among the words shown.';
       grid.appendChild(p);
     }
-    count.textContent = query ? `${rows.length} of ${set.rows.length} chains` : `${set.rows.length} chains`;
-    store.set('ubu-period-k', k);
-    store.set('ubu-period-sort', sortSelect.value);
+    const topN = set.rows[0].cells[0].words.length;
+    count.textContent = query ? `${rows.length} of ${set.rows.length} chains with “${query}” in the top ${topN}` : `${set.rows.length} chains`;
   }
 
   // Static text from the data
   for (const k of Object.keys(DATA.sets).sort((a, b) => a - b)) {
     const o = document.createElement('option');
     o.value = k;
-    o.textContent = k;
+    o.textContent = Number(k) === DATA.chosen ? `${k} (chosen)` : `${k} (comparison)`;
     kSelect.appendChild(o);
   }
   const total = DATA.periodCounts.reduce((a, b) => a + b, 0);
   document.getElementById('lede').innerHTML =
     `One LDA model per period, fitted on the body text of <strong>${total.toLocaleString('en')} motions</strong> ` +
-    `with one shared vocabulary. Each row links a topic through the four periods; the four word clouds show it in each period.`;
+    `with one shared vocabulary. Each row links a topic through the four periods; the four word clouds show it in each period. ` +
+    (DATA.sets[DATA.chosen] ? `The analysis uses <strong>${DATA.chosen} topics per period</strong>; the other counts are shown for comparison, to see which chains hold whatever the number of topics.` : '');
   document.getElementById('link-help').textContent =
     `The cosine similarity between a topic and the matched topic of the previous period. Below ${DATA.chainCosine.toFixed(2)} ` +
     "(Gordon's chain criterion) the link is weak and shown in gold: the Hungarian matching pairs every topic, " +
-    'so a weak link may join two unrelated topics.';
+    'so a weak link may join two unrelated topics. The row is broken there: the accent bar stops, a dashed gold rule ' +
+    'separates the cells, and the cell says that the alignment is uncertain.';
+  const topN = DATA.sets[Object.keys(DATA.sets)[0]].rows[0].cells[0].words.length;
+  document.getElementById('search-hint').innerHTML =
+    `Searches only the top ${topN} words shown in each cloud, also as part of longer words (<em>skola</em> finds <em>gymnasieskola</em>). ` +
+    'A word that is not found can still have some probability in the topic; it is just not among the top words.';
+  document.getElementById('colour-help').textContent =
+    `In how many of the chain's four periods the word is among the topic's top ${topN} words (the words shown). ` +
+    'Across a weak link, a shared word says less.';
+  document.getElementById('size-help').textContent =
+    "The word's probability in that period's topic. The four clouds of a chain share one scale, so sizes can be " +
+    'compared across its periods, but not between chains. The tooltip gives the exact probability.';
   document.getElementById('footer').textContent =
     `Generated ${DATA.generated} by modeling/17_generate_period_explorer.py from models/period_lda_<k>/ ` +
     '(15_fit_period_lda.py; scikit-learn LDA, seed 42) and the seed-stability CSVs of 16_seed_stability_periods.py. ' +
@@ -343,10 +424,8 @@
     "Provisional alignment for inspection: adjacent matching only, without Gordon's permutation test. " +
     'Topic numbers (T) are arbitrary within each period model.';
 
-  const savedK = store.get('ubu-period-k');
-  if (savedK && DATA.sets[savedK]) kSelect.value = savedK;
-  const savedSort = store.get('ubu-period-sort');
-  if (savedSort && [...sortSelect.options].some(o => o.value === savedSort)) sortSelect.value = savedSort;
+  // Always open on the chosen topic count
+  if (DATA.sets[DATA.chosen]) kSelect.value = String(DATA.chosen);
 
   kSelect.addEventListener('change', render);
   sortSelect.addEventListener('change', render);

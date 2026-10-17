@@ -8,10 +8,15 @@ rows are therefore chains: topics of adjacent periods are matched one-to-one wit
 algorithm on cosine similarity (topic_matching.py), and each row follows the matches from the first
 period to the last. The cosine of every link is shown; links below CHAIN_COSINE are marked weak.
 This is a provisional alignment for inspection, without Gordon's permutation null.
+Word colour shows persistence: in how many of the chain's periods the word is among the top
+TOP_WORDS words (computed on the page).
 
 Input:  models/period_lda_<k>/ (15_fit_period_lda.py), baseline vectorizer, data/output/stopword_removed/,
         results/period_stability/PERIOD_<period>_<k>TOPICS_PER_TOPIC.csv (16_seed_stability_periods.py; optional)
 Output: visualizations/period_explorer.html (open in a browser; needs internet for the fonts)
+
+The page opens on the chosen count (PERIOD_TOPICS in lda_common.py); the other counts are shown for
+comparison, to see which chains hold whatever the number of topics.
 
 Usage: python modeling/17_generate_period_explorer.py [num_topics ...]   (default: 8 11 15)
 """
@@ -25,7 +30,7 @@ from pathlib import Path
 
 import numpy as np
 
-from lda_common import BASELINE_MODEL_DIR, load_baseline_vectorizer, load_period_body_texts
+from lda_common import BASELINE_MODEL_DIR, PERIOD_TOPICS, load_baseline_vectorizer, load_period_body_texts
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'analysis'))
 from topic_matching import match_and_evaluate  # noqa: E402
@@ -125,6 +130,7 @@ def main():
         'periods': list(periods),
         'periodCounts': [len(texts) for texts, _ in periods.values()],
         'chainCosine': CHAIN_COSINE,
+        'chosen': PERIOD_TOPICS,
         'generated': date.today().isoformat(),
         'sets': {},
     }
