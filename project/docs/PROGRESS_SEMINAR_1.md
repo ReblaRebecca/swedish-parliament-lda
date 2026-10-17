@@ -584,6 +584,13 @@ These should be stated explicitly in the methods section.
 
 ---
 
+**How the results compare with Gordon so far** (details in `PIPELINE_DOCUMENTATION.md`, *Comparison with Gordon*):
+
+- Whole-corpus seed instability is of the same size as his (mean Jaccard 0.283 against his 0.26–0.31).
+- At his 15 topics per period, our adjacent-period alignment is almost the same as his (matched mean cosine 0.41–0.54 against 0.44–0.59; 7 of 15 chains pass his criterion in both). At our 8 topics: 0.53–0.68, 5 of 8 chains.
+- His chain criterion is the mean of the three links ≥ 0.50; the period explorer currently requires every link ≥ 0.50, which is stricter (3 of 8 chains instead of 5). Proposed: his criterion as the main one.
+- Not yet comparable: permutation null and z-scores (2.5), rubric coding (2.6), a whole-corpus model with 8 topics (his k = 15 control). Convergence of our 50-pass fits is not checked.
+
 ### 2.11 Smaller open points
 
 - **Billions:** *miljard/miljarder* (about 1,300 occurrences) is the same kind of amount word as *miljoner*, which is removed. Remove it too, or keep it as a signal of budget motions?

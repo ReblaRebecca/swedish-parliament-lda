@@ -482,17 +482,59 @@ Alternative: fix 11 per period (like Gordon's fixed 15) and use the seed test on
 
 A page for inspecting the period models before the formal alignment: `visualizations/period_explorer.html`, with 8, 11 or 15 topics per period selectable. It opens on the chosen count (8, `PERIOD_TOPICS`), marked *chosen*; 11 and 15 are kept as *comparison*, to see which chains hold whatever the number of topics (a robustness check for the choice of 8). The models `period_lda_11/`, `period_lda_15/` and their per-topic stability CSVs are therefore kept.
 - **Rows are chains.** Each period model has its own topics, so topic numbers do not correspond across periods. Topics of adjacent periods are matched one-to-one with the Hungarian algorithm on cosine (`topic_matching.py`), and each row starts from a topic of the first period and follows the matches to the last.
-- **Per cloud:** the period, the topic's number in that period model, its share (mean θ over the period's motions), its seed stability from 16 (`seed n/4`, gold when below 3; shown only if the stability CSV's top words match the model) and the cosine with the matched topic of the previous period. Links below 0.50 (Gordon's chain criterion) are shown as weak.
+- **Per cloud:** the period, the topic's number in that period model, its share (mean θ over the period's motions), its seed stability from 16 (`seed n/4`, gold when below 3; shown only if the stability CSV's top words match the model) and the cosine with the matched topic of the previous period. Links below 0.50 are shown as weak (0.50 is Gordon's threshold, but he applies it to the mean of a chain's three links, not to each link; see *Comparison with Gordon*).
 - **Weak links break the row:** a solid accent bar runs only over periods joined by links ≥ 0.50; at a weak link the bar stops, a dashed gold rule separates the cells and the cell reads *Alignment uncertain*. The chain heading names the continuous segments (e.g. *linked 1994–2014 only*), or says *forced matches, not a continuous topic* when no link reaches 0.50, so a row of forced matches is not read as one trajectory
 - **Word colour = persistence within the chain:** in how many of the chain's four periods the word is among the top 20 words (the words shown): dark blue all four, medium blue three, light blue two, grey one. Bold marks the three most probable words of each cloud. With 8 topics, 12% of the words shown are in all four periods and 44% in only one
 - **Word size = probability, one scale per chain:** square root of the word's probability in that period's topic, scaled between the smallest and largest probability shown in the chain's four clouds; if a word does not fit, all four clouds shrink together. A word at 5% is therefore drawn larger than one at 1.5% across the chain's periods. Sizes are not comparable between chains (each chain has its own scale); the tooltip gives the exact probability
 - **Sorting and search:** by default strongest chain first (weakest link, high to low: chains linked through all periods at the top, forced matches at the bottom); also by chain number, weakest link first, rise or fall in share (first vs last period, computed only for chains linked through all four periods, since a change across a weak link may compare unrelated topics; broken chains are listed last, marked *no change computed*); a word search filters chains and highlights the word. The search covers only the top 20 words shown in each cloud (also as part of longer words), as stated next to the search box: a word that is not found can still have some probability in the topic, so a search cannot show that a word is absent from a topic.
 - **Limitations:** the Hungarian matching gives every topic a partner, so a topic that exists in only one period still sits in a chain, joined by weak links; a topic that appears in a later period cannot start its own row. This is a provisional alignment for inspection only, without Gordon's permutation null (seminar notes 2.5).
-- **First observation (option A):** few chains hold through all four periods: 3 of 8, 3 of 11 and 4 of 15 have every link ≥ 0.50. Those that hold are research and higher education, higher education and regions, and school (pupils, teachers). The other topics change between periods or are linked to different themes, which is the kind of change the analysis is about, but also why the permutation test is needed to tell real links from chance.
+- **First observation (option A):** few chains hold through all four periods: 3 of 8, 3 of 11 and 4 of 15 have every link ≥ 0.50 (by Gordon's mean criterion: 5 of 8, 7 of 11 and 7 of 15). Those that hold are research and higher education, higher education and regions, and school (pupils, teachers). The other topics change between periods or are linked to different themes, which is the kind of change the analysis is about, but also why the permutation test is needed to tell real links from chance.
 
 **Consequences to keep in mind**
 - **Words absent from a period** get near-zero weight in that period's topics (only the LDA prior). That is correct, but it means period-specific vocabulary also contributes to topics looking different across periods; this should be noted when interpreting similarities.
 - **Vocabulary thresholds** (`min_df=5`, `max_df=0.5`, `max_features=10000`) are applied to the full corpus, not per period. A word frequent in one period but rare overall is still included; a word used in more than half of all motions is excluded everywhere.
+
+## Comparison with Gordon (2026) (2026-10-17)
+
+How the current pipeline (32-topic whole-corpus model, 8-topic period models, global vocabulary) compares with the reference study, *Tracing Thematic Change in Early English-Language Science Fiction, 1818–1930*.
+
+**Comparable numbers**
+
+| | Gordon | This study |
+|---|---|---|
+| Whole-corpus seed stability (mean Jaccard of the top words) | 0.26–0.31 | 0.283, per-pair range 0.25–0.35 (32 topics) |
+| Matched mean cosine between adjacent periods, 15 topics per period | 0.44–0.59 | 0.41–0.54 |
+| Same, 8 topics per period (the chosen count) | — | 0.53, 0.62, 0.68 |
+| Chains with mean cosine ≥ 0.50 over the three transitions | 7 of 15 | 7 of 15 (15 topics); 5 of 8 (8 topics); 7 of 11 (11 topics) |
+
+- **Seed instability is of the same size as Gordon's.** The instability of the whole-corpus model is therefore not a weakness of this pipeline; Gordon found the same and uses it as part of his argument for period models.
+- **At Gordon's topic count (15 per period) the alignment is almost identical to his**, both in the matched cosine and in the number of chains that pass his criterion. At 8 topics the links are stronger, as expected with fewer, broader topics.
+- Caveat: different corpora, algorithms and vocabulary designs (below), so the agreement shows that the results are of the same order, not that the methods are equivalent.
+
+**Chain criterion: Gordon's vs. the period explorer's**
+
+Gordon counts a chain as holding if the **mean** cosine of its three links is at least 0.50. The period explorer currently breaks a chain at **every** link below 0.50, which is stricter: at 8 topics 3 chains have every link ≥ 0.50, but 5 pass Gordon's criterion (chains 4: 0.40, 0.57, 0.53, and 3: 0.33, 0.76, 0.70, pass on the mean but have one weak link). Proposed: Gordon's mean criterion as the main one, for comparability, and the link-by-link display as additional information on where a chain is uncertain. Not yet changed in the period explorer.
+
+**Methodological differences**
+
+| Point | Gordon | This study | Assessment |
+|---|---|---|---|
+| Algorithm | MALLET, Gibbs sampling, 1,000 iterations, asymmetric hyperparameter optimization | scikit-learn, online variational Bayes, 50 passes, symmetric priors | Probably the largest difference. Convergence is not checked (see below) |
+| Vocabulary | Per period, adjacent periods compared over their shared words | One global vocabulary | Open (seminar notes 2.2); the shared-word comparison may change the cosines somewhat |
+| Documents | 1,000-word book chunks | Whole motions | Justified: natural units, most shorter than 1,000 words |
+| Proper names | Removed | Kept | Open (seminar notes 2.7); the place-name topics are a parallel to Gordon's author signal |
+| Lemmatization | None | Stanza | Justified by Swedish inflection |
+| Topics | 15 per period, 60 whole corpus | 8 per period, 32 whole corpus | Justified by the seed-stability test; 11 and 15 are shown for comparison |
+| Seed stability | Whole-corpus runs only | Every model | Extension |
+
+**Convergence.** Every fit runs exactly 50 passes (`max_iter=50`, no convergence check). Online LDA processes the motions in mini-batches of 128 (about 109 updates per pass, about 5,400 in 50 passes) with a step size that decays with every update, to about 0.2% of the first in the last passes. Topics therefore stop changing towards the end whether or not they have reached a good solution, so a settled model is not evidence of convergence. Gordon's 1,000 Gibbs iterations are a different algorithm and not directly comparable. Too few passes could contribute to the seed instability. Proposed check (not run): a 200-pass fit with perplexity and topic change recorded every 5 passes, and a second seed at 200 passes to see whether stability improves.
+
+**Not yet done, so not yet comparable**
+- **Permutation null and z-scores:** Gordon's matched cosine is 0.44–0.59 against 0.22–0.25 for random pairings (z = 7–9). Without the null, the alignments can be said to look similar, not to be significant.
+- **Rubric coding** (coherent, thematic, concentration) of the whole-corpus and period models: Gordon's main comparison of binned and unbinned models.
+- **A whole-corpus model with 8 topics**, the counterpart of Gordon's k = 15 control (one period's number of topics). Only the 4 × 8 = 32 counterpart of his k = 60 exists.
+
+---
 
 ## Next Steps
 
