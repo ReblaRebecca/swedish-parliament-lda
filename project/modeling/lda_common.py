@@ -26,7 +26,7 @@ except ImportError:
 
 # Number of topics in each period model, chosen with the seed-stability test per period
 # (16_seed_stability_periods.py, 2026-10-17): 8 is the only tested count with at least half of the
-# topics stable in every period (docs/PIPELINE_DOCUMENTATION.md, Period Models).
+# topics stable in every period (docs/PIPELINE_DOCUMENTATION.md, Design Decisions).
 PERIOD_TOPICS = 8
 
 # Number of topics in the whole-corpus model: 32 = 4 periods x 8, the same total capacity as the

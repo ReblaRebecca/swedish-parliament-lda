@@ -2,7 +2,7 @@
 
 First baseline and title-weighted 44-topic models fitted on the re-extracted, Stanza-lemmatized text. This review covers the run itself, the topics and the vocabulary. Fixes 1–4 at the end were made the same day, and steps 03–05 and both models were re-run; see **After the Fixes**.
 
-> **Note (2026-10-16, later):** title weighting was dropped after the seed-stability runs and the weighted model's scripts (`10`, `11`) were removed; see `PIPELINE_DOCUMENTATION.md`, *Seed-Stability Results*. This review is kept as a record of both models.
+> **Note (2026-10-16, later):** title weighting was dropped after the seed-stability runs and the weighted model's scripts (`10`, `11`) were removed; see `PIPELINE_DOCUMENTATION.md`, *Design Decisions*. This review is kept as a record of both models.
 
 ## Run
 

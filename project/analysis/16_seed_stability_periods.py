@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Seed-stability test of the period models, for several topic counts, to choose the number of
-topics per period (docs/PIPELINE_DOCUMENTATION.md, Period Models, Topic count per period).
+topics per period (docs/PIPELINE_DOCUMENTATION.md, Design Decisions and Current Results).
 
 For every period and topic count: fit one model per seed on the period's motions with the global
 vocabulary (as 15_fit_period_lda.py), match every pair of seeds and count how many topics of the

@@ -153,7 +153,7 @@ The three questions below block the next implementation step, the period models.
 | Mean Jaccard (top 20) | 0.24 | 0.24 | 0.23 |
 | Topics found in all 4 other seeds (cosine ≥ 0.70) | 5 | 7 | 10 |
 
-Weighting raises stability only slightly, and the ranges overlap, so it is not clearly better (step 3 of *How to decide* below). Option (a) was chosen: the model uses body text only, which follows Gordon and removes a free parameter. Titles are still separated at extraction, preprocessed and kept in the data (`title_processed`) for later use. The weighting code was removed and is in the git history. Full results: `PIPELINE_DOCUMENTATION.md`, *Seed-Stability Results*. The background and arguments below are kept as the reasoning behind the decision.
+Weighting raises stability only slightly, and the ranges overlap, so it is not clearly better (step 3 of *How to decide* below). Option (a) was chosen: the model uses body text only, which follows Gordon and removes a free parameter. Titles are still separated at extraction, preprocessed and kept in the data (`title_processed`) for later use. The weighting code was removed and is in the git history. Full results: `PIPELINE_DOCUMENTATION.md`, *Design Decisions*; full results in `docs/reports/`. The background and arguments below are kept as the reasoning behind the decision.
 
 **For the seminar:** is dropping weighting acceptable, or should the weighted model be reported as a robustness check after all?
 
