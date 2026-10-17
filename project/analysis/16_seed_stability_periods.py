@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Seed-stability test of the period models, for several topic counts, to choose the number of
-topics per period (PIPELINE_DOCUMENTATION.md, Plan: Period Models, Topic count per period).
+topics per period (docs/PIPELINE_DOCUMENTATION.md, Period Models, Topic count per period).
 
 For every period and topic count: fit one model per seed on the period's motions with the global
 vocabulary (as 15_fit_period_lda.py), match every pair of seeds and count how many topics of the
@@ -11,8 +11,9 @@ count (as 09_test_lda_stability.py) and one summary over all of them.
 Runtime: 4 periods x 3 counts x 5 seeds = 60 fits; roughly 1-3 hours.
 
 Usage: python analysis/16_seed_stability_periods.py [num_topics ...]   (default: 8 11 15)
-Output: results/period_stability/PERIOD_<period>_<k>TOPICS.md and _PER_TOPIC.csv,
-        results/PERIOD_SEED_STABILITY_SUMMARY.md
+Output: docs/reports/period_stability/PERIOD_<period>_<k>TOPICS.md (report),
+        results/period_stability/PERIOD_<period>_<k>TOPICS_PER_TOPIC.csv (used by 17_generate_period_explorer.py),
+        docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md
 """
 
 import sys
@@ -78,7 +79,8 @@ def main():
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
     VECTORIZER_PATH = PROJECT_ROOT / 'models' / 'baseline_lda_44' / 'baseline_vectorizer.pkl'
-    REPORT_DIR = PROJECT_ROOT / 'results' / 'period_stability'
+    REPORT_DIR = PROJECT_ROOT / 'docs' / 'reports' / 'period_stability'
+    CSV_DIR = PROJECT_ROOT / 'results' / 'period_stability'
     topic_counts = [int(a) for a in sys.argv[1:]] or TOPIC_COUNTS
 
     periods, malformed = load_period_body_texts(INPUT_DIR)
@@ -103,10 +105,10 @@ def main():
             save_report(generate_report(f"Seed-Stability Analysis: Period {period}, {k} Topics",
                                         f"Body text only, motions of {period} ({len(texts)})", k, seed_info, pairwise),
                         REPORT_DIR / f"{name}.md")
-            save_topic_stability(rows, seed_info, DEFAULT_SEED, REPORT_DIR / f"{name}_PER_TOPIC.csv")
+            save_topic_stability(rows, seed_info, DEFAULT_SEED, CSV_DIR / f"{name}_PER_TOPIC.csv")
             summaries[(period, k)] = summarize(pairwise, rows)
 
-    save_report(summary_report(summaries), PROJECT_ROOT / 'results' / 'PERIOD_SEED_STABILITY_SUMMARY.md')
+    save_report(summary_report(summaries), PROJECT_ROOT / 'docs' / 'reports' / 'PERIOD_SEED_STABILITY_SUMMARY.md')
 
 
 if __name__ == '__main__':

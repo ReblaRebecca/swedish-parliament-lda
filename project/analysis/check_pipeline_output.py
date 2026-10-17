@@ -39,7 +39,7 @@ STAGES = [
     ('output/stopword_removed', ['text_no_stopwords', 'title_processed']),
 ]
 
-# Fragments created by the old extraction bug (see PREPROCESSING_ARTIFACTS.md); should now be (nearly) gone
+# Fragments created by the old extraction bug (see docs/PREPROCESSING_ARTIFACTS.md); should now be (nearly) gone
 KNOWN_FRAGMENTS = {'ning', 'ningen', 'ningar', 'skol', 'arbets', 'utbild', 'beh', 'nda', 'lder', 'ldre', 'mne', 'arbetsl', 'nyanl'}
 
 # A fragment found in more than this share of motions is reported

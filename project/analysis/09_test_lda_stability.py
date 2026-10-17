@@ -21,7 +21,7 @@ def main():
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
     BASELINE_VECTORIZER_PATH = PROJECT_ROOT / 'models' / 'baseline_lda_44' / 'baseline_vectorizer.pkl'
-    OUTPUT_FILE = PROJECT_ROOT / 'results' / f'BASELINE_STABILITY_{NUM_TOPICS}TOPICS_CORRECTED.md'
+    OUTPUT_FILE = PROJECT_ROOT / 'docs' / 'reports' / f'BASELINE_STABILITY_{NUM_TOPICS}TOPICS_CORRECTED.md'
 
     print("=" * 80)
     print(f"Seed-Stability Test: {NUM_TOPICS}-Topic Baseline LDA")

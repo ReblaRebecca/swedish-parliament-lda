@@ -9,7 +9,7 @@ test cannot drift apart:
     analysis/16_seed_stability_periods.py
 
 The model uses body text only. Titles are kept as a separate field (title_processed) in the
-data for later use; title weighting was tested and dropped (2026-10-16, see PIPELINE_DOCUMENTATION.md).
+data for later use; title weighting was tested and dropped (2026-10-16, see docs/PIPELINE_DOCUMENTATION.md).
 """
 
 import json

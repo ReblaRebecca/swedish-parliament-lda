@@ -11,7 +11,7 @@ This is a provisional alignment for inspection, without Gordon's permutation nul
 
 Input:  models/period_lda_<k>/ (15_fit_period_lda.py), baseline vectorizer, data/output/stopword_removed/,
         results/period_stability/PERIOD_<period>_<k>TOPICS_PER_TOPIC.csv (16_seed_stability_periods.py; optional)
-Output: results/period_explorer.html (open in a browser; needs internet for the fonts)
+Output: visualizations/period_explorer.html (open in a browser; needs internet for the fonts)
 
 Usage: python modeling/17_generate_period_explorer.py [num_topics ...]   (default: 8 11 15)
 """
@@ -114,7 +114,7 @@ def main():
     VECTORIZER_PATH = PROJECT_ROOT / 'models' / 'baseline_lda_44' / 'baseline_vectorizer.pkl'
     STABILITY_DIR = PROJECT_ROOT / 'results' / 'period_stability'
     TEMPLATE = Path(__file__).resolve().parent / 'period_explorer_template.html'
-    OUTPUT = PROJECT_ROOT / 'results' / 'period_explorer.html'
+    OUTPUT = PROJECT_ROOT / 'visualizations' / 'period_explorer.html'
     topic_counts = [int(a) for a in sys.argv[1:]] or TOPIC_COUNTS
 
     vectorizer = load_baseline_vectorizer(VECTORIZER_PATH)

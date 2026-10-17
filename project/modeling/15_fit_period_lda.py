@@ -2,7 +2,7 @@
 """
 Fit one LDA model per period (the four temporal bins), for cross-period topic alignment.
 
-Vocabulary: option A of the seminar notes (PROGRESS_SEMINAR_1.md, 0.1/2.2): one global vocabulary,
+Vocabulary: option A of the seminar notes (docs/PROGRESS_SEMINAR_1.md, 0.1/2.2): one global vocabulary,
 the vectorizer saved by 07_fit_baseline_lda.py. Every period model therefore has the same columns in
 the same order, so its topics can be compared directly with topic_matching.py. If option B (per-period
 vocabularies compared over shared words, as Gordon) is chosen, only period_vectorizers() changes.

@@ -8,7 +8,7 @@ Reads the fitted model directly (not the CSV export), so the page always shows t
 in models/. Replaces the earlier word cloud scripts and their template.
 
 Input:  models/baseline_lda_44/, data/output/stopword_removed/
-Output: results/topic_explorer.html (open in a browser; needs internet for the fonts)
+Output: visualizations/topic_explorer.html (open in a browser; needs internet for the fonts)
 
 Definitions used on the page:
 - Word size: P(word | topic), square-root scaled, top 30 words.
@@ -87,7 +87,7 @@ def main():
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
     BASELINE_DIR = PROJECT_ROOT / 'models' / 'baseline_lda_44'
     TEMPLATE = Path(__file__).resolve().parent / 'topic_explorer_template.html'
-    OUTPUT = PROJECT_ROOT / 'results' / 'topic_explorer.html'
+    OUTPUT = PROJECT_ROOT / 'visualizations' / 'topic_explorer.html'
 
     vectorizer = load_baseline_vectorizer(BASELINE_DIR / 'baseline_vectorizer.pkl')
     vocab = vectorizer.get_feature_names_out()

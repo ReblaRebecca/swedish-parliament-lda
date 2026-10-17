@@ -3,7 +3,7 @@
 ## Overview
 Processing 13,917 Swedish parliamentary education motions (1986-2025) through an NLP pipeline to extract thematic structure via Latent Dirichlet Allocation (LDA). Current approach: **44-topic LDA on the body text, lemmatized with Stanza**. Titles are processed and kept as a separate field for later use, but are not added to the model's documents: title weighting was tested and dropped (2026-10-16, see *Seed-Stability Results*).
 
-All paths below are relative to `project/`. Every script resolves its default paths from its own location, so scripts can be run from any working directory. Data (`data/`), models (`models/`) and the raw XML (`../data_xml/`) are not version controlled.
+All paths below are relative to `project/`. Documentation and reports are in `docs/` (in git), the HTML visualizations in `visualizations/` (in git), and generated tables (CSV) in `results/` (not in git). Every script resolves its default paths from its own location, so scripts can be run from any working directory. Data (`data/`), models (`models/`) and the raw XML (`../data_xml/`) are not version controlled.
 
 ## Pipeline Architecture
 
@@ -22,12 +22,12 @@ data/output/stopword_removed/         fields: text_no_stopwords, title_processed
     ↓
     └── modeling/07_fit_baseline_lda.py        → models/baseline_lda_44/
             ├── modeling/08_display_lda_topics.py       → results/44_TOPICS_FINAL.csv
-            ├── modeling/14_generate_topic_explorer.py  → results/topic_explorer.html
-            ├── analysis/09_test_lda_stability.py       → results/BASELINE_STABILITY_44TOPICS_CORRECTED.md
+            ├── modeling/14_generate_topic_explorer.py  → visualizations/topic_explorer.html
+            ├── analysis/09_test_lda_stability.py       → docs/reports/BASELINE_STABILITY_44TOPICS_CORRECTED.md
             │   (period models: same vocabulary, the vectorizer saved by 07)
             ├── modeling/15_fit_period_lda.py [k]       → models/period_lda_<k>/, results/period_<k>_topics.csv
-            │       ↓ modeling/17_generate_period_explorer.py → results/period_explorer.html
-            └── analysis/16_seed_stability_periods.py   → results/PERIOD_SEED_STABILITY_SUMMARY.md, results/period_stability/
+            │       ↓ modeling/17_generate_period_explorer.py → visualizations/period_explorer.html
+            └── analysis/16_seed_stability_periods.py   → docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md, results/period_stability/
 ```
 
 Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl`, `group2_1994-2004.jsonl`, `group3_2005-2014.jsonl`, `group4_2015-2025.jsonl`. Each stage adds fields and keeps earlier ones, so metadata (`dok_id`, title, date, author names) is carried through to the models. All of `data/` is ignored by git.
@@ -106,8 +106,8 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 |---|---|---|
 | `modeling/08_display_lda_topics.py [model_dir]` | `models/baseline_lda_44/` | `results/44_TOPICS_FINAL.csv` (top 20 words/topic) |
 | `modeling/15_fit_period_lda.py [num_topics]` | `data/output/stopword_removed/`, baseline vectorizer | `models/period_lda_<k>/` (one model per period + `vocabulary.txt`), `results/period_<k>_topics.csv` (top 20 words per topic and period). See *Period Models* |
-| `modeling/17_generate_period_explorer.py [k ...]` | `models/period_lda_<k>/` for k = 8, 11, 15 (default), baseline vectorizer, `data/output/stopword_removed/`, the per-topic CSVs of 16, template `modeling/period_explorer_template.html` | `results/period_explorer.html`: one row (chain) per topic of the first period with four word clouds, one per period; topics per period switchable (8/11/15). See *Period explorer* below |
-| `modeling/14_generate_topic_explorer.py` | `models/baseline_lda_44/`, `data/output/stopword_removed/`, template `modeling/topic_explorer_template.html` | `results/topic_explorer.html`: word cloud per topic, share overall and per period, top 8 motions with year/party/id, party concentration among the top 5 motions. Reads the model directly. Replaces the earlier word cloud scripts (12, 13) and their template |
+| `modeling/17_generate_period_explorer.py [k ...]` | `models/period_lda_<k>/` for k = 8, 11, 15 (default), baseline vectorizer, `data/output/stopword_removed/`, the per-topic CSVs of 16, template `modeling/period_explorer_template.html` | `visualizations/period_explorer.html`: one row (chain) per topic of the first period with four word clouds, one per period; topics per period switchable (8/11/15). See *Period explorer* below |
+| `modeling/14_generate_topic_explorer.py` | `models/baseline_lda_44/`, `data/output/stopword_removed/`, template `modeling/topic_explorer_template.html` | `visualizations/topic_explorer.html`: word cloud per topic, share overall and per period, top 8 motions with year/party/id, party concentration among the top 5 motions. Reads the model directly. Replaces the earlier word cloud scripts (12, 13) and their template |
 
 - Word weights are shown as normalized probabilities P(word | topic)
 - Topics use neutral names (Topic 1–44, no interpretive labels) so they can be inspected without prior bias
@@ -119,12 +119,12 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 | `topic_matching.py` | Module: Hungarian-algorithm topic matching between two LDA models; cosine similarity (full distributions) + Jaccard (top words) | — |
 | `11_validate_matching_quick.py` | Smoke test on 2,000 real documents + synthetic permutation test (8 topics) | stdout |
 | `seed_stability.py` | Module: shared seed-stability procedure (fit one model per seed, match every pair, write the report) used by 09 | — |
-| `09_test_lda_stability.py` | Seed stability of the 44-topic baseline | `results/BASELINE_STABILITY_44TOPICS_CORRECTED.md` |
-| `16_seed_stability_periods.py [k ...]` | Seed stability of the period models for several topic counts (default 8, 11, 15), to choose the count per period | `results/PERIOD_SEED_STABILITY_SUMMARY.md`; full report and per-topic CSV per period and count in `results/period_stability/` |
+| `09_test_lda_stability.py` | Seed stability of the 44-topic baseline | `docs/reports/BASELINE_STABILITY_44TOPICS_CORRECTED.md` |
+| `16_seed_stability_periods.py [k ...]` | Seed stability of the period models for several topic counts (default 8, 11, 15), to choose the count per period | `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`; full report per period and count in `docs/reports/period_stability/`, per-topic CSV in `results/period_stability/` |
 
 **Seed-stability reports** list, per seed, the training perplexity and iteration count; then the **stability per topic** of the reference model (seed 42, the seed of the reported model); then cosine and Jaccard statistics for each of the 10 seed pairs; then pooled statistics over all 440 matched topic pairs.
 
-**Stability per topic:** each topic of the seed-42 model is compared with its matched topic in each of the other 4 models. The table gives its top words, in how many of the 4 models it is *found* (matched cosine ≥ 0.70, a judgement call set in `seed_stability.FOUND_COSINE`), and its mean and minimum cosine and mean Jaccard. The same numbers are saved as CSV next to the report (`results/BASELINE_STABILITY_44TOPICS_PER_TOPIC.csv`). The seed-42 model is fitted on the same data with the same settings as the reported model, so its topic numbers are those of the reported model. Use this to decide which topics to interpret with confidence.
+**Stability per topic:** each topic of the seed-42 model is compared with its matched topic in each of the other 4 models. The table gives its top words, in how many of the 4 models it is *found* (matched cosine ≥ 0.70, a judgement call set in `seed_stability.FOUND_COSINE`), and its mean and minimum cosine and mean Jaccard. The same numbers are saved as CSV in `results/` (`results/BASELINE_STABILITY_44TOPICS_PER_TOPIC.csv`). The seed-42 model is fitted on the same data with the same settings as the reported model, so its topic numbers are those of the reported model. Use this to decide which topics to interpret with confidence.
 
 **Interpreting the pooled statistics:** the 440 matched topic pairs are not independent. Each seed's model appears in 4 of the 10 pairs, so the same topics are counted several times. The pooled mean is a fair summary, but the pooled standard deviation understates the real uncertainty. For the spread across runs, report the 10 per-pair means (or their range) rather than the pooled standard deviation.
 
@@ -316,24 +316,27 @@ project/
 ├── config/
 │   ├── boilerplate_phrases.txt
 │   └── lemma_corrections.txt              (corrections for known Stanza lemma errors)
-├── results/                               (not in git; regenerated by the scripts)
+├── docs/                                  (in git)
+│   ├── PIPELINE_DOCUMENTATION.md
+│   ├── PREPROCESSING_ARTIFACTS.md
+│   ├── MODEL_REVIEW.md                    (review of the first models on the Stanza pipeline)
+│   ├── PROGRESS_SEMINAR_1.md              (status and open decisions, seminar 2026-10-19)
+│   └── reports/                           (seed-stability reports written by 09 and 16; period_stability/ per period and count)
+├── visualizations/                        (in git; topic_explorer.html, period_explorer.html)
+├── results/                               (not in git; generated CSV tables)
 ├── data/                                  (not in git)
 │   ├── input/extracted_text_xml/
 │   └── output/{lemmatized,boilerplate_removed,normalized,stopword_removed}/
-├── models/                                (not in git)
-│   ├── baseline_lda_44/
-│   └── period_lda_{8,11,15}/                (one model per period + vocabulary.txt)
-├── PIPELINE_DOCUMENTATION.md
-├── PREPROCESSING_ARTIFACTS.md
-├── MODEL_REVIEW.md                        (review of the first models on the Stanza pipeline)
-└── PROGRESS_SEMINAR_1.md                  (status and open decisions, seminar 2026-10-19)
+└── models/                                (not in git)
+    ├── baseline_lda_44/
+    └── period_lda_{8,11,15}/              (one model per period + vocabulary.txt)
 ```
 
 ## Seed-Stability Results: Body Text vs. 3× and 5× Title Weighting (2026-10-16)
 
 **Question:** does title weighting make the 44-topic whole-corpus model more stable across random seeds, and which weight should be used?
 
-**Setup:** for each of the three variants, 44-topic LDA fitted with 5 seeds (42, 123, 456, 789, 999) on the same preprocessed text (Stanza pipeline after the model-review fixes, incl. the `kompetens` compound fix) and the same vocabulary (baseline vectorizer); topics matched between every pair of seeds with the Hungarian algorithm (10 pairs, 440 matched topic pairs per variant); cosine similarity over the full topic-word distributions, Jaccard over the top 20 words. A topic of the seed-42 model counts as *found* in another seed's model if its matched topic has cosine ≥ 0.70. Reports: `results/BASELINE_STABILITY_44TOPICS_CORRECTED.md` (body text; reproducible with `09_test_lda_stability.py`) and `results/SEED_STABILITY_{5X,3X}_WEIGHTED_CORRECTED.md` (produced by the 13 seed scripts, since removed; in git history), with per-topic CSVs alongside.
+**Setup:** for each of the three variants, 44-topic LDA fitted with 5 seeds (42, 123, 456, 789, 999) on the same preprocessed text (Stanza pipeline after the model-review fixes, incl. the `kompetens` compound fix) and the same vocabulary (baseline vectorizer); topics matched between every pair of seeds with the Hungarian algorithm (10 pairs, 440 matched topic pairs per variant); cosine similarity over the full topic-word distributions, Jaccard over the top 20 words. A topic of the seed-42 model counts as *found* in another seed's model if its matched topic has cosine ≥ 0.70. Reports: `docs/reports/BASELINE_STABILITY_44TOPICS_CORRECTED.md` (body text; reproducible with `09_test_lda_stability.py`) and `docs/reports/SEED_STABILITY_{5X,3X}_WEIGHTED_CORRECTED.md` (produced by the 13 seed scripts, since removed; in git history), with per-topic CSVs in `results/`.
 
 | | Body text only | Title ×5 | Title ×3 |
 |---|---|---|---|
@@ -424,7 +427,7 @@ Alternative: fix 11 per period (like Gordon's fixed 15) and use the seed test on
 
 **Seed-stability results per period (2026-10-16, option A)**
 
-`analysis/16_seed_stability_periods.py`, 5 seeds, 10 pairs per period and count; *stable* = found again (cosine ≥ 0.70) in at least 3 of the 4 other seeds' models. Full results: `results/PERIOD_SEED_STABILITY_SUMMARY.md`, `results/period_stability/`. Runtime 33 minutes.
+`analysis/16_seed_stability_periods.py`, 5 seeds, 10 pairs per period and count; *stable* = found again (cosine ≥ 0.70) in at least 3 of the 4 other seeds' models. Full results: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md` and `docs/reports/period_stability/`. Runtime 33 minutes.
 
 | Period | 8 topics: mean cosine / stable | 11 topics | 15 topics |
 |---|---|---|---|
@@ -442,7 +445,7 @@ Alternative: fix 11 per period (like Gordon's fixed 15) and use the seed test on
 
 **Period explorer (`modeling/17_generate_period_explorer.py`)**
 
-A page for inspecting the period models before the formal alignment: `results/period_explorer.html`, with 8, 11 or 15 topics per period selectable.
+A page for inspecting the period models before the formal alignment: `visualizations/period_explorer.html`, with 8, 11 or 15 topics per period selectable.
 - **Rows are chains.** Each period model has its own topics, so topic numbers do not correspond across periods. Topics of adjacent periods are matched one-to-one with the Hungarian algorithm on cosine (`topic_matching.py`), and each row starts from a topic of the first period and follows the matches to the last.
 - **Per cloud:** the period, the topic's number in that period model, its share (mean θ over the period's motions), its seed stability from 16 (`seed n/4`, gold when below 3; shown only if the stability CSV's top words match the model) and the cosine with the matched topic of the previous period. Links below 0.50 (Gordon's chain criterion) are shown as weak.
 - **Sorting and search:** by chain number, weakest link, rise or fall in share; a word search filters chains and highlights the word.
