@@ -136,6 +136,8 @@ def main():
             'doc_id': metadata_item['doc_id'],
             'title': metadata_item['title'],
             'year': metadata_item['year'],
+            'session': metadata_item['session'],
+            'period': metadata_item['period'],
         }
 
         # Add all topic probabilities
@@ -149,13 +151,13 @@ def main():
     results_file.parent.mkdir(exist_ok=True, parents=True)
 
     with open(results_file, 'w', newline='', encoding='utf-8') as f:
-        fieldnames = ['doc_id', 'title', 'year'] + [f'topic_{i+1}_prob' for i in range(NUM_TOPICS)]
+        fieldnames = ['doc_id', 'title', 'year', 'session', 'period'] + [f'topic_{i+1}_prob' for i in range(NUM_TOPICS)]
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(results)
 
     print(f"✅ Document-topic distribution saved to: {results_file}")
-    print(f"   Format: doc_id | title | year | topic_1_prob | topic_2_prob | ... | topic_{NUM_TOPICS}_prob")
+    print(f"   Format: doc_id | title | year | session | period | topic_1_prob | topic_2_prob | ... | topic_{NUM_TOPICS}_prob")
 
     print("\n" + "=" * 60)
     print("Baseline LDA fitting complete")

@@ -17,6 +17,9 @@ import pickle
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from periods import DISPLAY_NAMES  # noqa: E402
+
 try:
     from sklearn.decomposition import LatentDirichletAllocation
 except ImportError:
@@ -53,12 +56,14 @@ LDA_PARAMS = {
 }
 
 
-def motion_metadata(motion):
+def motion_metadata(motion, period):
     """Fields kept next to each document for the document-topic output."""
     return {
         'doc_id': motion.get('dok_id', 'unknown'),
         'title': motion.get('title', ''),
         'year': motion.get('date', '')[:4] if motion.get('date') else 'unknown',
+        'session': motion.get('session', ''),
+        'period': period,
     }
 
 
@@ -72,6 +77,7 @@ def read_bin_body_texts(bin_file):
     texts = []
     metadata = []
     malformed_count = 0
+    period = period_label(bin_file)
     with open(bin_file, 'r', encoding='utf-8') as f:
         for line in f:
             try:
@@ -83,13 +89,18 @@ def read_bin_body_texts(bin_file):
             # strip(): a text with no words left can still hold line breaks
             if text.strip():
                 texts.append(text)
-                metadata.append(motion_metadata(motion))
+                metadata.append(motion_metadata(motion, period))
     return texts, metadata, malformed_count
 
 
 def period_label(bin_file):
-    """Period of a temporal-bin file: 'group2_1994-2004.jsonl' -> '1994-2004'."""
+    """Period key of a period file: 'group2_1994-2006.jsonl' -> '1994-2006' (used in file and model names)."""
     return Path(bin_file).stem.split('_', 1)[-1]
+
+
+def period_display(period):
+    """Name of a period on pages and in reports, by its sessions: '1985-1994' -> '1985/86–1993/94'."""
+    return DISPLAY_NAMES.get(period, period)
 
 
 def load_body_texts(input_dir):

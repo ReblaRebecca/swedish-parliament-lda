@@ -13,6 +13,9 @@ import hashlib
 from pathlib import Path
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from periods import PERIOD_FILES  # noqa: E402
+
 
 def compute_hash(text):
     """Compute MD5 hash of text for duplicate detection."""
@@ -72,12 +75,7 @@ def main():
     else:
         INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
 
-    bins = [
-        'group1_1986-1993.jsonl',
-        'group2_1994-2004.jsonl',
-        'group3_2005-2014.jsonl',
-        'group4_2015-2025.jsonl',
-    ]
+    bins = PERIOD_FILES
 
     # Global duplicates dict (persists across all bins for cross-bin detection)
     duplicates = {}

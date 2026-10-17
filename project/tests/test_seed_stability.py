@@ -50,7 +50,7 @@ def quiet(function, *args, **kwargs):
 
 def write_bin(directory, motions, extra_lines=()):
     """Write motions as one temporal-bin JSONL file."""
-    with open(Path(directory) / 'group1_1986-1993.jsonl', 'w', encoding='utf-8') as f:
+    with open(Path(directory) / 'group1_1985-1994.jsonl', 'w', encoding='utf-8') as f:
         for motion in motions:
             f.write(json.dumps(motion, ensure_ascii=False) + '\n')
         for line in extra_lines:

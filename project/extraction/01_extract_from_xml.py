@@ -6,7 +6,8 @@ Removes document metadata from the text: signatures, headers, the title heading,
 motion numbers and the motion's own author names (body and title).
 Input: XML files, searched recursively (default: ../swedish-parliament-data next to the repository,
        with one folder per period such as mot-1980-1989.xml/; override with [xml_dir] [output_dir])
-Output: JSONL files organized by temporal bin (1986-1993, 1994-2004, 2005-2014, 2015-2025)
+Output: JSONL files, one per period (periods.py: four periods of complete electoral terms, sessions
+        1985/86-2025/26), assigned by parliamentary session (riksmöte), not by date
 """
 
 import json
@@ -15,8 +16,10 @@ import sys
 import unicodedata
 from pathlib import Path
 from html.parser import HTMLParser
-from datetime import datetime
 import xml.etree.ElementTree as ET
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from periods import PERIODS, period_of_session  # noqa: E402
 
 
 # Tags that separate words. Inline tags (<span>, <b>, <a>, ...) do NOT: the source HTML
@@ -226,24 +229,10 @@ def extract_authors(root):
     return authors
 
 
-def get_temporal_bin(date_str):
-    """Assign date to temporal bin based on year (1986-2025 range)."""
-    try:
-        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-        year = date_obj.year
-
-        if 1986 <= year <= 1993:
-            return 'group1_1986-1993'
-        elif 1994 <= year <= 2004:
-            return 'group2_1994-2004'
-        elif 2005 <= year <= 2014:
-            return 'group3_2005-2014'
-        elif 2015 <= year <= 2025:
-            return 'group4_2015-2025'
-        else:
-            return None  # Outside 1986-2025 range
-    except (ValueError, AttributeError):
-        return None
+def get_temporal_bin(session):
+    """Period (file stem) of a parliamentary session ('1985/86' -> 'group1_1985-1994'); None if outside
+    1985/86-2025/26 or not a valid session. The date is not used: some motions carry a placeholder date."""
+    return period_of_session(session)
 
 
 def process_xml_file(xml_path):
@@ -263,6 +252,7 @@ def process_xml_file(xml_path):
         dok_id = dokument.findtext('dok_id', '')
         organ = dokument.findtext('organ', '')
         datum = dokument.findtext('datum', '')
+        session = dokument.findtext('rm', '')
         titel = repair_characters(dokument.findtext('titel', ''))
         html_content = dokument.findtext('html', '')
 
@@ -280,7 +270,7 @@ def process_xml_file(xml_path):
         # Remove the title heading: the title is kept separately, the body holds only the motion's own text
         body_text = remove_title_heading(body_text, titel)
 
-        # Extract year from datum (format: YYYY-MM-DD HH:MM:SS)
+        # Date without time (format: YYYY-MM-DD HH:MM:SS), kept as metadata
         date_str = datum.strip().split()[0] if datum else ''
 
         # Extract author information from root-level <dokintressent>
@@ -294,6 +284,7 @@ def process_xml_file(xml_path):
         return {
             'dok_id': dok_id.strip(),
             'date': date_str,
+            'session': session.strip(),     # parliamentary session (riksmöte), decides the period
             'title': titel.strip(),          # original title, for display
             'title_text': title_text,        # title with metadata removed, for processing
             'text': body_text,
@@ -330,12 +321,7 @@ def main():
     print("=" * 70)
 
     # Track statistics by temporal bin
-    stats = {
-        'group1_1986-1993': {'count': 0, 'skipped': 0},
-        'group2_1994-2004': {'count': 0, 'skipped': 0},
-        'group3_2005-2014': {'count': 0, 'skipped': 0},
-        'group4_2015-2025': {'count': 0, 'skipped': 0},
-    }
+    stats = {stem: {'count': 0, 'skipped': 0} for stem, _, _ in PERIODS}
 
     # Output files (one per temporal bin)
     output_files = {}
@@ -364,8 +350,8 @@ def main():
         if not motion:
             continue
 
-        # Determine temporal bin from date
-        bin_name = get_temporal_bin(motion['date'])
+        # Period from the parliamentary session
+        bin_name = get_temporal_bin(motion['session'])
 
         if not bin_name:
             continue

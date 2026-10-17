@@ -26,9 +26,13 @@ from pathlib import Path
 
 import numpy as np
 
-from lda_common import BASELINE_MODEL_DIR, NUM_TOPICS, load_baseline_vectorizer, load_body_texts
+from lda_common import BASELINE_MODEL_DIR, NUM_TOPICS, load_baseline_vectorizer, load_body_texts, period_display
 
-PERIODS = [('1986–1993', 1986, 1993), ('1994–2004', 1994, 2004), ('2005–2014', 2005, 2014), ('2015–2025', 2015, 2025)]
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from periods import PERIODS, period_key  # noqa: E402
+
+# Period keys in order ('1985-1994', ...); a motion's period is the file it is stored in
+PERIOD_KEYS = [period_key(stem) for stem, _, _ in PERIODS]
 TOP_WORDS = 30
 TOP_MOTIONS = 8
 CONCENTRATION_TOP = 5
@@ -46,16 +50,13 @@ def load_first_signatory_parties(input_dir):
     return parties
 
 
-def period_index(year):
-    for i, (_, start, end) in enumerate(PERIODS):
-        if start <= int(year) <= end:
-            return i
-    return None
+def period_index(period):
+    return PERIOD_KEYS.index(period)
 
 
 def model_data(lda, vocab, theta, metadata, parties):
     """Per-topic words, shares and top motions for one model."""
-    periods = np.array([period_index(m['year']) for m in metadata])
+    periods = np.array([period_index(m['period']) for m in metadata])
     topic_word = lda.components_ / lda.components_.sum(axis=1, keepdims=True)
     topics = []
     for k in range(lda.n_components):
@@ -65,6 +66,7 @@ def model_data(lda, vocab, theta, metadata, parties):
             'id': metadata[d]['doc_id'],
             'title': metadata[d]['title'],
             'year': metadata[d]['year'],
+            'session': metadata[d]['session'],
             'party': parties.get(metadata[d]['doc_id'], ''),
             'theta': round(float(theta[d, k]), 3),
         } for d in top_doc_ids]
@@ -74,7 +76,7 @@ def model_data(lda, vocab, theta, metadata, parties):
             'num': k + 1,
             'words': [[vocab[i], round(float(topic_word[k, i]), 5)] for i in top_word_ids],
             'share': round(float(theta[:, k].mean()), 5),
-            'periods': [round(float(theta[periods == p, k].mean()), 5) for p in range(len(PERIODS))],
+            'periods': [round(float(theta[periods == p, k].mean()), 5) for p in range(len(PERIOD_KEYS))],
             'motions': motions,
             'party': party,
             'partyCount': count,
@@ -104,10 +106,10 @@ def main():
     theta = lda.transform(vectorizer.transform(texts))
     theta = theta / theta.sum(axis=1, keepdims=True)
     data = {
-        'periods': [p[0] for p in PERIODS],
+        'periods': [period_display(p) for p in PERIOD_KEYS],
         'topicList': model_data(lda, vocab, theta, metadata, parties),
         'motions': len(texts),
-        'periodCounts': [int(sum(1 for m in metadata if period_index(m['year']) == p)) for p in range(len(PERIODS))],
+        'periodCounts': [sum(1 for m in metadata if m['period'] == p) for p in PERIOD_KEYS],
     }
 
     all_parties = Counter(p or '?' for p in parties.values())

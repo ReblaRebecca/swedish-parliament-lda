@@ -145,7 +145,7 @@
 
 <div class="page">
   <header class="masthead">
-    <p class="eyebrow">Riksdagen · Utbildningsutskottet (UbU) · Motions 1986–2025</p>
+    <p class="eyebrow">Riksdagen · Utbildningsutskottet (UbU) · Motions, sessions 1985/86–2025/26</p>
     <h1>Topics across periods</h1>
     <p class="lede" id="lede">One LDA model per period, topics linked across periods.</p>
   </header>
@@ -338,7 +338,8 @@
     // Continuous segments: runs of periods joined by links at or above the chain criterion
     const segments = [[0]];
     row.links.forEach((c, i) => c >= DATA.chainCosine ? segments[segments.length - 1].push(i + 1) : segments.push([i + 1]));
-    const span_ = seg => seg.length > 1 ? `${DATA.periods[seg[0]].slice(0, 4)}–${DATA.periods[seg[seg.length - 1]].slice(-4)}` : null;
+    // Period names are sessions ('1985/86–1993/94'): a segment runs from its first period's first session to its last period's last
+    const span_ = seg => seg.length > 1 ? `${DATA.periods[seg[0]].split('–')[0]}–${DATA.periods[seg[seg.length - 1]].split('–').pop()}` : null;
     const linked = segments.map(span_).filter(Boolean);
     let summary;
     if (!weakLinks) summary = 'every link strong';

@@ -31,7 +31,7 @@ from pathlib import Path
 
 import numpy as np
 
-from lda_common import BASELINE_MODEL_DIR, PERIOD_TOPICS, load_baseline_vectorizer, load_period_body_texts
+from lda_common import BASELINE_MODEL_DIR, PERIOD_TOPICS, load_baseline_vectorizer, load_period_body_texts, period_display
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'analysis'))
 from topic_matching import match_and_evaluate  # noqa: E402
@@ -129,7 +129,7 @@ def main():
     periods, _ = load_period_body_texts(INPUT_DIR)
 
     data = {
-        'periods': list(periods),
+        'periods': [period_display(p) for p in periods],
         'periodCounts': [len(texts) for texts, _ in periods.values()],
         'chainCosine': CHAIN_COSINE,
         'chosen': PERIOD_TOPICS,

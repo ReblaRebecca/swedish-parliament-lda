@@ -27,7 +27,7 @@ from seed_stability import (
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'modeling'))
 from lda_common import (  # noqa: E402
-    BASELINE_MODEL_DIR, DEFAULT_SEED, STABILITY_SEEDS, load_baseline_vectorizer, load_period_body_texts,
+    BASELINE_MODEL_DIR, DEFAULT_SEED, STABILITY_SEEDS, load_baseline_vectorizer, load_period_body_texts, period_display,
 )
 
 TOPIC_COUNTS = [8, 11, 15]
@@ -69,7 +69,7 @@ def summary_report(summaries):
         "|---|---|---|---|---|---|---|---|",
     ]
     for (period, k), s in summaries.items():
-        lines.append(f"| {period} | {k} | {s['mean_cosine']:.3f} | {s['min_pair']:.3f}–{s['max_pair']:.3f} | "
+        lines.append(f"| {period_display(period)} | {k} | {s['mean_cosine']:.3f} | {s['min_pair']:.3f}–{s['max_pair']:.3f} | "
                      f"{s['found_all']} | {s['found_none']} | {s['stable']} | {s['stable_share']:.0%} |")
     lines.append("")
     return '\n'.join(lines)
@@ -97,13 +97,13 @@ def main():
         doc_term_matrix = vectorizer.transform(texts)
         for k in topic_counts:
             print("=" * 80)
-            print(f"Period {period}: {len(texts)} motions, {k} topics")
+            print(f"Period {period_display(period)}: {len(texts)} motions, {k} topics")
             print("=" * 80)
             seed_info, pairwise = run_seed_stability(doc_term_matrix, vocab, STABILITY_SEEDS, k)
             rows = per_topic_stability(pairwise, DEFAULT_SEED, k)
             name = f"PERIOD_{period}_{k}TOPICS"
-            save_report(generate_report(f"Seed-Stability Analysis: Period {period}, {k} Topics",
-                                        f"Body text only, motions of {period} ({len(texts)})", k, seed_info, pairwise),
+            save_report(generate_report(f"Seed-Stability Analysis: Period {period_display(period)}, {k} Topics",
+                                        f"Body text only, motions of sessions {period_display(period)} ({len(texts)})", k, seed_info, pairwise),
                         REPORT_DIR / f"{name}.md")
             save_topic_stability(rows, seed_info, DEFAULT_SEED, CSV_DIR / f"{name}_PER_TOPIC.csv")
             summaries[(period, k)] = summarize(pairwise, rows)

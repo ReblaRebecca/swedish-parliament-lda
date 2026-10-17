@@ -50,16 +50,16 @@ def quiet(function, *args, **kwargs):
 
 
 BINS = {
-    'group1_1986-1993.jsonl': [
-        {'dok_id': 'A', 'date': '1990-01-01', 'text_no_stopwords': 'skola lärare elev'},
-        {'dok_id': 'B', 'date': '1991-01-01', 'text_no_stopwords': '\n'},  # withdrawn: no words
+    'group1_1985-1994.jsonl': [
+        {'dok_id': 'A', 'date': '1985-01-01', 'session': '1985/86', 'text_no_stopwords': 'skola lärare elev'},
+        {'dok_id': 'B', 'date': '1991-01-01', 'session': '1990/91', 'text_no_stopwords': '\n'},  # withdrawn: no words
     ],
-    'group2_1994-2004.jsonl': [
-        {'dok_id': 'C', 'date': '1995-01-01', 'text_no_stopwords': 'universitet forskning'},
-        {'dok_id': 'D', 'date': '1996-01-01', 'text_no_stopwords': ''},
+    'group2_1994-2006.jsonl': [
+        {'dok_id': 'C', 'date': '1995-01-01', 'session': '1994/95', 'text_no_stopwords': 'universitet forskning'},
+        {'dok_id': 'D', 'date': '1996-01-01', 'session': '1995/96', 'text_no_stopwords': ''},
     ],
-    'group3_2005-2014.jsonl': [{'dok_id': 'E', 'date': '2010-01-01', 'text_no_stopwords': 'förskola barn'}],
-    'group4_2015-2025.jsonl': [{'dok_id': 'F', 'date': '2020-01-01', 'text_no_stopwords': 'digitalisering elev'}],
+    'group3_2006-2014.jsonl': [{'dok_id': 'E', 'date': '2010-01-01', 'session': '2009/10', 'text_no_stopwords': 'förskola barn'}],
+    'group4_2014-2026.jsonl': [{'dok_id': 'F', 'date': '2026-04-01', 'session': '2025/26', 'text_no_stopwords': 'digitalisering elev'}],
 }
 
 
@@ -79,9 +79,9 @@ class TestPeriodLoading(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             write_bins(tmp)
             periods, _ = lda_common.load_period_body_texts(Path(tmp))
-        self.assertEqual(list(periods), ['1986-1993', '1994-2004', '2005-2014', '2015-2025'])
-        self.assertEqual([m['doc_id'] for m in periods['1986-1993'][1]], ['A'])
-        self.assertEqual(periods['1994-2004'][0], ['universitet forskning'])
+        self.assertEqual(list(periods), ['1985-1994', '1994-2006', '2006-2014', '2014-2026'])
+        self.assertEqual([m['doc_id'] for m in periods['1985-1994'][1]], ['A'])
+        self.assertEqual(periods['1994-2006'][0], ['universitet forskning'])
 
     def test_same_motions_as_whole_corpus(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -95,7 +95,19 @@ class TestPeriodLoading(unittest.TestCase):
         self.assertEqual(malformed, 1)
 
     def test_period_label(self):
-        self.assertEqual(lda_common.period_label(Path('x/group2_1994-2004.jsonl')), '1994-2004')
+        self.assertEqual(lda_common.period_label(Path('x/group2_1994-2006.jsonl')), '1994-2006')
+
+    def test_period_display_names(self):
+        # Pages and reports name the periods by their parliamentary sessions
+        self.assertEqual([lda_common.period_display(p) for p in ['1985-1994', '1994-2006', '2006-2014', '2014-2026']],
+                         ['1985/86–1993/94', '1994/95–2005/06', '2006/07–2013/14', '2014/15–2025/26'])
+
+    def test_metadata_carries_session_and_period(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            write_bins(tmp)
+            _, metadata, _ = lda_common.load_body_texts(Path(tmp))
+        self.assertEqual([(m['session'], m['period']) for m in metadata],
+                         [('1985/86', '1985-1994'), ('1994/95', '1994-2006'), ('2009/10', '2006-2014'), ('2025/26', '2014-2026')])
 
 
 class TestPeriodModels(unittest.TestCase):
@@ -108,7 +120,7 @@ class TestPeriodModels(unittest.TestCase):
                  'digitalisering', 'betyg']
         cls.periods = {
             period: ([' '.join(rng.choice(words[2 * i:2 * i + 4], 20)) for _ in range(30)], [{}] * 30)
-            for i, period in enumerate(['1986-1993', '1994-2004', '2005-2014', '2015-2025'])
+            for i, period in enumerate(['1985-1994', '1994-2006', '2006-2014', '2014-2026'])
         }
         # Global vocabulary, as 07 builds it from all periods
         cls.vectorizer = CountVectorizer().fit([t for texts, _ in cls.periods.values() for t in texts])
@@ -135,22 +147,22 @@ class TestPeriodModels(unittest.TestCase):
         # 'betyg' occurs only in the last period: a column everywhere, near-zero weight in the first
         vocab = list(self.vectorizer.get_feature_names_out())
         betyg = vocab.index('betyg')
-        first, _ = self.models['1986-1993']
-        last, _ = self.models['2015-2025']
+        first, _ = self.models['1985-1994']
+        last, _ = self.models['2014-2026']
         # Only the prior: far below a word that occurs in the period
         skola = vocab.index('skola')
         self.assertLess(first.components_[:, betyg].sum(), 0.05 * first.components_[:, skola].sum())
         self.assertGreater(last.components_[:, betyg].max(), first.components_[:, betyg].max())
 
     def test_check_rejects_different_vocabulary(self):
-        lda, vocab = self.models['1986-1993']
+        lda, vocab = self.models['1985-1994']
         changed = dict(self.models)
-        changed['2015-2025'] = (lda, vocab[::-1])
+        changed['2014-2026'] = (lda, vocab[::-1])
         with self.assertRaises(ValueError):
             period_models.check_same_vocabulary(changed)
 
     def test_adjacent_periods_can_be_matched(self):
-        (lda1, vocab1), (lda2, vocab2) = self.models['1986-1993'], self.models['1994-2004']
+        (lda1, vocab1), (lda2, vocab2) = self.models['1985-1994'], self.models['1994-2006']
         matches, summary, _ = match_and_evaluate(lda1, lda2, vocab1, vocab2)
         self.assertEqual(len(matches), 3)
 
@@ -160,7 +172,7 @@ class TestPeriodModels(unittest.TestCase):
             quiet(period_models.save_top_words, self.models, 3, output)
             lines = output.read_text(encoding='utf-8').splitlines()
         self.assertEqual(len(lines), 1 + 4 * 3)  # header + 3 topics x 4 periods
-        self.assertTrue(lines[1].startswith('1986-1993,1,'))
+        self.assertTrue(lines[1].startswith('1985-1994,1,'))
 
     def test_period_scripts_use_shared_functions(self):
         self.assertIs(period_models.fit_lda_model, lda_common.fit_lda_model)
@@ -190,9 +202,9 @@ class TestPeriodStabilitySummary(unittest.TestCase):
 
     def test_summary_report_has_one_row_per_period_and_count(self):
         s = period_stability.summarize(self.pairwise, self.rows)
-        report = period_stability.summary_report({('1986-1993', 3): s, ('1994-2004', 3): s})
-        self.assertIn('| 1986-1993 | 3 |', report)
-        self.assertIn('| 1994-2004 | 3 |', report)
+        report = period_stability.summary_report({('1985-1994', 3): s, ('1994-2006', 3): s})
+        self.assertIn('| 1985/86–1993/94 | 3 |', report)
+        self.assertIn('| 1994/95–2005/06 | 3 |', report)
 
 
 class FakeModel:

@@ -11,6 +11,9 @@ import json
 from pathlib import Path
 import sys
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from periods import PERIOD_FILES  # noqa: E402
+
 try:
     import nltk
     from nltk.corpus import stopwords
@@ -143,13 +146,8 @@ def main():
     stop_words = get_swedish_stopwords()
     print(f"Loaded {len(stop_words)} stop words")
 
-    # Define temporal bins
-    bins = [
-        ('group1_1986-1993.jsonl', 'group1_1986-1993.jsonl'),
-        ('group2_1994-2004.jsonl', 'group2_1994-2004.jsonl'),
-        ('group3_2005-2014.jsonl', 'group3_2005-2014.jsonl'),
-        ('group4_2015-2025.jsonl', 'group4_2015-2025.jsonl'),
-    ]
+    # One file per period (periods.py)
+    bins = [(name, name) for name in PERIOD_FILES]
 
     total_motions = 0
     total_malformed = 0

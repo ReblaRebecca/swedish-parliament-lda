@@ -22,17 +22,14 @@ from collections import Counter
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+from periods import PERIOD_FILES, period_of_session  # noqa: E402
 
-BINS = [
-    'group1_1986-1993.jsonl',
-    'group2_1994-2004.jsonl',
-    'group3_2005-2014.jsonl',
-    'group4_2015-2025.jsonl',
-]
+BINS = PERIOD_FILES
 
 # Stage directory (relative to data_dir) -> fields every motion must have after that stage
 STAGES = [
-    ('input/extracted_text_xml', ['dok_id', 'date', 'title', 'title_text', 'text', 'authors', 'author_names']),
+    ('input/extracted_text_xml', ['dok_id', 'date', 'session', 'title', 'title_text', 'text', 'authors', 'author_names']),
     ('output/lemmatized', ['tokens', 'title_tokens']),
     ('output/boilerplate_removed', ['text_no_boilerplate', 'title_no_boilerplate']),
     ('output/normalized', ['text_normalized', 'title_normalized']),
@@ -138,8 +135,9 @@ def check_structure(report, stage_dir, required_fields, reference_ids):
 
 
 def check_extracted(report, stage_dir):
-    """Extraction repairs applied: no soft hyphens, no spacing diacritics, NFC text; titles present."""
-    bad_chars, empty_text, empty_title = [], [], []
+    """Extraction repairs applied: no soft hyphens, no spacing diacritics, NFC text; titles present;
+    every motion in the file of its session's period."""
+    bad_chars, empty_text, empty_title, wrong_period = [], [], [], []
     for bin_name in BINS:
         path = stage_dir / bin_name
         if not path.exists():
@@ -148,6 +146,8 @@ def check_extracted(report, stage_dir):
             if motion is None:
                 continue
             dok_id = motion.get('dok_id')
+            if period_of_session(motion.get('session')) != Path(bin_name).stem:
+                wrong_period.append(f"{dok_id} ({motion.get('session')!r} in {bin_name})")
             for field in ('text', 'title_text'):
                 value = motion.get(field) or ''
                 if '\xad' in value or SPACING_DIACRITICS.search(value) or not unicodedata.is_normalized('NFC', value):
@@ -157,6 +157,7 @@ def check_extracted(report, stage_dir):
             if not (motion.get('title_text') or '').strip():
                 empty_title.append(dok_id)
 
+    report.check(wrong_period, "every motion in the period of its session")
     report.check(bad_chars, "no soft hyphens, spacing diacritics or non-NFC text")
     report.check(empty_text, "no empty body text")
     if empty_title:

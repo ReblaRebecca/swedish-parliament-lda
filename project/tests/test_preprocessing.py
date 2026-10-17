@@ -142,23 +142,48 @@ class TestRemoveMetadata(unittest.TestCase):
         self.assertEqual(extract.remove_metadata('Om skolan', []), 'Om skolan')
 
 
-class TestTemporalBin(unittest.TestCase):
-    """01: dates are assigned to the four periods; the boundaries are inclusive."""
+class TestPeriodBySession(unittest.TestCase):
+    """01: motions are assigned to the four periods by parliamentary session (riksmöte), not by date.
+    The periods follow complete electoral terms: 1985/86-1993/94, 1994/95-2005/06, 2006/07-2013/14, 2014/15-2025/26."""
 
-    def test_bin_boundaries(self):
-        self.assertEqual(extract.get_temporal_bin('1986-01-01'), 'group1_1986-1993')
-        self.assertEqual(extract.get_temporal_bin('1993-12-31'), 'group1_1986-1993')
-        self.assertEqual(extract.get_temporal_bin('1994-01-01'), 'group2_1994-2004')
-        self.assertEqual(extract.get_temporal_bin('2004-12-31'), 'group2_1994-2004')
-        self.assertEqual(extract.get_temporal_bin('2005-01-01'), 'group3_2005-2014')
-        self.assertEqual(extract.get_temporal_bin('2015-01-01'), 'group4_2015-2025')
-        self.assertEqual(extract.get_temporal_bin('2025-12-31'), 'group4_2015-2025')
+    def test_period_boundaries(self):
+        self.assertEqual(extract.get_temporal_bin('1985/86'), 'group1_1985-1994')
+        self.assertEqual(extract.get_temporal_bin('1993/94'), 'group1_1985-1994')
+        self.assertEqual(extract.get_temporal_bin('1994/95'), 'group2_1994-2006')
+        self.assertEqual(extract.get_temporal_bin('2005/06'), 'group2_1994-2006')
+        self.assertEqual(extract.get_temporal_bin('2006/07'), 'group3_2006-2014')
+        self.assertEqual(extract.get_temporal_bin('2013/14'), 'group3_2006-2014')
+        self.assertEqual(extract.get_temporal_bin('2014/15'), 'group4_2014-2026')
+        self.assertEqual(extract.get_temporal_bin('2025/26'), 'group4_2014-2026')
+
+    def test_four_digit_session(self):
+        # The riksdag writes the session spanning the millennium as 1999/2000
+        self.assertEqual(extract.get_temporal_bin('1999/2000'), 'group2_1994-2006')
 
     def test_outside_range_or_invalid(self):
-        self.assertIsNone(extract.get_temporal_bin('1985-12-31'))
-        self.assertIsNone(extract.get_temporal_bin('2026-01-01'))
+        self.assertIsNone(extract.get_temporal_bin('1984/85'))
+        self.assertIsNone(extract.get_temporal_bin('2026/27'))
         self.assertIsNone(extract.get_temporal_bin(''))
-        self.assertIsNone(extract.get_temporal_bin('inte ett datum'))
+        self.assertIsNone(extract.get_temporal_bin('1990'))
+        self.assertIsNone(extract.get_temporal_bin('1990/92'))  # not two consecutive years
+        self.assertIsNone(extract.get_temporal_bin('inte ett riksmöte'))
+
+    def test_motion_keeps_session_and_is_binned_by_it(self):
+        # A 1985/86 motion whose date field holds the placeholder 1985-01-01 belongs to the first period
+        xml = (
+            '<dokumentstatus><dokument>'
+            '<dok_id>G902ub211</dok_id><rm>1985/86</rm><organ>UbU</organ>'
+            '<datum>1985-01-01 00:00:00</datum><titel>Medieundervisningen i skolan</titel>'
+            '<html>&lt;p&gt;Skolan behöver mer undervisning om medier.&lt;/p&gt;</html>'
+            '</dokument></dokumentstatus>'
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'g902ub211.xml'
+            path.write_text(xml, encoding='utf-8')
+            motion = extract.process_xml_file(path)
+        self.assertEqual(motion['session'], '1985/86')
+        self.assertEqual(motion['date'], '1985-01-01')
+        self.assertEqual(extract.get_temporal_bin(motion['session']), 'group1_1985-1994')
 
 
 def tokens(*triples):
