@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Display and save top words for 44-topic baseline LDA model.
-Loads baseline_lda_44 model and shows top 20 words per topic with normalized probabilities.
+Display and save top words for the whole-corpus (baseline) LDA model.
+Loads the model in models/<BASELINE_MODEL_DIR> (lda_common.py) and shows top 20 words per topic with normalized probabilities.
 
 Note: Displays normalized word probabilities (topic distribution sums to 1),
 not raw component weights. Each p-value is P(word | topic).
@@ -12,6 +12,8 @@ import csv
 from pathlib import Path
 import sys
 
+from lda_common import BASELINE_MODEL_DIR, NUM_TOPICS
+
 
 def main():
     # Configuration
@@ -19,15 +21,14 @@ def main():
 
     # Allow command-line argument for model directory
     # Usage: python3 08_display_lda_topics.py [model_dir]
-    # Default: models/baseline_lda_44
+    # Default: models/<BASELINE_MODEL_DIR>
     if len(sys.argv) >= 2:
         MODEL_DIR = Path(sys.argv[1])
     else:
-        MODEL_DIR = SCRIPT_DIR.parent / 'models' / 'baseline_lda_44'
+        MODEL_DIR = SCRIPT_DIR.parent / 'models' / BASELINE_MODEL_DIR
 
-    # Load 44-topic baseline LDA model
-    # NOTE: 44 topics is FIXED (determined from topic concentration testing)
-    model_file = MODEL_DIR / 'baseline_lda_44_topics.pkl'
+    # Load the baseline LDA model
+    model_file = MODEL_DIR / f'baseline_lda_{NUM_TOPICS}_topics.pkl'
     vectorizer_file = MODEL_DIR / 'baseline_vectorizer.pkl'
 
     if not model_file.exists() or not vectorizer_file.exists():
@@ -78,7 +79,7 @@ def main():
         topics_data.append(row)
 
     # Save to CSV
-    output_file = SCRIPT_DIR.parent / 'results' / '44_TOPICS_FINAL.csv'
+    output_file = SCRIPT_DIR.parent / 'results' / f'{NUM_TOPICS}_TOPICS_FINAL.csv'
     output_file.parent.mkdir(exist_ok=True, parents=True)
 
     with open(output_file, 'w', newline='', encoding='utf-8') as f:

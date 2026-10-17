@@ -1,7 +1,7 @@
 # Swedish Parliamentary Education Motions: NLP Pipeline
 
 ## Overview
-Processing 13,917 Swedish parliamentary education motions (1986-2025) through an NLP pipeline to extract thematic structure via Latent Dirichlet Allocation (LDA). Current approach: **44-topic LDA on the body text, lemmatized with Stanza**. Titles are processed and kept as a separate field for later use, but are not added to the model's documents: title weighting was tested and dropped (2026-10-16, see *Seed-Stability Results*).
+Processing 13,917 Swedish parliamentary education motions (1986-2025) through an NLP pipeline to extract thematic structure via Latent Dirichlet Allocation (LDA). Current approach: **LDA on the body text, lemmatized with Stanza: 8 topics per period model and 32 (= 4 × 8) for the whole-corpus model** (decided 2026-10-17, see *Period Models*, *Topic count per period*; the 44-topic results below are from before that decision). Titles are processed and kept as a separate field for later use, but are not added to the model's documents: title weighting was tested and dropped (2026-10-16, see *Seed-Stability Results*).
 
 All paths below are relative to `project/`. Documentation and reports are in `docs/` (in git), the HTML visualizations in `visualizations/` (in git), and generated tables (CSV) in `results/` (not in git). Every script resolves its default paths from its own location, so scripts can be run from any working directory. Data (`data/`), models (`models/`) and the raw XML (`../data_xml/`) are not version controlled.
 
@@ -20,7 +20,7 @@ data/output/normalized/               fields: text_normalized, title_normalized
     ↓  preprocessing/05_remove_stopwords.py     ┘ (e.g. after editing the boilerplate or stopword lists)
 data/output/stopword_removed/         fields: text_no_stopwords, title_processed   ← final text used by all models
     ↓
-    └── modeling/07_fit_baseline_lda.py        → models/baseline_lda_44/
+    └── modeling/07_fit_baseline_lda.py        → models/baseline_lda_32/
             ├── modeling/08_display_lda_topics.py       → results/44_TOPICS_FINAL.csv
             ├── modeling/14_generate_topic_explorer.py  → visualizations/topic_explorer.html
             ├── analysis/09_test_lda_stability.py       → docs/reports/BASELINE_STABILITY_44TOPICS_CORRECTED.md
@@ -94,23 +94,23 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 ### 8. LDA Model (`modeling/07_fit_baseline_lda.py`)
 - **Input:** `text_no_stopwords` (body text only; titles are not added). Motions with no body text left after preprocessing are skipped (4 motions)
 - **Vectorizer:** `CountVectorizer(max_df=0.5, min_df=5, max_features=10000)`, default token pattern
-- **LDA:** scikit-learn `LatentDirichletAllocation`, 44 topics, `max_iter=50`, `learning_method='online'`, `random_state=42`, `n_jobs=2`
+- **LDA:** scikit-learn `LatentDirichletAllocation`, 32 topics (`NUM_TOPICS`; period models 8, `PERIOD_TOPICS`), `max_iter=50`, `learning_method='online'`, `random_state=42`, `n_jobs=2`
 - **Shared settings:** the topic count, LDA settings, stability seeds and the text-loading function live in one module, `modeling/lda_common.py`. The model (07), the stability test (09) and the topic explorer (14) import them from there, so the stability test always measures the same model that is reported
 - **No convergence check:** with `learning_method='online'` and sklearn's default `evaluate_every=-1`, every fit runs exactly `max_iter=50` passes; the printed iteration count (always 50) confirms the setting, not convergence
-- **Output:** `models/baseline_lda_44/baseline_lda_44_topics.pkl`, `models/baseline_lda_44/baseline_vectorizer.pkl`, `results/document_topic_distribution.csv`
+- **Output:** `models/baseline_lda_32/baseline_lda_32_topics.pkl`, `models/baseline_lda_32/baseline_vectorizer.pkl` (directory name `BASELINE_MODEL_DIR` in `lda_common.py`), `results/document_topic_distribution.csv`
 - The vectorizer is reused by the stability test and the topic explorer, so they share one vocabulary. The script and model folder keep the name *baseline* from when a title-weighted model was compared against it
 - **Diagnostic metric:** training perplexity (diagnostic only, not evidence of generalization)
 
 ### 9. Topic Display and Visualization
 | Script | Reads | Writes |
 |---|---|---|
-| `modeling/08_display_lda_topics.py [model_dir]` | `models/baseline_lda_44/` | `results/44_TOPICS_FINAL.csv` (top 20 words/topic) |
+| `modeling/08_display_lda_topics.py [model_dir]` | `models/baseline_lda_32/` | `results/32_TOPICS_FINAL.csv` (top 20 words/topic) |
 | `modeling/15_fit_period_lda.py [num_topics]` | `data/output/stopword_removed/`, baseline vectorizer | `models/period_lda_<k>/` (one model per period + `vocabulary.txt`), `results/period_<k>_topics.csv` (top 20 words per topic and period). See *Period Models* |
 | `modeling/17_generate_period_explorer.py [k ...]` | `models/period_lda_<k>/` for k = 8, 11, 15 (default), baseline vectorizer, `data/output/stopword_removed/`, the per-topic CSVs of 16, template `modeling/period_explorer_template.html` | `visualizations/period_explorer.html`: one row (chain) per topic of the first period with four word clouds, one per period; topics per period switchable (8/11/15). See *Period explorer* below |
-| `modeling/14_generate_topic_explorer.py` | `models/baseline_lda_44/`, `data/output/stopword_removed/`, template `modeling/topic_explorer_template.html` | `visualizations/topic_explorer.html`: word cloud per topic, share overall and per period, top 8 motions with year/party/id, party concentration among the top 5 motions. Reads the model directly. Replaces the earlier word cloud scripts (12, 13) and their template |
+| `modeling/14_generate_topic_explorer.py` | `models/baseline_lda_32/`, `data/output/stopword_removed/`, template `modeling/topic_explorer_template.html` | `visualizations/topic_explorer.html`: word cloud per topic, share overall and per period, top 8 motions with year/party/id, party concentration among the top 5 motions. Reads the model directly. Replaces the earlier word cloud scripts (12, 13) and their template |
 
 - Word weights are shown as normalized probabilities P(word | topic)
-- Topics use neutral names (Topic 1–44, no interpretive labels) so they can be inspected without prior bias
+- Topics use neutral names (Topic 1–32, no interpretive labels) so they can be inspected without prior bias
 
 ## Analysis Scripts (`analysis/`)
 
@@ -119,7 +119,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 | `topic_matching.py` | Module: Hungarian-algorithm topic matching between two LDA models; cosine similarity (full distributions) + Jaccard (top words) | — |
 | `11_validate_matching_quick.py` | Smoke test on 2,000 real documents + synthetic permutation test (8 topics) | stdout |
 | `seed_stability.py` | Module: shared seed-stability procedure (fit one model per seed, match every pair, write the report) used by 09 | — |
-| `09_test_lda_stability.py` | Seed stability of the 44-topic baseline | `docs/reports/BASELINE_STABILITY_44TOPICS_CORRECTED.md` |
+| `09_test_lda_stability.py` | Seed stability of the whole-corpus model | `docs/reports/BASELINE_STABILITY_<k>TOPICS_CORRECTED.md` (44 so far; 32 after the re-run) |
 | `16_seed_stability_periods.py [k ...]` | Seed stability of the period models for several topic counts (default 8, 11, 15), to choose the count per period | `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`; full report per period and count in `docs/reports/period_stability/`, per-topic CSV in `results/period_stability/` |
 
 **Seed-stability reports** list, per seed, the training perplexity and iteration count; then the **stability per topic** of the reference model (seed 42, the seed of the reported model); then cosine and Jaccard statistics for each of the 10 seed pairs; then pooled statistics over all 440 matched topic pairs.
@@ -165,9 +165,10 @@ Known trade-offs of the current approach (seen when testing on example sentences
 - **Titles are kept:** extraction still separates the title and removes the title heading from the body; titles go through every preprocessing step and are saved as `title_processed`, so they are available if needed later (e.g. for labelling topics or as a separate analysis)
 - The weighting code (scripts 06, 10, 11, the two 13 seed scripts and the weighting functions in `lda_common.py`) was removed on 2026-10-16 and remains in the git history
 
-### Topic Count: 44 (Current) vs. 32 (Historical Baseline)
-- **Historical baseline (32 topics):** original selection via topic concentration analysis (6, 10, 14, 18, 22, 29, 32, 36, 43, 50, 57, 64 tested; non-lemmatized text). 32 ÷ 4 temporal bins = 8 topics/bin. Gordon et al. used 60 topics (15/bin).
-- **Current (44 topics):** Chosen to capture finer-grained thematic variation; 44 ÷ 4 = 11 topics/bin for later temporal binning.
+### Topic Count: 8 per Period, 32 for the Whole Corpus (Decided 2026-10-17)
+- **Current: 8 topics per period, 32 = 4 × 8 for the whole corpus.** The per-period count was chosen with the seed-stability test of the period models: 8 is the only tested count (8, 11, 15) at which at least half of the topics are stable in every period (see *Period Models*, *Topic count per period*). The whole-corpus model has the same total capacity as the four period models together, as in Gordon et al. (60 = 4 × 15).
+- **Previously (until 2026-10-16): 44 topics** (= 4 × 11), chosen to capture finer-grained variation. Its seed test found only about 12 of 44 topics stable (see *Seed-Stability Results*).
+- **Historical baseline (32 topics):** original selection via topic concentration analysis (6, 10, 14, 18, 22, 29, 32, 36, 43, 50, 57, 64 tested; non-lemmatized text). The new count coincides with it, but was chosen independently, by seed stability.
 
 ## Data Quality Metrics
 
@@ -180,7 +181,7 @@ Known trade-offs of the current approach (seen when testing on example sentences
 | Stop words | NLTK (114) + 85 supplementary | |
 | Boilerplate phrases | 440 | Explicit phrases, no wildcards |
 | Lemmatizer | Stanza | Swedish Talbanken model; auxiliaries dropped |
-| LDA topics | 44 | |
+| LDA topics | 32 (whole corpus), 8 per period | 44 until 2026-10-16 |
 | Title weighting | None | Tested 3× and 5×, dropped 2026-10-16 |
 | Title coverage | ~99.5% | Documents with processed titles |
 
@@ -193,8 +194,8 @@ Known trade-offs of the current approach (seen when testing on example sentences
 
 ### ✅ Complete Document-Topic Distribution
 - **Proposal:** topic mixture per document (θ_d)
-- **Implementation:** all 44 topic probabilities per document (not just dominant + top 3)
-- **Output:** `document_topic_distribution.csv` with doc_id, title, year + 44 probability columns
+- **Implementation:** all topic probabilities per document (not just dominant + top 3)
+- **Output:** `document_topic_distribution.csv` with doc_id, title, year + one probability column per topic
 - **Benefit:** enables temporal prevalence calculations and topic trajectory analysis
 
 ### ✅ Document Metadata Preservation
@@ -328,7 +329,7 @@ project/
 │   ├── input/extracted_text_xml/
 │   └── output/{lemmatized,boilerplate_removed,normalized,stopword_removed}/
 └── models/                                (not in git)
-    ├── baseline_lda_44/
+    ├── baseline_lda_32/          (baseline_lda_44/: the earlier 44-topic model)
     └── period_lda_{8,11,15}/              (one model per period + vocabulary.txt)
 ```
 
@@ -363,7 +364,7 @@ project/
 5. **Many seed-dependent topics** suggest that 44 topics split the corpus more finely than the data supports. For the whole-corpus model this matters less (see *What the whole-corpus instability means* below), but it is a warning for the period models (see *Period Models*, *Topic count per period*).
 
 **What the whole-corpus instability means**
-- **The topic count stays at 44.** As in Gordon, the whole-corpus model is mainly a point of comparison: it is rated with the same rubric as the period models. Gordon chose k=60 = 4 × 15 so that it matches four periods of 15 topics; 44 = 4 × 11 follows the same logic. Unstable whole-corpus topics are also the very finding Gordon uses to motivate period models, so they support the design rather than undermine it.
+- **The topic count was first kept at 44,** and later changed to 32 = 4 × 8 when the period models were set to 8 topics (2026-10-17, see *Topic count per period*). As in Gordon, the whole-corpus model is mainly a point of comparison: it is rated with the same rubric as the period models. Gordon chose k=60 = 4 × 15 so that it matches four periods of 15 topics; 32 = 4 × 8 follows the same logic. Unstable whole-corpus topics are also the very finding Gordon uses to motivate period models, so they support the design rather than undermine it.
 - **Where it does matter:**
   - *Prominence* (mean topic share per period from the whole-corpus model): seed-dependent topics give seed-dependent trends. Restrict the prominence analysis to stable topics, or report it with the range over seeds.
   - *Mapping period topics onto whole-corpus topics* (the proposed extension): the mapping becomes noisy for unstable whole-corpus topics.
@@ -404,7 +405,7 @@ Separate LDA models will be fitted for each of the four periods and their topics
 
 **Design for the period models**
 1. **One shared vocabulary for all four periods.** Fit a single `CountVectorizer` once on the full corpus (or reuse the baseline vectorizer), then transform each period's motions with it before fitting that period's LDA model. Every period model's `components_` then has the same columns, in the same order, and topics can be compared across periods directly.
-2. **Same matching code.** Cross-period comparisons go through `match_and_evaluate` in `topic_matching.py`, which enforces the vocabulary check. With the same number of topics per period (about 11), the Hungarian matching gives a one-to-one alignment; matching with different topic counts is possible with `require_same_n_topics=False`.
+2. **Same matching code.** Cross-period comparisons go through `match_and_evaluate` in `topic_matching.py`, which enforces the vocabulary check. With the same number of topics per period (8), the Hungarian matching gives a one-to-one alignment; matching with different topic counts is possible with `require_same_n_topics=False`.
 3. **Shared settings.** The period models use the LDA settings and text loading from `modeling/lda_common.py`, like the whole-corpus model (body text only).
 4. **Test.** A unit test that the four period models are fitted with an identical vocabulary (same words, same order).
 
@@ -441,7 +442,7 @@ Alternative: fix 11 per period (like Gordon's fixed 15) and use the seed test on
 - **The number of robust themes per period is roughly constant**, about 4–7, whatever the topic count: going from 8 to 15 topics adds 28 topics but only 5 stable ones.
 - **Stability falls with the topic count** in every period, in mean cosine and in the stable share; 15 (Gordon's count) is the least stable everywhere.
 - **The oldest period (1986–1993) is the least stable at 11 and 15 topics**, although it has the most motions.
-- **Choice: 8 or 11 topics per period.** 8 gives the highest stability; 11 gives about as many stable topics (21 vs. 19) and matches 44 = 4 × 11, but about half of its topics are seed-dependent. Decide after looking at the stable topics' words (period explorer) and after the seminar's answer on the vocabulary option. Caveats: one set of seeds, the 0.70 threshold, and option A; option B may change the numbers somewhat.
+- **Decision (2026-10-17): 8 topics per period, and 32 = 4 × 8 for the whole-corpus model.** 8 is the only tested count at which at least half of the topics are stable in every period (50–75%), and it has the highest mean cosine in every period. 11 gives about as many stable topics (21 vs. 19), but about half of its topics are seed-dependent, and in two periods only 36% are stable. Since the number of robust themes is about the same at every count, 8 loses little substance and avoids many chance topics. The whole-corpus model follows to keep the same total capacity as Gordon (`NUM_TOPICS = 32`, `PERIOD_TOPICS = 8` in `lda_common.py`); it must be re-fitted and seed-tested at 32 (07, 09, then 08 and 14). Caveats: one set of seeds, the 0.70 threshold, and option A; option B may change the numbers somewhat.
 
 **Period explorer (`modeling/17_generate_period_explorer.py`)**
 
@@ -461,6 +462,6 @@ A page for inspecting the period models before the formal alignment: `visualizat
 0. **Act on the first model review** (`MODEL_REVIEW.md`, 2026-10-16): the first models on the Stanza pipeline are fitted and reviewed; the review's vocabulary fixes (boilerplate gaps, abbreviation matching in step 03, artifact stopwords, Stanza lemma errors) are done; a few small leftovers remain (see the review)
 1. ✅ **Seed-stability tests** for the 44-topic model on body text and with 3×/5× title weighting (2026-10-16; see *Seed-Stability Results*)
 2. ✅ **Evaluate:** title weighting gives only a small stability gain; **no title weighting**, weighting code removed
-3. **Period models** (see *Period Models* above): fitted and seed-tested with option A for 8, 11 and 15 topics, inspectable in the period explorer. After the seminar's answer on the vocabulary (option A or B): choose the topic count per period (8 or 11), re-run 15/16 if option B
+3. **Period models** (see *Period Models* above): fitted and seed-tested with option A for 8, 11 and 15 topics, inspectable in the period explorer. ✅ Topic count chosen: 8 per period, 32 for the whole corpus (2026-10-17). To do: re-fit and seed-test the whole-corpus model at 32 (07, 09) and regenerate its outputs (08, 14); re-run 15/16 if the seminar chooses vocabulary option B
 4. **Topic alignment and trajectory analysis**
 5. **Publication:** document findings for thesis/paper

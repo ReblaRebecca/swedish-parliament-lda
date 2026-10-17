@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """
-Fit baseline LDA model with 44 topics (FIXED).
+Fit the whole-corpus (baseline) LDA model with NUM_TOPICS topics (lda_common.py).
 Input: Final preprocessed text (text_no_stopwords, all 4 temporal bins combined).
-Output: 44-topic LDA model, vectorizer, perplexity score.
+Output: LDA model, vectorizer (the global vocabulary, also used by the period models), perplexity score.
 
-Note: 44 topics selected as providing good balance between vocabulary coverage
-and interpretability (based on topic concentration testing, not semantic coherence).
-This script fits ONLY 44 topics (no optimization). For temporal analysis,
-separate models will be fit with 11 topics per temporal bin.
+The topic count is 4 x PERIOD_TOPICS, so the whole-corpus model has the same total capacity as the
+four period models together (as Gordon et al.); see docs/PIPELINE_DOCUMENTATION.md.
 """
 
 import csv
@@ -22,7 +20,7 @@ except ImportError:
     sys.exit(1)
 
 # Shared LDA settings and text loading (also used by the stability test)
-from lda_common import LDA_PARAMS, NUM_TOPICS, fit_lda_model, load_body_texts
+from lda_common import BASELINE_MODEL_DIR, LDA_PARAMS, NUM_TOPICS, fit_lda_model, load_body_texts
 
 
 def create_vectorizer_and_corpus(texts):
@@ -63,13 +61,13 @@ def main():
 
     # Allow command-line arguments for input/output directories
     # Usage: python3 07_fit_baseline_lda.py [input_dir] [output_dir]
-    # Default: data/output/stopword_removed -> models/baseline_lda_44
+    # Default: data/output/stopword_removed -> models/<BASELINE_MODEL_DIR>
     if len(sys.argv) >= 3:
         INPUT_DIR = Path(sys.argv[1])
         OUTPUT_DIR = Path(sys.argv[2])
     else:
         INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
-        OUTPUT_DIR = PROJECT_ROOT / 'models' / 'baseline_lda_44'
+        OUTPUT_DIR = PROJECT_ROOT / 'models' / BASELINE_MODEL_DIR
 
     # Create output directory (with parents in case path doesn't exist)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -94,7 +92,7 @@ def main():
     # Create vectorizer and corpus
     vectorizer, doc_term_matrix = create_vectorizer_and_corpus(texts)
 
-    # Fit 44-topic LDA model
+    # Fit the LDA model
     print("\n" + "=" * 60)
     print(f"Fitting LDA with {NUM_TOPICS} topics...")
     print("=" * 60)
@@ -133,14 +131,14 @@ def main():
         # Normalize probabilities (should sum to 1)
         topic_probs = topic_dist / topic_dist.sum()
 
-        # Create row with all 44 topic probabilities
+        # Create row with all topic probabilities
         row = {
             'doc_id': metadata_item['doc_id'],
             'title': metadata_item['title'],
             'year': metadata_item['year'],
         }
 
-        # Add all 44 topic probabilities
+        # Add all topic probabilities
         for topic_idx in range(NUM_TOPICS):
             row[f'topic_{topic_idx + 1}_prob'] = f'{topic_probs[topic_idx]:.6f}'
 
@@ -157,7 +155,7 @@ def main():
         writer.writerows(results)
 
     print(f"✅ Document-topic distribution saved to: {results_file}")
-    print(f"   Format: doc_id | title | year | topic_1_prob | topic_2_prob | ... | topic_44_prob")
+    print(f"   Format: doc_id | title | year | topic_1_prob | topic_2_prob | ... | topic_{NUM_TOPICS}_prob")
 
     print("\n" + "=" * 60)
     print("Baseline LDA fitting complete")

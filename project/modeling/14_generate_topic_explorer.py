@@ -7,7 +7,7 @@ highest-loading motions, and the party concentration among its top 5 motions.
 Reads the fitted model directly (not the CSV export), so the page always shows the model
 in models/. Replaces the earlier word cloud scripts and their template.
 
-Input:  models/baseline_lda_44/, data/output/stopword_removed/
+Input:  models/<BASELINE_MODEL_DIR>/, data/output/stopword_removed/
 Output: visualizations/topic_explorer.html (open in a browser; needs internet for the fonts)
 
 Definitions used on the page:
@@ -26,7 +26,7 @@ from pathlib import Path
 
 import numpy as np
 
-from lda_common import NUM_TOPICS, load_baseline_vectorizer, load_body_texts
+from lda_common import BASELINE_MODEL_DIR, NUM_TOPICS, load_baseline_vectorizer, load_body_texts
 
 PERIODS = [('1986–1993', 1986, 1993), ('1994–2004', 1994, 2004), ('2005–2014', 2005, 2014), ('2015–2025', 2015, 2025)]
 TOP_WORDS = 30
@@ -85,7 +85,7 @@ def model_data(lda, vocab, theta, metadata, parties):
 def main():
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
-    BASELINE_DIR = PROJECT_ROOT / 'models' / 'baseline_lda_44'
+    BASELINE_DIR = PROJECT_ROOT / 'models' / BASELINE_MODEL_DIR
     TEMPLATE = Path(__file__).resolve().parent / 'topic_explorer_template.html'
     OUTPUT = PROJECT_ROOT / 'visualizations' / 'topic_explorer.html'
 

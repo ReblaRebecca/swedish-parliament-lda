@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Seed-stability test for the 44-topic baseline LDA model (body text only).
+Seed-stability test for the whole-corpus (baseline) LDA model (body text only).
 
 Fits one model per seed with the baseline vocabulary, matches topics between every pair of
 seeds with the Hungarian algorithm and writes a markdown report.
@@ -14,13 +14,13 @@ from seed_stability import (
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'modeling'))
-from lda_common import DEFAULT_SEED, NUM_TOPICS, STABILITY_SEEDS, load_baseline_vectorizer, load_body_texts  # noqa: E402
+from lda_common import BASELINE_MODEL_DIR, DEFAULT_SEED, NUM_TOPICS, STABILITY_SEEDS, load_baseline_vectorizer, load_body_texts  # noqa: E402
 
 
 def main():
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
-    BASELINE_VECTORIZER_PATH = PROJECT_ROOT / 'models' / 'baseline_lda_44' / 'baseline_vectorizer.pkl'
+    BASELINE_VECTORIZER_PATH = PROJECT_ROOT / 'models' / BASELINE_MODEL_DIR / 'baseline_vectorizer.pkl'
     OUTPUT_FILE = PROJECT_ROOT / 'docs' / 'reports' / f'BASELINE_STABILITY_{NUM_TOPICS}TOPICS_CORRECTED.md'
 
     print("=" * 80)

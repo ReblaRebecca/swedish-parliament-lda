@@ -7,7 +7,7 @@ the vectorizer saved by 07_fit_baseline_lda.py. Every period model therefore has
 the same order, so its topics can be compared directly with topic_matching.py. If option B (per-period
 vocabularies compared over shared words, as Gordon) is chosen, only period_vectorizers() changes.
 
-Input:  data/output/stopword_removed/ (body text, as the whole-corpus model), models/baseline_lda_44/baseline_vectorizer.pkl
+Input:  data/output/stopword_removed/ (body text, as the whole-corpus model), models/<BASELINE_MODEL_DIR>/baseline_vectorizer.pkl
 Output: models/period_lda_<k>/period_<period>_lda.pkl (one per period), models/period_lda_<k>/vocabulary.txt,
         results/period_<k>_topics.csv (top 20 words per topic and period)
 
@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 
 from lda_common import (
-    DEFAULT_SEED, PERIOD_TOPICS, fit_lda_model, load_baseline_vectorizer, load_period_body_texts,
+    BASELINE_MODEL_DIR, DEFAULT_SEED, PERIOD_TOPICS, fit_lda_model, load_baseline_vectorizer, load_period_body_texts,
 )
 
 TOP_WORDS = 20
@@ -77,7 +77,7 @@ def save_top_words(models, num_topics, output_file):
 def main():
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
-    VECTORIZER_PATH = PROJECT_ROOT / 'models' / 'baseline_lda_44' / 'baseline_vectorizer.pkl'
+    VECTORIZER_PATH = PROJECT_ROOT / 'models' / BASELINE_MODEL_DIR / 'baseline_vectorizer.pkl'
     num_topics = int(sys.argv[1]) if len(sys.argv) > 1 else PERIOD_TOPICS
     OUTPUT_DIR = PROJECT_ROOT / 'models' / f'period_lda_{num_topics}'
 

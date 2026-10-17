@@ -27,7 +27,7 @@ from seed_stability import (
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'modeling'))
 from lda_common import (  # noqa: E402
-    DEFAULT_SEED, STABILITY_SEEDS, load_baseline_vectorizer, load_period_body_texts,
+    BASELINE_MODEL_DIR, DEFAULT_SEED, STABILITY_SEEDS, load_baseline_vectorizer, load_period_body_texts,
 )
 
 TOPIC_COUNTS = [8, 11, 15]
@@ -78,7 +78,7 @@ def summary_report(summaries):
 def main():
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
-    VECTORIZER_PATH = PROJECT_ROOT / 'models' / 'baseline_lda_44' / 'baseline_vectorizer.pkl'
+    VECTORIZER_PATH = PROJECT_ROOT / 'models' / BASELINE_MODEL_DIR / 'baseline_vectorizer.pkl'
     REPORT_DIR = PROJECT_ROOT / 'docs' / 'reports' / 'period_stability'
     CSV_DIR = PROJECT_ROOT / 'results' / 'period_stability'
     topic_counts = [int(a) for a in sys.argv[1:]] or TOPIC_COUNTS

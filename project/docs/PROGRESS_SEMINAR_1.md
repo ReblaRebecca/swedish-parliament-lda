@@ -26,7 +26,7 @@ Technical detail is in `PIPELINE_DOCUMENTATION.md` and `MODEL_REVIEW.md`.
    - 2.5 Statistical evidence for cross-period alignment
    - 2.6 Manual evaluation rubric
    - 2.7 Proper names and place names
-   - 2.8 Number of topics
+   - 2.8 Number of topics (decided: 8 per period, 32 for the whole corpus)
    - 2.9 Temporal bins
    - 2.10 Departures from the proposal and from Gordon
    - 2.11 Smaller open points
@@ -57,7 +57,7 @@ The three questions below block the next implementation step, the period models.
 
 **To decide:** what to do with place names such as *Skövde, Umeå, Karlstad, Södertörn*.
 
-- **Why it matters:** about 8 of 44 whole-corpus topics are organized around places, coming from motions about universities and programmes in a particular region. They are also among the least stable topics across seeds. In the period models (about 11 topics each) such topics would take a larger share, and cross-period chains could follow towns rather than themes.
+- **Why it matters:** about 8 of 44 whole-corpus topics are organized around places, coming from motions about universities and programmes in a particular region. They are also among the least stable topics across seeds. In the period models (8 topics each) such topics would take a larger share, and cross-period chains could follow towns rather than themes.
 - **Options:**
   1. **Keep** (current). Regional distribution of higher education stays visible, including which regions were discussed.
   2. **Drop all proper nouns** (`PROPN`). Simplest (one line in step 03), closest to Gordon, but also removes *Sverige*, *EU*, *SOU*, *UHÄ* and organization names.
@@ -294,9 +294,9 @@ Fitting the full corpus at two sizes separates two questions: "is binning better
 
 **What this means for us:**
 
-- Our whole-corpus 44 topics ≈ 4 bins × 11 topics. That is the same logic as Gordon's k = 60 = 4 × 15: equal total capacity.
-- To mirror him fully we would also fit a whole-corpus model at k = 11, matching one bin.
-- We code all topics with the same rubric and report a table like his: whole-corpus k = 44, whole-corpus k = 11, and the four period models.
+- Our whole-corpus 32 topics = 4 bins × 8 topics (44 = 4 × 11 before 2.8 was decided). That is the same logic as Gordon's k = 60 = 4 × 15: equal total capacity.
+- To mirror him fully we would also fit a whole-corpus model at k = 8, matching one bin.
+- We code all topics with the same rubric and report a table like his: whole-corpus k = 32, whole-corpus k = 8, and the four period models.
 - **Our addition:** seed stability for every configuration. Gordon reports it only for the initial whole-corpus runs and lists it as a limitation.
 
 **What it answers:**
@@ -308,16 +308,16 @@ Fitting the full corpus at two sizes separates two questions: "is binning better
 
 #### 2.3.2 Extension: map each period topic to the whole-corpus topics
 
-**Idea:** the whole-corpus model has one fixed set of 44 topics for 1986–2025. Each period model has its own 11. Mapping every period topic to its most similar whole-corpus topics relates the two descriptions of the same corpus.
+**Idea:** the whole-corpus model has one fixed set of 32 topics for 1986–2025. Each period model has its own 8. Mapping every period topic to its most similar whole-corpus topics relates the two descriptions of the same corpus.
 
 **How it would be done:**
 
 1. **Common vocabulary.** The period topics and the whole-corpus topics must be compared over the same words in the same order, as in 2.2. With option A they share the global vocabulary directly. With option B we use the intersection of each period's vocabulary with the whole-corpus vocabulary.
-2. **Similarity matrix.** For each period, compute the cosine similarity between each of its 11 topics and each of the 44 whole-corpus topics, giving an 11 × 44 matrix.
+2. **Similarity matrix.** For each period, compute the cosine similarity between each of its 8 topics and each of the 32 whole-corpus topics, giving an 8 × 32 matrix.
 3. **Record the matches.** For each period topic, record its best-matching whole-corpus topic and the cosine, plus the second- and third-best.
 4. **Threshold.** A match counts only if the cosine is at least a threshold, e.g. 0.50 (the value Gordon uses for chains), or a value calibrated against a permutation null as in 2.5.
 
-This is **not** one-to-one matching: several period topics may map to the same whole-corpus topic. That is intended, because the granularities differ (11 against 44).
+This is **not** one-to-one matching: several period topics may map to the same whole-corpus topic. That is intended, because the granularities differ (8 against 32).
 
 **What it shows:**
 
@@ -335,7 +335,7 @@ This is **not** one-to-one matching: several period topics may map to the same w
 
 **Caveats:**
 
-- Because the granularities differ, cosine values between an 11-topic and a 44-topic model are generally lower than between two models of the same size. The threshold should be set with that in mind, ideally from a null distribution.
+- Because the granularities differ, cosine values between an 8-topic and a 32-topic model are generally lower than between two models of the same size. The threshold should be set with that in mind, ideally from a null distribution.
 - The whole-corpus topics are themselves averages over 40 years. A theme whose vocabulary changed strongly may be split across several whole-corpus topics, or represented by a mix.
 - **Effort:** small. The existing similarity function already handles models with different numbers of topics.
 
@@ -503,6 +503,24 @@ Both current models have about 8 topics organized around places (e.g. *Skövde, 
 
 **Question:** keep 44 topics for the whole corpus and about 11 per period?
 
+**Decided 2026-10-17: 8 topics per period, 32 = 4 × 8 for the whole corpus.** The period models were fitted and seed-tested at 8, 11 and 15 topics (5 seeds, global vocabulary; *stable* = found again with cosine ≥ 0.70 in at least 3 of the 4 other seeds):
+
+| Period | 8 topics: mean cosine / stable | 11 topics | 15 topics |
+|---|---|---|---|
+| 1986–1993 | 0.73 / 4 of 8 (50%) | 0.63 / 4 of 11 (36%) | 0.52 / 5 of 15 (33%) |
+| 1994–2004 | 0.71 / 4 of 8 (50%) | 0.65 / 7 of 11 (64%) | 0.59 / 7 of 15 (47%) |
+| 2005–2014 | 0.75 / 6 of 8 (75%) | 0.70 / 6 of 11 (55%) | 0.62 / 6 of 15 (40%) |
+| 2015–2025 | 0.76 / 5 of 8 (62%) | 0.70 / 4 of 11 (36%) | 0.61 / 6 of 15 (40%) |
+| **All periods** | **19 of 32 (59%)** | **21 of 44 (48%)** | **24 of 60 (40%)** |
+
+- 8 is the only count at which at least half of the topics are stable in every period, and it has the highest mean cosine everywhere.
+- The number of robust themes per period is about 4–7 at every count, so more topics mainly add seed-dependent ones (8 → 15 adds 28 topics but only 5 stable ones).
+- All period models are more stable than the 44-topic whole-corpus model (mean cosine 0.525, about 27% stable), which supports Gordon's case for period models.
+- The whole-corpus model follows the period count, as in Gordon (60 = 4 × 15), so the two designs have the same total capacity. It is re-fitted and seed-tested at 32. 32 also coincides with the original topic-concentration choice on the earlier pipeline.
+- Caveats: one set of seeds, the 0.70 threshold, and vocabulary option A (2.2).
+
+The original question and options are kept below for reference.
+
 - 44 was chosen on the earlier pipeline by **topic-concentration testing** (how concentrated documents are on few topics), not by semantic coherence. Several values from 6 to 64 were tested.
 - 44 ÷ 4 = 11 per period, matching total capacity as in Gordon's design (2.3.1).
 - Gordon uses 15 per bin, and his bins are similar in size to ours (2,000–5,000 chunks against our 3,250–3,770 motions).
@@ -559,6 +577,7 @@ These should be stated explicitly in the methods section.
 | Proper names | Gordon: removed | Kept | Open (2.7) |
 | Duplicates | Proposal: investigate and monitor | Counted for the report, not removed (133 on the earlier pipeline; to recount) | **Open:** keep or drop. Duplicates are typically identical motions submitted in several years, or by several MPs |
 | Title weighting | Not in Gordon | Not used (3× and 5× tested) | Decided (2.1): stability gain too small |
+| Topic count | Gordon: 15 per period, 60 for the whole corpus. Earlier plan: 44 / 11 | 8 per period, 32 for the whole corpus | Decided (2.8): highest tested count at which at least half of the topics are stable in every period; same total-capacity logic as Gordon |
 | Seed stability | Gordon: whole-corpus runs only | Hungarian-matched stability for every model, period models included | Extension |
 | Prominence | Not in Gordon | Mean topic proportion per period from the whole-corpus model | Proposed extension (2.4) |
 
@@ -582,7 +601,7 @@ These should be stated explicitly in the methods section.
 5. **Evidence:** adopt Gordon's permutation null, z-scores and chain criterion? Add the seed-stability ceiling? (2.5)
 6. **Rubric:** adopt Gordon's three dimensions with party/MP concentration instead of author concentration? A second annotator? (2.6)
 7. **Place names:** keep, remove, or merge? (2.7)
-8. **Topic numbers and bins:** keep 44/11 and the equal-size bins? (2.8, 2.9)
+8. **Topic numbers and bins:** 8 per period and 32 for the whole corpus, chosen by seed stability (decided, 2.8). Keep the equal-size bins? (2.9)
 9. **LDA implementation:** keep scikit-learn or switch to MALLET? (2.10)
 10. **Duplicates:** keep or drop? (2.10)
 
@@ -591,8 +610,9 @@ These should be stated explicitly in the methods section.
 ## 4. Next Steps
 
 1. ✅ Seed-stability tests run (baseline, 3×, 5×); title weighting dropped (2.1). About 12 of 44 topics are found again in 3–4 of the other 4 seeds and about 19 in none; the per-topic table lets unstable topics be flagged before interpretation, and the many seed-dependent topics are an argument for reconsidering the topic count (2.8).
-2. Settle the alignment design (2.2, 2.5) and the definition of thematic change (2.4).
-3. Implement the period models with the agreed vocabulary design, the alignment with permutation null, and the chains.
-4. If agreed: the topic mapping (2.3.2) and the prevalence analysis (2.4).
-5. Manual evaluation with the rubric (2.6), within the proposal's four-week time box.
-6. Report writing (Nov.–Dec.).
+2. ✅ Period models fitted and seed-tested at 8, 11 and 15 topics (global vocabulary); topic count set to 8 per period and 32 for the whole corpus (2.8). Re-fit and seed-test the whole-corpus model at 32.
+3. Settle the alignment design (2.2, 2.5) and the definition of thematic change (2.4).
+4. Re-fit the period models if the vocabulary design changes (2.2); implement the alignment with permutation null, and the chains.
+5. If agreed: the topic mapping (2.3.2) and the prevalence analysis (2.4).
+6. Manual evaluation with the rubric (2.6), within the proposal's four-week time box.
+7. Report writing (Nov.–Dec.).

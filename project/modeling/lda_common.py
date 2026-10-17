@@ -24,12 +24,17 @@ except ImportError:
     sys.exit(1)
 
 
-# Number of topics in the whole-corpus models
-NUM_TOPICS = 44
+# Number of topics in each period model, chosen with the seed-stability test per period
+# (16_seed_stability_periods.py, 2026-10-17): 8 is the only tested count with at least half of the
+# topics stable in every period (docs/PIPELINE_DOCUMENTATION.md, Period Models).
+PERIOD_TOPICS = 8
 
-# Number of topics in each period model (44 = 4 periods x 11, as Gordon's 60 = 4 x 15).
-# Provisional: to be chosen with the seed-stability test per period (16_seed_stability_periods.py).
-PERIOD_TOPICS = 11
+# Number of topics in the whole-corpus model: 32 = 4 periods x 8, the same total capacity as the
+# period models together (as Gordon's 60 = 4 x 15)
+NUM_TOPICS = 32
+
+# Directory of the whole-corpus model under models/; its vectorizer is the global vocabulary of the period models
+BASELINE_MODEL_DIR = f'baseline_lda_{NUM_TOPICS}'
 
 # Seed of the reported models
 DEFAULT_SEED = 42

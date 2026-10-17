@@ -119,7 +119,7 @@ class TestSharedSettings(unittest.TestCase):
             self.assertEqual(params[key], value, key)
 
     def test_defaults(self):
-        self.assertEqual(lda_common.NUM_TOPICS, 44)
+        self.assertEqual(lda_common.NUM_TOPICS, 4 * lda_common.PERIOD_TOPICS)
         self.assertEqual(lda_common.DEFAULT_SEED, 42)
         self.assertEqual(lda_common.LDA_PARAMS['max_iter'], 50)
         self.assertEqual(len(set(lda_common.STABILITY_SEEDS)), len(lda_common.STABILITY_SEEDS))

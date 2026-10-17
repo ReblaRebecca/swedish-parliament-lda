@@ -25,7 +25,7 @@ from pathlib import Path
 
 import numpy as np
 
-from lda_common import load_baseline_vectorizer, load_period_body_texts
+from lda_common import BASELINE_MODEL_DIR, load_baseline_vectorizer, load_period_body_texts
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'analysis'))
 from topic_matching import match_and_evaluate  # noqa: E402
@@ -111,7 +111,7 @@ def model_set_data(num_topics, periods, vectorizer, vocab, model_dir, stability_
 def main():
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
-    VECTORIZER_PATH = PROJECT_ROOT / 'models' / 'baseline_lda_44' / 'baseline_vectorizer.pkl'
+    VECTORIZER_PATH = PROJECT_ROOT / 'models' / BASELINE_MODEL_DIR / 'baseline_vectorizer.pkl'
     STABILITY_DIR = PROJECT_ROOT / 'results' / 'period_stability'
     TEMPLATE = Path(__file__).resolve().parent / 'period_explorer_template.html'
     OUTPUT = PROJECT_ROOT / 'visualizations' / 'period_explorer.html'
