@@ -98,8 +98,8 @@ class TestSharedSettings(unittest.TestCase):
             self.assertIs(module.load_body_texts, lda_common.load_body_texts, module.__name__)
 
     def test_no_script_builds_its_own_lda(self):
-        """Only lda_common.py creates LDA models (the quick matching check excepted)."""
-        allowed = {'lda_common.py', '11_validate_matching_quick.py'}
+        """Only lda_common.py creates LDA models."""
+        allowed = {'lda_common.py'}
         offenders = []
         for path in sorted((PROJECT_ROOT / 'modeling').glob('*.py')) + sorted((PROJECT_ROOT / 'analysis').glob('*.py')):
             if path.name in allowed:

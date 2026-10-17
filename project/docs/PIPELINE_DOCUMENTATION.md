@@ -3,12 +3,12 @@
 ## Overview
 Processing 13,917 Swedish parliamentary education motions (1986-2025) through an NLP pipeline to extract thematic structure via Latent Dirichlet Allocation (LDA). Current approach: **LDA on the body text, lemmatized with Stanza: 8 topics per period model and 32 (= 4 × 8) for the whole-corpus model** (decided 2026-10-17, see *Period Models*, *Topic count per period*; the 44-topic results below are from before that decision). Titles are processed and kept as a separate field for later use, but are not added to the model's documents: title weighting was tested and dropped (2026-10-16, see *Seed-Stability Results*).
 
-All paths below are relative to `project/`. Documentation and reports are in `docs/` (in git), the HTML visualizations in `visualizations/` (in git), and generated tables (CSV) in `results/` (not in git). Every script resolves its default paths from its own location, so scripts can be run from any working directory. Data (`data/`), models (`models/`) and the raw XML (`../data_xml/`) are not version controlled.
+All paths below are relative to `project/`. Documentation and reports are in `docs/` (in git), the HTML visualizations in `visualizations/` (in git), and generated tables (CSV) in `results/` (not in git). Every script resolves its default paths from its own location, so scripts can be run from any working directory. Data (`data/`), models (`models/`) and the raw XML (`../../swedish-parliament-data/`, next to the repository) are not version controlled.
 
 ## Pipeline Architecture
 
 ```
-../data_xml/ (raw riksdag XML, by year)
+../../swedish-parliament-data/ (raw riksdag XML, one folder per period)
     ↓  extraction/01_extract_from_xml.py        ┐ run once
 data/input/extracted_text_xml/        fields: text, title_text           │ (minutes)
     ↓  preprocessing/02_lemmatize.py            │ run once
@@ -21,7 +21,7 @@ data/output/normalized/               fields: text_normalized, title_normalized
 data/output/stopword_removed/         fields: text_no_stopwords, title_processed   ← final text used by all models
     ↓
     └── modeling/07_fit_baseline_lda.py        → models/baseline_lda_32/
-            ├── modeling/08_display_lda_topics.py       → results/44_TOPICS_FINAL.csv
+            ├── modeling/08_display_lda_topics.py       → results/32_TOPICS_FINAL.csv
             ├── modeling/14_generate_topic_explorer.py  → visualizations/topic_explorer.html
             ├── analysis/09_test_lda_stability.py       → docs/reports/BASELINE_STABILITY_44TOPICS_CORRECTED.md
             │   (period models: same vocabulary, the vectorizer saved by 07)
@@ -39,7 +39,7 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 ## Processing Steps
 
 ### 1. Extraction (`extraction/01_extract_from_xml.py`)
-- **Input:** XML files from the Swedish parliament open data portal (default `../data_xml/`, organized by year). Pass another location as the first argument: `python extraction/01_extract_from_xml.py <xml_dir> [output_dir]`
+- **Input:** XML files from the Swedish parliament open data portal (default `../../swedish-parliament-data/`, next to the repository, searched recursively). Pass another location as the first argument: `python extraction/01_extract_from_xml.py <xml_dir> [output_dir]`
 - **Method:** follows Bruinsma & Johansson (2024)
 - **Filter:** UbU committee (Education Committee), case-insensitive
 - **Extract:** dok_id, date, title, author names, body text (between the introduction and signature markers); HTML entities decoded
@@ -120,14 +120,13 @@ Every data stage stores one JSONL file per temporal bin: `group1_1986-1993.jsonl
 | Script | Purpose | Output |
 |---|---|---|
 | `topic_matching.py` | Module: Hungarian-algorithm topic matching between two LDA models; cosine similarity (full distributions) + Jaccard (top words) | — |
-| `11_validate_matching_quick.py` | Smoke test on 2,000 real documents + synthetic permutation test (8 topics) | stdout |
 | `seed_stability.py` | Module: shared seed-stability procedure (fit one model per seed, match every pair, write the report) used by 09 | — |
 | `09_test_lda_stability.py` | Seed stability of the whole-corpus model | `docs/reports/BASELINE_STABILITY_<k>TOPICS_CORRECTED.md` (32: current model; 44: before 2026-10-17) |
 | `16_seed_stability_periods.py [k ...]` | Seed stability of the period models for several topic counts (default 8, 11, 15), to choose the count per period | `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`; full report per period and count in `docs/reports/period_stability/`, per-topic CSV in `results/period_stability/` |
 
 **Seed-stability reports** list, per seed, the training perplexity and iteration count; then the **stability per topic** of the reference model (seed 42, the seed of the reported model); then cosine and Jaccard statistics for each of the 10 seed pairs; then pooled statistics over all 440 matched topic pairs.
 
-**Stability per topic:** each topic of the seed-42 model is compared with its matched topic in each of the other 4 models. The table gives its top words, in how many of the 4 models it is *found* (matched cosine ≥ 0.70, a judgement call set in `seed_stability.FOUND_COSINE`), and its mean and minimum cosine and mean Jaccard. The same numbers are saved as CSV in `results/` (`results/BASELINE_STABILITY_44TOPICS_PER_TOPIC.csv`). The seed-42 model is fitted on the same data with the same settings as the reported model, so its topic numbers are those of the reported model. Use this to decide which topics to interpret with confidence.
+**Stability per topic:** each topic of the seed-42 model is compared with its matched topic in each of the other 4 models. The table gives its top words, in how many of the 4 models it is *found* (matched cosine ≥ 0.70, a judgement call set in `seed_stability.FOUND_COSINE`), and its mean and minimum cosine and mean Jaccard. The same numbers are saved as CSV in `results/` (`results/BASELINE_STABILITY_32TOPICS_PER_TOPIC.csv`). The seed-42 model is fitted on the same data with the same settings as the reported model, so its topic numbers are those of the reported model. Use this to decide which topics to interpret with confidence.
 
 **Interpreting the pooled statistics:** the 440 matched topic pairs are not independent. Each seed's model appears in 4 of the 10 pairs, so the same topics are counted several times. The pooled mean is a fair summary, but the pooled standard deviation understates the real uncertainty. For the spread across runs, report the 10 per-pair means (or their range) rather than the pooled standard deviation.
 
@@ -151,7 +150,7 @@ Hard-coded in `preprocessing/05_remove_stopwords.py` (NLTK base + supplementary 
 
 ### Lemmatization: Stanza (since 2026-10-15)
 History:
-1. **spaCy `sv_core_news_sm` — rejected.** Domain-mismatch problems on parliamentary Swedish (results archived in `logs/LEMMATIZATION_BENCHMARK.txt`): `första → en`, `högre → hög`, `stora → stor`. Benchmark metrics improved (-23.85% perplexity, +12.50% coherence), but this masked quality degradation.
+1. **spaCy `sv_core_news_sm` — rejected.** Domain-mismatch problems on parliamentary Swedish (the benchmark output was not kept): `första → en`, `högre → hög`, `stora → stor`. Benchmark metrics improved (-23.85% perplexity, +12.50% coherence), but this masked quality degradation.
 2. **Controlled lookup table — replaced.** A hand-made CSV of ~284 variant→lemma mappings for education terms. It only covered the words listed, and ran after stopword removal on a bag of words.
 3. **Stanza — current.** A general, context-aware lemmatizer (Swedish Talbanken model) run once on full sentences right after extraction; every word is saved with its original form and lemma, so boilerplate removal still matches original word forms. The controlled table was dropped entirely (no domain overrides).
 
@@ -228,7 +227,7 @@ NLTK stopwords are read from (and downloaded to) `SU/nltk_data/`, next to the re
 cd project
 
 # Run once: extraction and Stanza (each step reads the previous step's output)
-python extraction/01_extract_from_xml.py ../../swedish-parliament-data   # or omit to use ../data_xml/
+python extraction/01_extract_from_xml.py      # default input: ../../swedish-parliament-data
 python preprocessing/02_lemmatize.py          # slow (hours); resumable if interrupted
 
 # Cheap: re-run these after changing the boilerplate list or stopwords
@@ -315,7 +314,6 @@ project/
 │   ├── seed_stability.py                 (shared seed-stability procedure and report)
 │   ├── 09_test_lda_stability.py
 │   ├── 16_seed_stability_periods.py      (seed stability per period and topic count)
-│   ├── 11_validate_matching_quick.py
 │   └── count_duplicates.py               (duplicate count for the report)
 ├── config/
 │   ├── boilerplate_phrases.txt
@@ -332,7 +330,7 @@ project/
 │   ├── input/extracted_text_xml/
 │   └── output/{lemmatized,boilerplate_removed,normalized,stopword_removed}/
 └── models/                                (not in git)
-    ├── baseline_lda_32/          (baseline_lda_44/: the earlier 44-topic model)
+    ├── baseline_lda_32/
     └── period_lda_{8,11,15}/              (one model per period + vocabulary.txt)
 ```
 
@@ -340,7 +338,7 @@ project/
 
 **Question:** does title weighting make the 44-topic whole-corpus model more stable across random seeds, and which weight should be used?
 
-**Setup:** for each of the three variants, 44-topic LDA fitted with 5 seeds (42, 123, 456, 789, 999) on the same preprocessed text (Stanza pipeline after the model-review fixes, incl. the `kompetens` compound fix) and the same vocabulary (baseline vectorizer); topics matched between every pair of seeds with the Hungarian algorithm (10 pairs, 440 matched topic pairs per variant); cosine similarity over the full topic-word distributions, Jaccard over the top 20 words. A topic of the seed-42 model counts as *found* in another seed's model if its matched topic has cosine ≥ 0.70. Reports: `docs/reports/BASELINE_STABILITY_44TOPICS_CORRECTED.md` (body text; reproducible with `09_test_lda_stability.py`) and `docs/reports/SEED_STABILITY_{5X,3X}_WEIGHTED_CORRECTED.md` (produced by the 13 seed scripts, since removed; in git history), with per-topic CSVs in `results/`.
+**Setup:** for each of the three variants, 44-topic LDA fitted with 5 seeds (42, 123, 456, 789, 999) on the same preprocessed text (Stanza pipeline after the model-review fixes, incl. the `kompetens` compound fix) and the same vocabulary (baseline vectorizer); topics matched between every pair of seeds with the Hungarian algorithm (10 pairs, 440 matched topic pairs per variant); cosine similarity over the full topic-word distributions, Jaccard over the top 20 words. A topic of the seed-42 model counts as *found* in another seed's model if its matched topic has cosine ≥ 0.70. Reports: `docs/reports/BASELINE_STABILITY_44TOPICS_CORRECTED.md` (body text; reproducible with `09_test_lda_stability.py`) and `docs/reports/SEED_STABILITY_{5X,3X}_WEIGHTED_CORRECTED.md` (produced by the 13 seed scripts, since removed; in git history), with the per-topic tables in the reports (the separate per-topic CSVs were removed in the 2026-10-17 cleanup).
 
 | | Body text only | Title ×5 | Title ×3 |
 |---|---|---|---|
@@ -406,26 +404,6 @@ project/
 Caveats: one set of seeds, the 0.70 threshold, found-counts for the seed-42 model only.
 
 ---
-
-## Baseline Stability Testing (Historical - 2026-10-13)
-
-**Finding:** the 32-topic whole-corpus model (non-lemmatized) was **highly unstable** across random seeds. Note: this test appears to predate the "corrected" Hungarian-matching scripts; index-by-index comparison understates stability, so re-run with `09_test_lda_stability.py` before relying on these numbers.
-
-| Seed Pair | Mean Jaccard | Status |
-|-----------|--------------|--------|
-| 42 vs 123 | 0.020 | ❌ Unstable |
-| 42 vs 456 | 0.010 | ❌ Unstable |
-| 123 vs 456 | 0.033 | ❌ Unstable |
-| **Overall** | **0.021** | **Below 0.60 threshold** |
-
-**Interpretation:** topics were reshuffled between seeds. Topic 1 in seed 42 covered government administration, in seed 123 teacher education, and in seed 456 healthcare.
-
-**Possible causes:**
-- Heterogeneous corpus spanning 39 years
-- Domain-specific parliamentary vocabulary evolves over time
-- LDA struggles to find consistent themes across such diversity
-
-**Relation to Gordon's approach:** Gordon found similar whole-corpus instability (Jaccard 0.26–0.31) and addressed it with temporal binning, which constrains each period's vocabulary and author mix.
 
 ## Period Models and Cross-Period Comparison (first run 2026-10-16; vocabulary option still open)
 

@@ -4,7 +4,8 @@ Extract motion text from XML files following Bruinsma & Johansson (2024) methodo
 Parses XML structure, filters by organ (UbU), extracts body text between markers.
 Removes document metadata from the text: signatures, headers, the title heading,
 motion numbers and the motion's own author names (body and title).
-Input: XML files organized by year (default: data_xml/ at repo root; override with [xml_dir] [output_dir])
+Input: XML files, searched recursively (default: ../swedish-parliament-data next to the repository,
+       with one folder per period such as mot-1980-1989.xml/; override with [xml_dir] [output_dir])
 Output: JSONL files organized by temporal bin (1986-1993, 1994-2004, 2005-2014, 2015-2025)
 """
 
@@ -312,8 +313,8 @@ def main():
     PARENT_DIR = PROJECT_ROOT.parent
 
     # Allow command-line arguments: [xml_dir] [output_dir]
-    # Default: data_xml/ (repo root) -> data/input/extracted_text_xml
-    DATA_XML_DIR = Path(sys.argv[1]) if len(sys.argv) >= 2 else PARENT_DIR / 'data_xml'
+    # Default: ../swedish-parliament-data (next to the repository) -> data/input/extracted_text_xml
+    DATA_XML_DIR = Path(sys.argv[1]) if len(sys.argv) >= 2 else PARENT_DIR.parent / 'swedish-parliament-data'
     OUTPUT_DIR = Path(sys.argv[2]) if len(sys.argv) >= 3 else PROJECT_ROOT / 'data' / 'input' / 'extracted_text_xml'
 
     if not DATA_XML_DIR.exists():
@@ -342,7 +343,7 @@ def main():
         output_path = OUTPUT_DIR / f"{bin_name}.jsonl"
         output_files[bin_name] = open(output_path, 'w', encoding='utf-8')
 
-    # Find all XML files in data_xml directory structure
+    # Find all XML files in the data directory structure
     # Only files: the riksdag downloads unpack into directories that are themselves named *.xml
     xml_files = [p for p in DATA_XML_DIR.rglob('*.xml') if p.is_file()]
     total_files = len(xml_files)
