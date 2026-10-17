@@ -376,7 +376,7 @@ project/
 ## Open Points and Next Steps
 
 1. **Vocabulary design** (global vs. Gordon's per-period vocabularies; seminar notes 2.2) and **place names** (keep, remove or downweight; 2.7)
-2. **Algorithm:** MALLET with Gordon's settings (Gibbs sampling, 1,000 iterations, asymmetric priors) instead of scikit-learn, which would also address convergence; planned on a separate branch, with the current results as a robustness check
+2. **Algorithm and framing** (under discussion with the supervisor; seminar notes 0.4): the current plan is to keep scikit-learn and present the study as an adaptation of Gordon's workflow rather than a computational replication (MALLET, Gibbs sampling). If so, check convergence of the 50-pass fits (a 200-pass fit and a second seed)
 3. **Alignment evidence:** Gordon's permutation null and z-scores for the period transitions (2.5)
 4. **Rubric coding** (coherent, thematic, concentration) of the whole-corpus and period models (2.6), and a whole-corpus model with 8 topics as the counterpart of Gordon's k = 15 control
 5. **Prominence analysis** with the whole-corpus model, restricted to stable topics (2.4)

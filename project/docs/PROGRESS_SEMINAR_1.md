@@ -37,7 +37,7 @@ Technical detail is in `PIPELINE_DOCUMENTATION.md` and `MODEL_REVIEW.md`.
 
 ## 0. Att få svar på under seminariet
 
-The three questions below block the next implementation step, the period models. Everything else in section 2 can be settled later. For each: what has to be decided, what each answer means in practice, and what I would do by default if there is no clear answer.
+The questions below are the ones to settle at the seminar: 0.1–0.3 decide whether the period models have to be re-fitted, and 0.4 decides how the study relates to Gordon. Everything else in section 2 can be settled later. For each: what has to be decided, what each answer means in practice, and what I would do by default if there is no clear answer.
 
 ### 0.1 Vocabulary for the period models (details in 2.2)
 
@@ -81,6 +81,17 @@ The three questions below block the next implementation step, the period models.
   - *Default:* remove, by adding them as stopwords at step 05.
 - **In practice:** both are one-line changes to the boilerplate or stopword list followed by re-running 03–05 (minutes).
 - **Question:** remove both, as with *miljon* and the party names?
+
+### 0.4 Implementation: adaptation or replication of Gordon? (details in 2.10)
+
+**To decide:** whether the study keeps scikit-learn and is presented as an adaptation of Gordon's workflow, or switches to MALLET to replicate his computation.
+
+- **Current plan: keep scikit-learn and frame the study as an adaptation.** Proposed wording:
+  > The study follows Gordon's (2026) framework of temporally binned LDA and cross-period topic alignment, but adapts its implementation. Models are fitted with scikit-learn's online variational Bayes rather than MALLET's Gibbs sampling, with symmetric rather than optimised asymmetric priors, and all periods share one vocabulary rather than being compared over their shared words. The results should therefore be read as an adaptation of the workflow to Swedish parliamentary text, not as a direct computational replication. Differences from Gordon's results may reflect the implementation as well as the corpus.
+- **What the adaptation means:** the study can show that the workflow transfers to political text, but not whether Gordon's method itself gives the same kind of results there, since differences may come from the corpus or from the implementation. Gordon's own reason for MALLET is practical: his Authorless step is a MALLET transform (`DownsampleLabelWords`), and he optimises asymmetric priors, which scikit-learn does not offer.
+- **Related choices:** the global vocabulary (0.1) is the same kind of adaptation and should be stated together with the algorithm. Convergence of the 50-pass fits is not checked; with scikit-learn kept, a convergence check (a 200-pass fit and a second seed, about 30 minutes) would answer the obvious examiner question.
+- **Alternatives:** switch to MALLET with Gordon's settings (refit all models and stability tests, a few days), or keep scikit-learn and fit MALLET once for the 8-topic period models as a sensitivity check.
+- **Questions:** Is the adaptation framing acceptable for the thesis? Is the convergence check needed? Should the vocabulary follow Gordon even if the algorithm does not?
 
 ---
 
@@ -573,7 +584,7 @@ These should be stated explicitly in the methods section.
 | Choice | Proposal / Gordon | Current | Status |
 |---|---|---|---|
 | Lemmatization | Proposal: initially follow Bruinsma & Johansson (no stemming, lemmatization not discussed). Gordon: none | Stanza lemmatization, with a small table correcting known Stanza errors | Decided. Justification: Swedish inflection splits one word into many forms (*skola, skolan, skolor, skolornas*), which fragments topics. Gordon's English corpus does not have this problem to the same degree |
-| LDA implementation | Gordon: MALLET (Gibbs sampling), 1,000 iterations, asymmetric hyperparameter optimization | scikit-learn, online variational inference, 50 passes, symmetric priors; no convergence check (always 50 passes) | **Open:** keep (simpler; stability is tested directly) or switch (closer replication; requires Java and MALLET) |
+| LDA implementation | Gordon: MALLET (Gibbs sampling), 1,000 iterations, asymmetric hyperparameter optimization | scikit-learn, online variational inference, 50 passes, symmetric priors; no convergence check (always 50 passes) | **Open, for the supervisor (0.4):** current plan is to keep scikit-learn and present the study as an adaptation of Gordon's workflow, not a computational replication |
 | Document unit | Gordon: 1,000-word chunks of books | Whole motions | Decided: motions are natural units of meaning, and most are shorter than 1,000 words |
 | Proper names | Gordon: removed | Kept | Open (2.7) |
 | Duplicates | Proposal: investigate and monitor | Counted for the report, not removed (133 on the earlier pipeline; to recount) | **Open:** keep or drop. Duplicates are typically identical motions submitted in several years, or by several MPs |
@@ -610,7 +621,7 @@ These should be stated explicitly in the methods section.
 6. **Rubric:** adopt Gordon's three dimensions with party/MP concentration instead of author concentration? A second annotator? (2.6)
 7. **Place names:** keep, remove, or merge? (2.7)
 8. **Topic numbers and bins:** 8 per period and 32 for the whole corpus, chosen by seed stability (decided, 2.8). Keep the equal-size bins? (2.9)
-9. **LDA implementation:** keep scikit-learn or switch to MALLET? (2.10)
+9. **LDA implementation:** keep scikit-learn and present the study as an adaptation of Gordon's workflow, or switch to MALLET? Is a convergence check needed? (0.4, 2.10)
 10. **Duplicates:** keep or drop? (2.10)
 
 ---
