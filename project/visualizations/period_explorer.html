@@ -422,7 +422,7 @@
     `Generated ${DATA.generated} by modeling/17_generate_period_explorer.py from models/period_lda_${DATA.numTopics}/ ` +
     '(15_fit_period_lda.py; scikit-learn LDA, seed 42) and the seed-stability CSVs of 16_seed_stability_periods.py. ' +
     'Motions per period: ' + DATA.periods.map((p, i) => `${p} ${DATA.periodCounts[i].toLocaleString('en')}`).join(', ') + '. ' +
-    "Provisional alignment for inspection: adjacent matching only, without Gordon's permutation test. " +
+    "Adjacent matching only. Gordon's permutation test (docs/reports/PERIOD_ALIGNMENT_NULL.md): every transition is far above random pairings of the same topics, but single links can still be weak. " +
     'Topic numbers (T) are arbitrary within each period model.';
 
   sortSelect.addEventListener('change', render);

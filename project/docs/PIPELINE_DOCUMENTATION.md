@@ -34,7 +34,8 @@ data/output/stopword_removed/         fields: text_no_stopwords, title_processed
             └── analysis/09_test_lda_stability.py       → docs/reports/BASELINE_STABILITY_32TOPICS_CORRECTED.md
     └── modeling/15_fit_period_lda.py [k]       → models/period_lda_<k>/ (one model and vocabulary per period), results/period_<k>_topics.csv
             ├── modeling/17_generate_period_explorer.py → visualizations/period_explorer.html
-            └── analysis/16_seed_stability_periods.py   → docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md, results/period_stability/
+            ├── analysis/16_seed_stability_periods.py   → docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md, results/period_stability/
+            └── analysis/18_alignment_null.py           → docs/reports/PERIOD_ALIGNMENT_NULL.md
 ```
 
 Every data stage stores one JSONL file per period: `group1_1985-1994.jsonl`, `group2_1994-2006.jsonl`, `group3_2006-2014.jsonl`, `group4_2014-2026.jsonl` (named after the calendar years the period's sessions span). Each stage adds fields and keeps earlier ones, so metadata (`dok_id`, session, title, date, author names) is carried through to the models. Every stage counts and reports malformed JSON lines per period, so no data is lost silently.
@@ -183,7 +184,20 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 - The first period is exactly at half stable; the smallest period (2006/07–2013/14) is not less stable than the others
 - **How 8 was chosen:** see *Design Decisions*
 
-**Alignment across periods (8 topics):** matched mean cosine 0.67, 0.78 and 0.76 for the three transitions. All 8 chains hold by Gordon's criterion (mean link ≥ 0.50), 4 of them with every link ≥ 0.50: upper secondary school, pupils and teachers (mean link 0.85), higher education and research (0.82), municipalities and independent schools (0.79), and children, health and bullying (0.63). The other four hold on the mean but have one weak link: preschool (0.498 at the first link, just below the threshold, then 0.94 and 0.95), research (0.42 at the last link), higher education turning into labour market (0.32) and students (0.36). Without the permutation null these are provisional.
+**Alignment across periods (8 topics):** matched mean cosine 0.67, 0.78 and 0.76 for the three transitions. All 8 chains hold by Gordon's criterion (mean link ≥ 0.50), 4 of them with every link ≥ 0.50: upper secondary school, pupils and teachers (mean link 0.85), higher education and research (0.82), municipalities and independent schools (0.79), and children, health and bullying (0.63). The other four hold on the mean but have one weak link: preschool (0.498 at the first link, just below the threshold, then 0.94 and 0.95), research (0.42 at the last link), higher education turning into labour market (0.32) and students (0.36).
+
+**Permutation test (Gordon's, `analysis/18_alignment_null.py`; report `docs/reports/PERIOD_ALIGNMENT_NULL.md`):** for each transition, the matched mean cosine is compared with 1,000 random one-to-one pairings of the same topics; z = (matched − null mean) / null SD, p one-sided from the standard normal distribution, as Gordon.
+
+| Transition | Matched | Null mean (SD) | z |
+|---|---|---|---|
+| 1985/86–1993/94 → 1994/95–2005/06 | 0.668 | 0.348 (0.076) | 4.2 |
+| 1994/95–2005/06 → 2006/07–2013/14 | 0.782 | 0.347 (0.080) | 5.4 |
+| 2006/07–2013/14 → 2014/15–2025/26 | 0.755 | 0.354 (0.071) | 5.6 |
+
+- Every transition is far above chance (p < 0.0001): the alignment shows continuity, not forced matches. It does not show that every single link is the same theme
+- The z-scores are lower than Gordon's 7–9 although the matched cosines are higher: with 8 topics the mean of a random pairing varies more than with 15 (larger null SD), and the null mean is higher (0.35 against his 0.22–0.25), since 8 broad topics share more general education vocabulary
+- The first transition is the weakest, as in the chains (two of the four weak links are at the first transition)
+- **Against the seed-stability ceiling:** the period models' mean seed cosine is 0.74–0.78. The second and third transitions (0.78, 0.76) are at that level, so across them the topics change no more than between seeds of one period; the first transition (0.67) is below it. Seed cosine is over the full vocabulary and alignment over shared words, so the comparison is approximate (seminar notes 2.5)
 
 **Vocabulary outside the shared words:** on average 3.5–9.8% of a topic's weight falls on words outside the vocabulary it shares with the neighbouring period (range per topic 2.4–12.9%). The share is highest for the first period against the second (9.8%) and for the last against the third (7.8%).
 
@@ -197,6 +211,7 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 | Matched mean cosine between adjacent periods, 8 topics per period | — | 0.67, 0.78, 0.76 |
 | Same, at Gordon's 15 topics per period (fitted once for this comparison) | 0.44–0.59 | 0.43, 0.60, 0.62 |
 | Chains with mean cosine ≥ 0.50 over the three transitions | 7 of 15 | 8 of 8 (8 topics); 9 of 15 at 15 topics |
+| Permutation test: null mean, z (per transition) | 0.22–0.25, z = 7–9 (15 topics) | 0.35, z = 4.2–5.6 (8 topics) |
 
 - **Seed instability is of the same size as Gordon's**, so it is not a weakness of this pipeline; Gordon uses the same finding as part of his argument for period models
 - **At Gordon's topic count (15 per period), with his vocabulary design, the alignment is close to his:** matched cosine in the same range, and a few more chains pass his criterion (9 against 7). At 8 topics the links are stronger, as expected with fewer, broader topics
@@ -213,7 +228,7 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 | Topics | 15 per period, 60 whole corpus | 8 per period, 32 whole corpus | Chosen by seed stability (8, 11 and 15 tested) |
 | Seed stability | Whole-corpus runs only | Every model | Extension |
 
-**Not yet comparable:** the permutation null and z-scores (Gordon: matched 0.44–0.59 against 0.22–0.25 for random pairings, z = 7–9), the rubric coding (coherent, thematic, concentration) of all models, and a whole-corpus model with 8 topics (the counterpart of Gordon's k = 15 control).
+**Not yet comparable:** the rubric coding (coherent, thematic, concentration) of all models, and a whole-corpus model with 8 topics (the counterpart of Gordon's k = 15 control).
 
 ## Visualizations
 
@@ -241,7 +256,7 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 - **Word size:** square root of P(word | topic), on **one scale per chain**, so sizes can be compared across a chain's periods but not between chains; if a word does not fit, the chain's four clouds shrink together. The tooltip gives the exact probability
 - **Order:** opens with the strongest chain first (mean link, high to low); also by chain number, weakest link first, and rise or fall in share (first vs last period, only for chains with every link ≥ 0.50, since a change across a weak link may compare unrelated topics; other chains are listed last, marked *no change computed*)
 - **Search:** covers only the 20 words shown per cloud (also as part of longer words), as stated next to the search box
-- **Limitations:** the matching gives every topic a partner, so a topic that exists in only one period still sits in a chain, joined by weak links, and a topic that appears in a later period cannot start its own row. Provisional alignment for inspection, without Gordon's permutation null
+- **Limitations:** the matching gives every topic a partner, so a topic that exists in only one period still sits in a chain, joined by weak links, and a topic that appears in a later period cannot start its own row. The permutation test (`18_alignment_null.py`) shows that each transition is far above chance, not that every link is the same theme
 
 ## Design Decisions
 
@@ -320,6 +335,7 @@ python modeling/15_fit_period_lda.py          # 8 topics; about 2 minutes
 python analysis/16_seed_stability_periods.py  # 4 periods x 5 seeds = 20 fits; about 10 minutes
                                               # (with 8 11 15: the topic-count choice, about 35 minutes)
 python modeling/17_generate_period_explorer.py
+python analysis/18_alignment_null.py          # permutation test; seconds
 ```
 
 `01_extract_from_xml.py` accepts `[xml_dir] [output_dir]`; preprocessing scripts 02–05 and `07_fit_baseline_lda.py` accept `[input_dir] [output_dir]` to override the defaults.
@@ -342,7 +358,7 @@ python analysis/check_pipeline_output.py
   - **Vocabulary per period:** each vocabulary holds exactly the words of its period that pass Gordon's limits (a word in 12 of 40 motions kept, in one dropped, in more than half dropped); a word of one period only is absent from the others; adjacent periods have different vocabularies and are matched over their shared words, and matching them without that step is an error
   - **Stability summary:** per-pair means, found-in-all/none and stable counts; one summary row per period and count
   - **Period explorer chains:** rows follow the Hungarian matches between adjacent periods (shuffled identical topics are linked correctly), a link below the threshold is reported as weak, and the seed-stability CSV is used only if its top words match the model
-- **`tests/test_topic_matching.py`** — Hungarian matching on synthetic topic matrices: identical models match with cosine 1, a known permutation is recovered, mismatched or reordered vocabularies and mismatched topic counts are rejected, summary statistics equal the per-topic values. **Shared vocabulary:** the same topics in different vocabularies (other column order, extra words) match with cosine 1; weight on words outside the intersection does not change the cosine; vocabularies without common words are rejected
+- **`tests/test_topic_matching.py`** — Hungarian matching on synthetic topic matrices: identical models match with cosine 1, a known permutation is recovered, mismatched or reordered vocabularies and mismatched topic counts are rejected, summary statistics equal the per-topic values. **Permutation null:** a clear matching is far above the null (null mean 0.1 + 0.8/n for a diagonal of 0.9, as expected from one fixed point per random permutation), the matched mean uses the Hungarian matching, a matrix without structure gives z = 0, z and p follow the formula, results are reproducible with a seed. **Shared vocabulary:** the same topics in different vocabularies (other column order, extra words) match with cosine 1; weight on words outside the intersection does not change the cosine; vocabularies without common words are rejected
 - **`tests/test_seed_stability.py`** — the seed-stability tests and the shared LDA code:
   - **Text loading:** body text only, motions without body text skipped, malformed lines counted
   - **No drift:** the model (07) and the stability test (09) use the very same functions from `lda_common.py`; no other script creates its own LDA model; the whole-corpus topic count is 4 × the period count; the reported seed is among the tested seeds
@@ -377,6 +393,7 @@ project/
 │   ├── seed_stability.py                 (shared seed-stability procedure and report)
 │   ├── 09_test_lda_stability.py
 │   ├── 16_seed_stability_periods.py
+│   ├── 18_alignment_null.py               (Gordon's permutation test of the alignment)
 │   ├── check_pipeline_output.py          (sanity checks on pipeline output)
 │   └── count_duplicates.py               (duplicate count for the report)
 ├── tests/
@@ -408,8 +425,7 @@ project/
 1. **Place names** (keep, remove or downweight; seminar notes 2.7)
 2. **Party analysis:** with the session and author metadata, which parties' motions carry each topic, per period (seminar notes 2.9)
 3. **Algorithm and framing** (under discussion with the supervisor; seminar notes 0.4): the current plan is to keep scikit-learn and present the study as an adaptation of Gordon's workflow rather than a computational replication (MALLET, Gibbs sampling). If so, check convergence of the 50-pass fits (a 200-pass fit and a second seed)
-4. **Alignment evidence:** Gordon's permutation null and z-scores for the period transitions (2.5)
-5. **Rubric coding** (coherent, thematic, concentration) of the whole-corpus and period models (2.6), and a whole-corpus model with 8 topics as the counterpart of Gordon's k = 15 control
-6. **Prominence analysis** with the whole-corpus model, restricted to stable topics (2.4)
-7. **Checks:** the residual topics of the whole-corpus model (*mälardalens, sexualitet*; *riksrevision, hbt*: possibly a few motions); remaining small leftovers of the model review (`MODEL_REVIEW.md`); duplicates kept or dropped (2.10)
-8. **Report writing**
+4. **Rubric coding** (coherent, thematic, concentration) of the whole-corpus and period models (2.6), and a whole-corpus model with 8 topics as the counterpart of Gordon's k = 15 control
+5. **Prominence analysis** with the whole-corpus model, restricted to stable topics (2.4)
+6. **Checks:** the residual topics of the whole-corpus model (*mälardalens, sexualitet*; *riksrevision, hbt*: possibly a few motions); remaining small leftovers of the model review (`MODEL_REVIEW.md`); duplicates kept or dropped (2.10)
+7. **Report writing**

@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'analysis'))
-from topic_matching import match_and_evaluate  # noqa: E402
+from topic_matching import match_and_evaluate, permutation_null  # noqa: E402
 
 
 class MockLDA:
@@ -135,6 +135,51 @@ class TestSharedVocabulary(unittest.TestCase):
         topics = random_topics()
         with self.assertRaisesRegex(ValueError, '(?i)vocabular'):
             match_and_evaluate(MockLDA(topics), MockLDA(topics), VOCAB, VOCAB[::-1])
+
+
+
+class TestPermutationNull(unittest.TestCase):
+    """Matched mean against random one-to-one matchings, as Gordon."""
+
+    def test_clear_matching_is_far_above_the_null(self):
+        # Diagonal 0.9, everything else 0.1: the matched mean is 0.9, random matchings are mostly near 0.1
+        n = 8
+        similarity = np.full((n, n), 0.1) + np.eye(n) * 0.8
+        result = permutation_null(similarity, n_permutations=1000, seed=0)
+        self.assertAlmostEqual(result['matched_mean'], 0.9)
+        # A random permutation has on average one fixed point: null mean 0.1 + 0.8 / n
+        self.assertAlmostEqual(result['null_mean'], 0.1 + 0.8 / n, delta=0.01)
+        self.assertGreater(result['z'], 5)
+        self.assertLess(result['p'], 1e-6)
+
+    def test_matched_mean_uses_the_hungarian_matching(self):
+        # Shuffled columns: the best matching is not the diagonal
+        similarity = np.array([[0.1, 0.9, 0.2], [0.8, 0.1, 0.3], [0.2, 0.3, 0.7]])
+        result = permutation_null(similarity, n_permutations=200, seed=1)
+        self.assertAlmostEqual(result['matched_mean'], (0.9 + 0.8 + 0.7) / 3)
+
+    def test_no_structure_gives_no_signal(self):
+        # Every pair equally similar: every matching has the same mean, so z = 0 and p = 0.5
+        result = permutation_null(np.full((5, 5), 0.4), n_permutations=100, seed=0)
+        self.assertAlmostEqual(result['matched_mean'], result['null_mean'])
+        self.assertEqual(result['z'], 0.0)
+        self.assertAlmostEqual(result['p'], 0.5)
+
+    def test_z_and_p_follow_the_formula(self):
+        from scipy.stats import norm
+        similarity = np.random.default_rng(3).random((6, 6))
+        r = permutation_null(similarity, n_permutations=500, seed=2)
+        self.assertAlmostEqual(r['z'], (r['matched_mean'] - r['null_mean']) / r['null_sd'])
+        self.assertAlmostEqual(r['p'], norm.sf(r['z']))
+        self.assertEqual(r['n_permutations'], 500)
+
+    def test_reproducible_with_seed(self):
+        similarity = np.random.default_rng(4).random((6, 6))
+        self.assertEqual(permutation_null(similarity, 300, seed=7), permutation_null(similarity, 300, seed=7))
+
+    def test_rejects_non_square(self):
+        with self.assertRaises(ValueError):
+            permutation_null(np.ones((3, 4)))
 
 
 if __name__ == '__main__':

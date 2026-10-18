@@ -17,6 +17,7 @@ words both vocabularies contain (shared_vocabulary=True), as Gordon (2026, 3.4).
 import numpy as np
 from scipy.spatial.distance import cosine
 from scipy.optimize import linear_sum_assignment
+from scipy.stats import norm
 
 
 def compute_topic_similarity_matrix(lda1, lda2, vocab1, vocab2, metric='cosine'):
@@ -124,6 +125,43 @@ def restrict_to_shared_vocabulary(lda1, lda2, vocab1, vocab2):
     columns2 = [column2[vocab1[i]] for i in shared]
     return (_SharedColumns(lda1.components_[:, shared]), _SharedColumns(lda2.components_[:, columns2]),
             vocab1[shared])
+
+
+def permutation_null(similarity_matrix, n_permutations=1000, seed=0):
+    """Matched mean similarity against random one-to-one matchings, as Gordon (2026, 3.4).
+
+    The null distribution is the mean similarity of n_permutations random one-to-one matchings of the
+    same topics (each a random permutation). z = (matched mean - null mean) / null SD; the p-value is
+    one-sided (matched above the null) and taken from the standard normal distribution, as Gordon,
+    not from the permutation counts.
+
+    Args:
+        similarity_matrix: square (n_topics x n_topics) array of similarities
+    Returns:
+        dict with matched_mean, null_mean, null_sd, z, p, n_permutations
+    """
+    similarity_matrix = np.asarray(similarity_matrix, dtype=float)
+    n = similarity_matrix.shape[0]
+    if similarity_matrix.shape != (n, n) or n < 2:
+        raise ValueError("The permutation null needs a square similarity matrix with at least 2 topics")
+    rows, cols = linear_sum_assignment(-similarity_matrix)
+    matched_mean = float(similarity_matrix[rows, cols].mean())
+    rng = np.random.default_rng(seed)
+    null = np.array([similarity_matrix[np.arange(n), rng.permutation(n)].mean() for _ in range(n_permutations)])
+    null_mean, null_sd = float(null.mean()), float(null.std(ddof=1))
+    if null_sd > 1e-12:
+        z = (matched_mean - null_mean) / null_sd
+    else:
+        # Every matching has the same mean (no structure): no signal, unless the matching is somehow higher
+        z = 0.0 if np.isclose(matched_mean, null_mean) else float('inf')
+    return {
+        'matched_mean': matched_mean,
+        'null_mean': null_mean,
+        'null_sd': null_sd,
+        'z': float(z),
+        'p': float(norm.sf(z)),
+        'n_permutations': n_permutations,
+    }
 
 
 def match_topics_hungarian(similarity_matrix):

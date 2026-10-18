@@ -8,7 +8,7 @@ rows are therefore chains: topics of adjacent periods are matched one-to-one wit
 algorithm on cosine similarity over the words both periods' vocabularies contain (topic_matching.py, as Gordon), and each row follows the matches from the first
 period to the last. A chain holds if the mean cosine of its links is at least CHAIN_COSINE (Gordon);
 the cosine of every link is shown, and single links below CHAIN_COSINE are marked weak.
-This is a provisional alignment for inspection, without Gordon's permutation null.
+Gordon's permutation test of the alignment is in analysis/18_alignment_null.py.
 Word colour shows persistence: in how many of the chain's periods the word is among the top
 TOP_WORDS words (computed on the page).
 

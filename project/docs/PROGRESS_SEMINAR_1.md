@@ -427,7 +427,17 @@ For each motion d, the model gives θ_d, its topic mixture: a probability for ea
    - **Gordon's results:** matched 0.44–0.59 against null 0.22–0.25, z = 7–9.
 4. **Chains.** Following the matches across all four periods gives chains. Gordon found 15 chains spanning all four periods. He interprets those with a mean cosine of at least 0.50 over all three transitions that are thematic in every period: 7 met the threshold, 4 of them thematic throughout.
 
-**Proposal:** adopt all four steps, so our results are directly comparable with Gordon's. None of this is implemented yet. The matching code exists, and the null and the chains are small additions.
+**Done 2026-10-18: all four steps adopted** (`analysis/18_alignment_null.py`, report `docs/reports/PERIOD_ALIGNMENT_NULL.md`; chains in the period explorer). At 8 topics:
+
+| Transition | Matched | Null mean (SD) | z |
+|---|---|---|---|
+| 1985/86–1993/94 → 1994/95–2005/06 | 0.668 | 0.348 (0.076) | 4.2 |
+| 1994/95–2005/06 → 2006/07–2013/14 | 0.782 | 0.347 (0.080) | 5.4 |
+| 2006/07–2013/14 → 2014/15–2025/26 | 0.755 | 0.354 (0.071) | 5.6 |
+
+- Every transition is far above chance (p < 0.0001). All 8 chains hold by Gordon's criterion, 4 with every link ≥ 0.50.
+- z is lower than Gordon's 7–9 although the matched cosines are higher: with 8 topics the null varies more than with his 15, and the null mean is higher (0.35 against 0.22–0.25), since 8 broad topics share more general vocabulary. z is therefore not comparable across topic counts.
+- **Question:** is the comparison with Gordon's z acceptable with different topic counts, or should the test also be reported at 15 topics?
 
 #### Possible extension: a ceiling from seed stability
 
@@ -437,6 +447,8 @@ The permutation null gives a **floor**: what random pairing achieves. The seed-s
 - A cosine well below the ceiling but well above the null indicates real change in a continuing theme.
 
 Placing each transition between floor and ceiling makes the cosine values interpretable, instead of comparing them to an arbitrary 0.50.
+
+**First look:** the period models' mean seed cosine (the ceiling) is 0.74–0.78. The second and third transitions (0.78, 0.76) reach it: across them the topics change no more than between seeds of one period. The first transition (0.67) is below it, so the change from the first to the second period is the largest. The comparison is approximate, since seed cosine is computed over the full vocabulary and alignment over the shared words.
 
 ---
 
@@ -608,7 +620,8 @@ These should be stated explicitly in the methods section.
 - Whole-corpus seed instability is of the same size as his (mean Jaccard 0.270 against his 0.26–0.31).
 - At his 15 topics per period, with his vocabulary design, our adjacent-period alignment is close to his (matched mean cosine 0.43, 0.60, 0.62 against 0.44–0.59; 9 of 15 chains pass his criterion against his 7). At our 8 topics: 0.67–0.78, and all 8 chains pass.
 - His chain criterion is the mean of the three links ≥ 0.50, and it is the main criterion in the period explorer. Requiring every link ≥ 0.50 is stricter: 4 of the 8 chains. Single weak links are marked in the explorer.
-- Not yet comparable: permutation null and z-scores (2.5), rubric coding (2.6), a whole-corpus model with 8 topics (his k = 15 control). Convergence of our 50-pass fits is not checked.
+- Permutation test: every transition far above random pairings (z = 4.2–5.6, null mean 0.35); Gordon z = 7–9 with null 0.22–0.25 at 15 topics, so z is not directly comparable (2.5).
+- Not yet comparable: rubric coding (2.6), a whole-corpus model with 8 topics (his k = 15 control). Convergence of our 50-pass fits is not checked.
 
 ### 2.11 Smaller open points
 
@@ -625,7 +638,7 @@ These should be stated explicitly in the methods section.
 2. **Shared vocabulary:** decided, Gordon's per-period vocabularies compared over shared words. Is the share of weight outside the shared words enough to report vocabulary change? (0.1, 2.2)
 3. **Baseline comparison:** is Gordon's quality comparison (same rubric for whole-corpus and period models) enough, or should the topic mapping be added? (2.3)
 4. **Thematic change:** vocabulary only (as Gordon), or vocabulary and prominence? Is the mean topic proportion per period the right summary? (2.4)
-5. **Evidence:** adopt Gordon's permutation null, z-scores and chain criterion? Add the seed-stability ceiling? (2.5)
+5. **Evidence:** Gordon's permutation null, z-scores and chain criterion adopted. Is the z comparison with Gordon acceptable at a different topic count? Add the seed-stability ceiling? (2.5)
 6. **Rubric:** adopt Gordon's three dimensions with party/MP concentration instead of author concentration? A second annotator? (2.6)
 7. **Place names:** keep, remove, or merge? (2.7)
 8. **Topic numbers and periods:** 8 per period and 32 for the whole corpus, chosen by seed stability (decided, 2.8); periods of complete electoral terms, assigned by session (decided, 2.9). Is the confound of a largely fixed opposition in periods 2 and 3 acceptable, given the planned party analysis? (2.9)
@@ -640,7 +653,7 @@ These should be stated explicitly in the methods section.
 2. ✅ Period models fitted and seed-tested at 8, 11 and 15 topics (global vocabulary); topic count set to 8 per period and 32 for the whole corpus (2.8). Only the 8-topic models are kept; the period explorer shows 8 topics only. ✅ Whole-corpus model re-fitted and seed-tested at 32 (mean cosine 0.568, 12 of 32 topics stable).
 3. ✅ Periods set to complete electoral terms, motions assigned by session (2.9).
 4. Settle the alignment design (2.2, 2.5) and the definition of thematic change (2.4).
-5. ✅ Period models re-fitted with per-period vocabularies, compared over shared words (2.2). Next: the permutation null for the alignment (2.5).
+5. ✅ Period models re-fitted with per-period vocabularies, compared over shared words (2.2). ✅ Permutation null for the alignment (2.5).
 6. If agreed: the topic mapping (2.3.2) and the prevalence analysis (2.4).
 7. Party analysis per topic and period (2.9).
 8. Manual evaluation with the rubric (2.6), within the proposal's four-week time box.
