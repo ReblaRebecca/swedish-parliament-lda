@@ -151,9 +151,6 @@
   </header>
 
   <div class="controls" role="group" aria-label="Display options">
-    <label class="field" for="k">Topics per period
-      <select id="k"></select>
-    </label>
     <label class="field" for="sort">Sort
       <select id="sort">
         <option value="strong" selected>Strongest chain first (mean link, high to low)</option>
@@ -195,7 +192,6 @@
 <script>
 (function () {
   const grid = document.getElementById('grid');
-  const kSelect = document.getElementById('k');
   const sortSelect = document.getElementById('sort');
   const searchInput = document.getElementById('search');
   const count = document.getElementById('count');
@@ -363,8 +359,8 @@
   }
 
   function render() {
-    const k = kSelect.value;
-    const set = DATA.sets[k];
+    const k = DATA.numTopics;
+    const set = DATA;
     const query = searchInput.value.trim().toLowerCase();
     let rows = set.rows.slice();
     const weakest = r => Math.min(...r.links);
@@ -399,17 +395,11 @@
   }
 
   // Static text from the data
-  for (const k of Object.keys(DATA.sets).sort((a, b) => a - b)) {
-    const o = document.createElement('option');
-    o.value = k;
-    o.textContent = Number(k) === DATA.chosen ? `${k} (chosen)` : `${k} (comparison)`;
-    kSelect.appendChild(o);
-  }
   const total = DATA.periodCounts.reduce((a, b) => a + b, 0);
   document.getElementById('lede').innerHTML =
     `One LDA model per period, fitted on the body text of <strong>${total.toLocaleString('en')} motions</strong> ` +
     `with one shared vocabulary. Each row links a topic through the four periods; the four word clouds show it in each period. ` +
-    (DATA.sets[DATA.chosen] ? `The analysis uses <strong>${DATA.chosen} topics per period</strong>; the other counts are shown for comparison, to see which chains hold whatever the number of topics.` : '');
+    `<strong>${DATA.numTopics} topics per period</strong>.`;
   document.getElementById('link-help').textContent =
     `The cosine similarity between a topic and the matched topic of the previous period. Below ${DATA.chainCosine.toFixed(2)} ` +
     'the link is weak and shown in gold: the Hungarian matching pairs every topic, so a weak link may join two unrelated ' +
@@ -418,7 +408,7 @@
   document.getElementById('holds-help').textContent =
     `Gordon's criterion: the mean cosine of the chain's three links is at least ${DATA.chainCosine.toFixed(2)}. ` +
     'Gold “does not hold” otherwise.';
-  const topN = DATA.sets[Object.keys(DATA.sets)[0]].rows[0].cells[0].words.length;
+  const topN = DATA.rows[0].cells[0].words.length;
   document.getElementById('search-hint').innerHTML =
     `Searches only the top ${topN} words shown in each cloud, also as part of longer words (<em>skola</em> finds <em>gymnasieskola</em>). ` +
     'A word that is not found can still have some probability in the topic; it is just not among the top words.';
@@ -429,16 +419,12 @@
     "The word's probability in that period's topic. The four clouds of a chain share one scale, so sizes can be " +
     'compared across its periods, but not between chains. The tooltip gives the exact probability.';
   document.getElementById('footer').textContent =
-    `Generated ${DATA.generated} by modeling/17_generate_period_explorer.py from models/period_lda_<k>/ ` +
+    `Generated ${DATA.generated} by modeling/17_generate_period_explorer.py from models/period_lda_${DATA.numTopics}/ ` +
     '(15_fit_period_lda.py; scikit-learn LDA, seed 42) and the seed-stability CSVs of 16_seed_stability_periods.py. ' +
     'Motions per period: ' + DATA.periods.map((p, i) => `${p} ${DATA.periodCounts[i].toLocaleString('en')}`).join(', ') + '. ' +
     "Provisional alignment for inspection: adjacent matching only, without Gordon's permutation test. " +
     'Topic numbers (T) are arbitrary within each period model.';
 
-  // Always open on the chosen topic count
-  if (DATA.sets[DATA.chosen]) kSelect.value = String(DATA.chosen);
-
-  kSelect.addEventListener('change', render);
   sortSelect.addEventListener('change', render);
   let timer;
   searchInput.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(render, 150); });

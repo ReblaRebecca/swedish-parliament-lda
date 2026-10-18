@@ -639,7 +639,7 @@ These should be stated explicitly in the methods section.
 ## 4. Next Steps
 
 1. ✅ Seed-stability tests run (baseline, 3×, 5×); title weighting dropped (2.1). About 12 of 44 topics are found again in 3–4 of the other 4 seeds and about 19 in none; the per-topic table lets unstable topics be flagged before interpretation, and the many seed-dependent topics are an argument for reconsidering the topic count (2.8).
-2. ✅ Period models fitted and seed-tested at 8, 11 and 15 topics (global vocabulary); topic count set to 8 per period and 32 for the whole corpus (2.8). ✅ Whole-corpus model re-fitted and seed-tested at 32 (mean cosine 0.568, 12 of 32 topics stable).
+2. ✅ Period models fitted and seed-tested at 8, 11 and 15 topics (global vocabulary); topic count set to 8 per period and 32 for the whole corpus (2.8). Only the 8-topic models are kept; the period explorer shows 8 topics only. ✅ Whole-corpus model re-fitted and seed-tested at 32 (mean cosine 0.568, 12 of 32 topics stable).
 3. ✅ Periods set to complete electoral terms, motions assigned by session (2.9).
 4. Settle the alignment design (2.2, 2.5) and the definition of thematic change (2.4).
 5. Re-fit the period models if the vocabulary design changes (2.2); implement the alignment with permutation null, and the chains.

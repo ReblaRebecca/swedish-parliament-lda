@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Generate the period explorer: one self-contained HTML page with four word clouds per topic, one
-for each period, for the period models with 8, 11 and 15 topics (switchable on the page).
+for each period, for the period models with the chosen number of topics (PERIOD_TOPICS in lda_common.py).
 
 Each period model has its own topics, so "topic 3" in one period is not topic 3 in the next. The
 rows are therefore chains: topics of adjacent periods are matched one-to-one with the Hungarian
@@ -14,12 +14,10 @@ TOP_WORDS words (computed on the page).
 
 Input:  models/period_lda_<k>/ (15_fit_period_lda.py), baseline vectorizer, data/output/stopword_removed/,
         results/period_stability/PERIOD_<period>_<k>TOPICS_PER_TOPIC.csv (16_seed_stability_periods.py; optional)
+        (k = PERIOD_TOPICS)
 Output: visualizations/period_explorer.html (open in a browser; needs internet for the fonts)
 
-The page opens on the chosen count (PERIOD_TOPICS in lda_common.py); the other counts are shown for
-comparison, to see which chains hold whatever the number of topics.
-
-Usage: python modeling/17_generate_period_explorer.py [num_topics ...]   (default: 8 11 15)
+Usage: python modeling/17_generate_period_explorer.py
 """
 
 import csv
@@ -36,7 +34,6 @@ from lda_common import BASELINE_MODEL_DIR, PERIOD_TOPICS, load_baseline_vectoriz
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'analysis'))
 from topic_matching import match_and_evaluate  # noqa: E402
 
-TOPIC_COUNTS = [8, 11, 15]
 TOP_WORDS = 20
 # Gordon's chain criterion: a chain holds if the mean cosine of its links is at least this.
 # The page also marks each single link below it as weak.
@@ -122,7 +119,6 @@ def main():
     STABILITY_DIR = PROJECT_ROOT / 'results' / 'period_stability'
     TEMPLATE = Path(__file__).resolve().parent / 'period_explorer_template.html'
     OUTPUT = PROJECT_ROOT / 'visualizations' / 'period_explorer.html'
-    topic_counts = [int(a) for a in sys.argv[1:]] or TOPIC_COUNTS
 
     vectorizer = load_baseline_vectorizer(VECTORIZER_PATH)
     vocab = vectorizer.get_feature_names_out()
@@ -132,19 +128,18 @@ def main():
         'periods': [period_display(p) for p in periods],
         'periodCounts': [len(texts) for texts, _ in periods.values()],
         'chainCosine': CHAIN_COSINE,
-        'chosen': PERIOD_TOPICS,
+        'numTopics': PERIOD_TOPICS,
         'generated': date.today().isoformat(),
-        'sets': {},
     }
-    for k in topic_counts:
-        model_dir = PROJECT_ROOT / 'models' / f'period_lda_{k}'
-        if not model_dir.exists():
-            print(f"Error: {model_dir} not found. Run: python modeling/15_fit_period_lda.py {k}")
-            sys.exit(1)
-        print(f"{k} topics: inferring topic shares and matching adjacent periods...")
-        data['sets'][str(k)] = model_set_data(k, periods, vectorizer, vocab, model_dir, STABILITY_DIR)
-        if not all(data['sets'][str(k)]['stabilityAvailable']):
-            print(f"   ⚠️  seed stability missing or for another model in some periods (run 16_seed_stability_periods.py {k})")
+    k = PERIOD_TOPICS
+    model_dir = PROJECT_ROOT / 'models' / f'period_lda_{k}'
+    if not model_dir.exists():
+        print(f"Error: {model_dir} not found. Run: python modeling/15_fit_period_lda.py")
+        sys.exit(1)
+    print(f"{k} topics: inferring topic shares and matching adjacent periods...")
+    data.update(model_set_data(k, periods, vectorizer, vocab, model_dir, STABILITY_DIR))
+    if not all(data['stabilityAvailable']):
+        print("   ⚠️  seed stability missing or for another model in some periods (run 16_seed_stability_periods.py)")
 
     html = TEMPLATE.read_text(encoding='utf-8')
     assert html.count('__PERIOD_DATA__') == 1, 'template must contain the data placeholder once'

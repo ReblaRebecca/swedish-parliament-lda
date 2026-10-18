@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-Seed-stability test of the period models, for several topic counts, to choose the number of
-topics per period (docs/PIPELINE_DOCUMENTATION.md, Design Decisions and Current Results).
+Seed-stability test of the period models (docs/PIPELINE_DOCUMENTATION.md, Design Decisions and
+Current Results). By default for the chosen topic count (PERIOD_TOPICS in lda_common.py); the count
+was chosen by running it at 8, 11 and 15 topics (`16_seed_stability_periods.py 8 11 15`; reports kept
+in docs/reports/topic_count_choice/).
 
 For every period and topic count: fit one model per seed on the period's motions with the global
 vocabulary (as 15_fit_period_lda.py), match every pair of seeds and count how many topics of the
 seed-42 model are found again in the other seeds' models. Writes a full report per period and
 count (as 09_test_lda_stability.py) and one summary over all of them.
 
-Runtime: 4 periods x 3 counts x 5 seeds = 60 fits; roughly 1-3 hours.
+Runtime: 4 periods x 5 seeds = 20 fits per topic count; about 10 minutes at 8 topics.
 
-Usage: python analysis/16_seed_stability_periods.py [num_topics ...]   (default: 8 11 15)
+Usage: python analysis/16_seed_stability_periods.py [num_topics ...]   (default: PERIOD_TOPICS)
 Output: docs/reports/period_stability/PERIOD_<period>_<k>TOPICS.md (report),
         results/period_stability/PERIOD_<period>_<k>TOPICS_PER_TOPIC.csv (used by 17_generate_period_explorer.py),
         docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md
@@ -27,10 +29,8 @@ from seed_stability import (
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'modeling'))
 from lda_common import (  # noqa: E402
-    BASELINE_MODEL_DIR, DEFAULT_SEED, STABILITY_SEEDS, load_baseline_vectorizer, load_period_body_texts, period_display,
+    BASELINE_MODEL_DIR, DEFAULT_SEED, PERIOD_TOPICS, STABILITY_SEEDS, load_baseline_vectorizer, load_period_body_texts, period_display,
 )
-
-TOPIC_COUNTS = [8, 11, 15]
 
 
 def summarize(pairwise_results, rows):
@@ -62,8 +62,8 @@ def summary_report(summaries):
         "(baseline vectorizer). *Stable* = found again (matched cosine ≥ 0.70) in at least",
         f"{others - 1} of the other {others} seeds' models. Mean cosine is the mean of the per-pair means.",
         "",
-        "Choose the highest topic count at which most topics are still stable and interpretable,",
-        "the same count in every period.",
+        f"The analysis uses {PERIOD_TOPICS} topics per period: the highest tested count (8, 11, 15) at which at least half",
+        "of the topics are stable in every period (reports of all three counts in topic_count_choice/).",
         "",
         "| Period | Topics | Mean cosine | Per-pair range | Found in all | Found in none | Stable | Stable share |",
         "|---|---|---|---|---|---|---|---|",
@@ -81,7 +81,7 @@ def main():
     VECTORIZER_PATH = PROJECT_ROOT / 'models' / BASELINE_MODEL_DIR / 'baseline_vectorizer.pkl'
     REPORT_DIR = PROJECT_ROOT / 'docs' / 'reports' / 'period_stability'
     CSV_DIR = PROJECT_ROOT / 'results' / 'period_stability'
-    topic_counts = [int(a) for a in sys.argv[1:]] or TOPIC_COUNTS
+    topic_counts = [int(a) for a in sys.argv[1:]] or [PERIOD_TOPICS]
 
     periods, malformed = load_period_body_texts(INPUT_DIR)
     if malformed:

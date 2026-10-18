@@ -128,7 +128,7 @@ Topic counts (`NUM_TOPICS = 32`, `PERIOD_TOPICS = 8`), the model folder name (`B
 ### Period models (`modeling/15_fit_period_lda.py [k]`)
 - One model per period, 8 topics each (`k` overrides the count), with the shared settings and **the global vocabulary** of the whole-corpus vectorizer. Each period's motions are transformed with that vectorizer, so every period model has the same columns in the same order and topics can be compared across periods directly
 - The script checks that all period models have the same vocabulary in the same order; `analysis/topic_matching.py` also refuses to compare models whose vocabularies differ or are reordered (both tested)
-- **Output:** `models/period_lda_<k>/` (one model per period + `vocabulary.txt`), `results/period_<k>_topics.csv` (top 20 words per topic and period). Models exist for k = 8 (the analysis) and 11 and 15 (comparison in the period explorer)
+- **Output:** `models/period_lda_<k>/` (one model per period + `vocabulary.txt`), `results/period_<k>_topics.csv` (top 20 words per topic and period). k = 8 (`PERIOD_TOPICS`); another count can be passed to reproduce the topic-count choice
 - **Consequences of the global vocabulary:** words absent from a period get near-zero weight in that period's topics (only the prior), so period-specific vocabulary also makes topics look different across periods. The vocabulary thresholds apply to the full corpus: a word frequent in one period but rare overall is still included; a word in more than half of all motions is excluded everywhere
 - **Vocabulary design is open** (seminar notes 2.2): Gordon uses one vocabulary per period and compares adjacent periods over their shared words. Switching would change `period_vectorizers()` in 15 and add a step restricting two periods' topics to their shared words before matching
 
@@ -140,7 +140,7 @@ Hungarian-algorithm one-to-one matching between two models' topics on cosine sim
 | Script | Tests | Output |
 |---|---|---|
 | `analysis/09_test_lda_stability.py` | The whole-corpus model | `docs/reports/BASELINE_STABILITY_32TOPICS_CORRECTED.md`, `results/BASELINE_STABILITY_32TOPICS_PER_TOPIC.csv` |
-| `analysis/16_seed_stability_periods.py [k ...]` | The period models, for several topic counts (default 8, 11, 15) | `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`; full report per period and count in `docs/reports/period_stability/`; per-topic CSV in `results/period_stability/` (read by the period explorer) |
+| `analysis/16_seed_stability_periods.py [k ...]` | The period models (default 8; `8 11 15` reproduces the topic-count choice) | `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`; full report per period in `docs/reports/period_stability/`; per-topic CSV in `results/period_stability/` (read by the period explorer) |
 
 Both use the shared procedure in `analysis/seed_stability.py`: fit one model per seed (5 seeds), match every pair of models with the Hungarian algorithm (10 pairs), and compare matched topics by cosine (full distributions) and Jaccard (top 20 words).
 
@@ -171,18 +171,17 @@ Report: `docs/reports/BASELINE_STABILITY_32TOPICS_CORRECTED.md`.
 ### Period models
 Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 
-| Period | 8 topics: mean cosine / stable | 11 topics | 15 topics |
-|---|---|---|---|
-| 1985/86–1993/94 | 0.70 / 4 of 8 (50%) | 0.63 / 4 of 11 (36%) | 0.55 / 4 of 15 (27%) |
-| 1994/95–2005/06 | 0.77 / 7 of 8 (88%) | 0.67 / 6 of 11 (55%) | 0.62 / 6 of 15 (40%) |
-| 2006/07–2013/14 | 0.80 / 6 of 8 (75%) | 0.65 / 4 of 11 (36%) | 0.58 / 6 of 15 (40%) |
-| 2014/15–2025/26 | 0.72 / 4 of 8 (50%) | 0.67 / 6 of 11 (55%) | 0.62 / 9 of 15 (60%) |
-| **All periods** | **21 of 32 (66%)** | **20 of 44 (45%)** | **25 of 60 (42%)** |
+| Period | Mean cosine | Stable (3–4 of 4) |
+|---|---|---|
+| 1985/86–1993/94 | 0.70 | 4 of 8 (50%) |
+| 1994/95–2005/06 | 0.77 | 7 of 8 (88%) |
+| 2006/07–2013/14 | 0.80 | 6 of 8 (75%) |
+| 2014/15–2025/26 | 0.72 | 4 of 8 (50%) |
+| **All periods** | | **21 of 32 (66%)** |
 
 - The period models are more stable than the whole-corpus model, which supports Gordon's case for period models
-- The number of robust themes per period is about 4–9 whatever the topic count (8 → 15 adds 28 topics but only 4 stable ones). The mean cosine falls with the topic count in every period
-- The first period (1985/86–1993/94) is the least stable at every count, although it has the most motions; the smallest period (2006/07–2013/14) is not less stable than the others
-- At 8 topics the first and last periods are exactly at half stable, so the margin of the chosen count is small there. The last period is the only one whose stable share rises with the topic count (50%, 55%, 60%)
+- The first and last periods are exactly at half stable; the smallest period (2006/07–2013/14) is not less stable than the others
+- **How 8 was chosen:** see *Design Decisions*
 
 **Alignment across periods (8 topics):** matched mean cosine 0.65, 0.69 and 0.67 for the three transitions. All 8 chains hold by Gordon's criterion (mean link ≥ 0.50), 4 of them with every link ≥ 0.50: research (mean link 0.81), school and pupils, ending in preschool (0.81), higher education (0.77), and teachers and pupils (0.71). The other four hold on the mean but have one or two weak links (0.27–0.48), so they may join different topics. Without the permutation null these are provisional.
 
@@ -193,9 +192,9 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 | | Gordon | This study |
 |---|---|---|
 | Whole-corpus seed stability (mean Jaccard of the top words) | 0.26–0.31 | 0.270, per-pair range 0.22–0.33 (32 topics) |
-| Matched mean cosine between adjacent periods, 15 topics per period | 0.44–0.59 | 0.41, 0.47, 0.55 |
-| Same, 8 topics per period (the chosen count) | — | 0.65, 0.69, 0.67 |
-| Chains with mean cosine ≥ 0.50 over the three transitions | 7 of 15 | 9 of 15 (15 topics); 6 of 11 (11 topics); 8 of 8 (8 topics) |
+| Matched mean cosine between adjacent periods, 8 topics per period | — | 0.65, 0.69, 0.67 |
+| Same, at Gordon's 15 topics per period (fitted once for this comparison) | 0.44–0.59 | 0.41, 0.47, 0.55 |
+| Chains with mean cosine ≥ 0.50 over the three transitions | 7 of 15 | 8 of 8 (8 topics); 9 of 15 at 15 topics |
 
 - **Seed instability is of the same size as Gordon's**, so it is not a weakness of this pipeline; Gordon uses the same finding as part of his argument for period models
 - **At Gordon's topic count (15 per period) the alignment is close to his:** matched cosine slightly lower, and a few more chains pass his criterion. At 8 topics the links are stronger, as expected with fewer, broader topics
@@ -209,7 +208,7 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 | Documents | 1,000-word book chunks | Whole motions | Natural units, most shorter than 1,000 words |
 | Proper names | Removed | Kept | Open (seminar notes 2.7) |
 | Lemmatization | None | Stanza | Swedish inflection |
-| Topics | 15 per period, 60 whole corpus | 8 per period, 32 whole corpus | Chosen by seed stability; 11 and 15 shown for comparison |
+| Topics | 15 per period, 60 whole corpus | 8 per period, 32 whole corpus | Chosen by seed stability (8, 11 and 15 tested) |
 | Seed stability | Whole-corpus runs only | Every model | Extension |
 
 **Not yet comparable:** the permutation null and z-scores (Gordon: matched 0.44–0.59 against 0.22–0.25 for random pairings, z = 7–9), the rubric coding (coherent, thematic, concentration) of all models, and a whole-corpus model with 8 topics (the counterpart of Gordon's k = 15 control).
@@ -220,7 +219,7 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 |---|---|---|
 | `modeling/08_display_lda_topics.py [model_dir]` | `models/baseline_lda_32/` | `results/32_TOPICS_FINAL.csv` (top 20 words per topic, as P(word \| topic)) |
 | `modeling/14_generate_topic_explorer.py` | `models/baseline_lda_32/`, `data/output/stopword_removed/`, template `modeling/topic_explorer_template.html` | `visualizations/topic_explorer.html` |
-| `modeling/17_generate_period_explorer.py [k ...]` | `models/period_lda_<k>/` for k = 8, 11, 15 (default), the shared vectorizer, `data/output/stopword_removed/`, the per-topic CSVs of 16, template `modeling/period_explorer_template.html` | `visualizations/period_explorer.html` |
+| `modeling/17_generate_period_explorer.py` | `models/period_lda_8/`, the shared vectorizer, `data/output/stopword_removed/`, the per-topic CSVs of 16, template `modeling/period_explorer_template.html` | `visualizations/period_explorer.html` |
 
 Both pages are self-contained HTML (open in a browser; internet needed only for the fonts). Word weights are shown as P(word | topic). Topics have neutral names (Topic 1–32, T1–T8 per period), so they can be inspected without interpretive labels.
 
@@ -231,7 +230,7 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 - **Search:** covers only the 30 words shown per cloud (also as part of longer words), as stated next to the search box; a word that is not found can still have some probability in the topic
 
 ### Period explorer (period models)
-- **Topic counts:** opens on the chosen count (8, marked *chosen*); 11 and 15 are selectable as *comparison*, to see which chains hold whatever the number of topics
+- **8 topics per period,** the chosen count
 - **Rows are chains.** Each period model has its own topics, so topic numbers do not correspond across periods. Topics of adjacent periods are matched one-to-one (Hungarian algorithm on cosine) and each row follows the matches from a topic of the first period to the last
 - **Chain holds (main criterion, Gordon's):** the heading says *holds* if the mean cosine of the chain's three links is at least 0.50, otherwise *does not hold* (gold), with the mean and the weakest link
 - **Weak links (additional information):** a single link below 0.50 breaks the row: the accent bar over the clouds stops, a dashed gold rule separates the cells and the cell reads *Alignment uncertain*. The heading names the strongly linked segments, or says *forced matches, not a continuous topic* when no link reaches 0.50. A chain can hold on the mean and still have one weak link
@@ -247,7 +246,17 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 - **Stopwords vs. boilerplate.** Stopwords are general Swedish words, applied to the lemmatized, normalized text; boilerplate is parliamentary and domain-specific language (institutions, procedure, references), matched on the original word forms. Keeping them apart lets the stopword list be reused for other Swedish texts
 - **Stanza lemmatization.** Swedish inflection splits one word into many forms (*skola, skolan, skolor, skolornas*), which fragments topics. Stanza is a general, context-aware lemmatizer run once on full sentences, with a small table of corrections for known errors. Known trade-offs: comparatives are reduced to the positive (*högre utbildning* → `hög utbildning`), rare compounds can get wrong lemmas (*arbetsvillkor* → `arbetsvillka`), and modal *ska* gets the lemma `skola` (handled by dropping auxiliaries). spaCy's `sv_core_news_sm` and a hand-made lookup table of education terms were tried earlier and rejected
 - **Body text only.** Appending the title 3× or 5× to the body gave only a small stability gain (mean matched cosine 0.539 against 0.525 at 44 topics, overlapping ranges), too small to justify an extra modelling choice. Titles are kept in the data
-- **Topic count: 8 per period, 32 for the whole corpus.** 8 is the only tested count (8, 11, 15) at which at least half of the topics are stable in every period, and it has the highest mean cosine in every period; since the number of robust themes is about the same at every count, 8 loses little substance and avoids many chance topics. The margin is small in the first and last periods (exactly half stable). The whole-corpus model has the same total capacity as the four period models, as in Gordon (60 = 4 × 15)
+- **Topic count: 8 per period, 32 for the whole corpus.** 8 is the only tested count (8, 11, 15) at which at least half of the topics are stable in every period, and it has the highest mean cosine in every period; since the number of robust themes is about the same at every count, 8 loses little substance and avoids many chance topics. The margin is small in the first and last periods (exactly half stable). The test (16 with `8 11 15`; reports in `docs/reports/topic_count_choice/`):
+
+  | Period | 8 topics: mean cosine / stable | 11 topics | 15 topics |
+  |---|---|---|---|
+  | 1985/86–1993/94 | 0.70 / 4 of 8 (50%) | 0.63 / 4 of 11 (36%) | 0.55 / 4 of 15 (27%) |
+  | 1994/95–2005/06 | 0.77 / 7 of 8 (88%) | 0.67 / 6 of 11 (55%) | 0.62 / 6 of 15 (40%) |
+  | 2006/07–2013/14 | 0.80 / 6 of 8 (75%) | 0.65 / 4 of 11 (36%) | 0.58 / 6 of 15 (40%) |
+  | 2014/15–2025/26 | 0.72 / 4 of 8 (50%) | 0.67 / 6 of 11 (55%) | 0.62 / 9 of 15 (60%) |
+  | **All periods** | **21 of 32 (66%)** | **20 of 44 (45%)** | **25 of 60 (42%)** |
+
+  The number of robust themes per period is about 4–9 at every count (8 → 15 adds 28 topics but only 4 stable ones), and the mean cosine falls with the topic count in every period. The 11- and 15-topic models were deleted after the choice; they can be refitted with `15_fit_period_lda.py <k>`. The whole-corpus model has the same total capacity as the four period models, as in Gordon (60 = 4 × 15)
 - **Periods by electoral term, assigned by session** (see *Periods*): whole terms per period, as equal in size as the terms allow. They replaced four calendar-year bins of roughly equal size (1986–1993, 1994–2004, 2005–2014, 2015–2025, assigned by date); at 8 topics the period models became slightly more stable (21 against 19 of 32 topics stable) and the alignment stronger (all 8 chains pass Gordon's criterion, against 5). The differences are small, see seminar notes 2.9
 - **Global vocabulary** for all models, so topics can be compared across periods directly; Gordon's per-period vocabularies are the open alternative (see *Period models*)
 - **Chain criterion:** Gordon's mean of the three links ≥ 0.50, so results are comparable with his; single weak links are shown as additional information
@@ -269,7 +278,7 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 | Stopwords | NLTK (114) + 85 supplementary | |
 | Boilerplate phrases | 440 | Explicit phrases, no wildcards |
 | Lemmatizer | Stanza | Swedish Talbanken model; auxiliaries dropped |
-| LDA topics | 8 per period, 32 whole corpus | 11 and 15 per period kept for comparison |
+| LDA topics | 8 per period, 32 whole corpus | 8, 11 and 15 per period tested |
 | Title coverage | ~99.5% | Motions with a processed title |
 
 ## Usage
@@ -305,8 +314,9 @@ python modeling/14_generate_topic_explorer.py
 python analysis/09_test_lda_stability.py      # 5 seeds; under an hour
 
 # Period models (after 07: they use its vectorizer)
-for k in 8 11 15; do python modeling/15_fit_period_lda.py $k; done   # about 7 minutes
-python analysis/16_seed_stability_periods.py  # 4 periods x 3 counts x 5 seeds = 60 fits; about 35 minutes
+python modeling/15_fit_period_lda.py          # 8 topics; about 2 minutes
+python analysis/16_seed_stability_periods.py  # 4 periods x 5 seeds = 20 fits; about 10 minutes
+                                              # (with 8 11 15: the topic-count choice, about 35 minutes)
 python modeling/17_generate_period_explorer.py
 ```
 
@@ -380,7 +390,7 @@ project/
 │   ├── PROGRESS_SEMINAR_1.md              (status, decisions and open questions, seminar 2026-10-19)
 │   ├── MODEL_REVIEW.md                    (review of the first models on the Stanza pipeline)
 │   ├── PREPROCESSING_ARTIFACTS.md         (the extraction artifacts and their fix)
-│   └── reports/                           (seed-stability reports of 09 and 16; period_stability/ per period and count)
+│   └── reports/                           (seed-stability reports of 09 and 16; period_stability/ per period; topic_count_choice/ the 8/11/15 test)
 ├── visualizations/                        (in git: topic_explorer.html, period_explorer.html)
 ├── results/                               (not in git: generated CSV tables)
 ├── data/                                  (not in git)
@@ -388,7 +398,7 @@ project/
 │   └── output/{lemmatized,boilerplate_removed,normalized,stopword_removed}/
 └── models/                                (not in git)
     ├── baseline_lda_32/
-    └── period_lda_{8,11,15}/
+    └── period_lda_8/
 ```
 
 ## Open Points and Next Steps
