@@ -22,6 +22,7 @@ from periods import DISPLAY_NAMES  # noqa: E402
 
 try:
     from sklearn.decomposition import LatentDirichletAllocation
+    from sklearn.feature_extraction.text import CountVectorizer
 except ImportError:
     print("Error: scikit-learn not installed. Install with: pip install scikit-learn")
     sys.exit(1)
@@ -36,8 +37,16 @@ PERIOD_TOPICS = 8
 # period models together (as Gordon's 60 = 4 x 15)
 NUM_TOPICS = 32
 
-# Directory of the whole-corpus model under models/; its vectorizer is the global vocabulary of the period models
+# Directory of the whole-corpus model under models/ (model and its vectorizer)
 BASELINE_MODEL_DIR = f'baseline_lda_{NUM_TOPICS}'
+
+# Vocabulary of each period model, as Gordon (2026, 3.3): built within the period, keeping words in at least
+# 10 and at most 50% of the period's motions, with no cap on its size. Adjacent periods are compared over the
+# words both vocabularies contain (topic_matching.match_and_evaluate with shared_vocabulary=True).
+PERIOD_VECTORIZER_PARAMS = {
+    'min_df': 10,
+    'max_df': 0.5,
+}
 
 # Seed of the reported models
 DEFAULT_SEED = 42
@@ -134,11 +143,16 @@ def load_period_body_texts(input_dir):
     return periods, malformed_count
 
 
+def fit_period_vectorizer(texts):
+    """The vocabulary of one period model, built on that period's motions only."""
+    return CountVectorizer(**PERIOD_VECTORIZER_PARAMS).fit(texts)
+
+
 def load_baseline_vectorizer(vectorizer_path):
     """Load the vectorizer saved by 07_fit_baseline_lda.py, or exit with a clear message if it is missing."""
     if not vectorizer_path.exists():
         print(f"Error: baseline vectorizer not found at {vectorizer_path}")
-        print("Run modeling/07_fit_baseline_lda.py first: every model shares its vocabulary.")
+        print("Run modeling/07_fit_baseline_lda.py first.")
         sys.exit(1)
     with open(vectorizer_path, 'rb') as f:
         return pickle.load(f)

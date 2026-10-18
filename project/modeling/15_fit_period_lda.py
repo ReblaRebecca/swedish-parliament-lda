@@ -2,14 +2,14 @@
 """
 Fit one LDA model per period (the four temporal bins), for cross-period topic alignment.
 
-Vocabulary: option A of the seminar notes (docs/PROGRESS_SEMINAR_1.md, 0.1/2.2): one global vocabulary,
-the vectorizer saved by 07_fit_baseline_lda.py. Every period model therefore has the same columns in
-the same order, so its topics can be compared directly with topic_matching.py. If option B (per-period
-vocabularies compared over shared words, as Gordon) is chosen, only period_vectorizers() changes.
+Vocabulary: one per period, as Gordon (2026, 3.3): built on the period's motions only, keeping words in at
+least 10 and at most 50% of them (PERIOD_VECTORIZER_PARAMS in lda_common.py). Each period model is therefore
+built on its own most relevant words; adjacent periods are compared over the words both vocabularies contain
+(topic_matching.match_and_evaluate with shared_vocabulary=True).
 
-Input:  data/output/stopword_removed/ (body text, as the whole-corpus model), models/<BASELINE_MODEL_DIR>/baseline_vectorizer.pkl
-Output: models/period_lda_<k>/period_<period>_lda.pkl (one per period), models/period_lda_<k>/vocabulary.txt,
-        results/period_<k>_topics.csv (top 20 words per topic and period)
+Input:  data/output/stopword_removed/ (body text, the same motions as the whole-corpus model)
+Output: models/period_lda_<k>/period_<period>_lda.pkl and period_<period>_vectorizer.pkl (one each per period),
+        models/period_lda_<k>/vocabulary_<period>.txt, results/period_<k>_topics.csv (top 20 words per topic and period)
 
 Usage: python modeling/15_fit_period_lda.py [num_topics]   (default: PERIOD_TOPICS in lda_common.py)
 """
@@ -22,15 +22,15 @@ from pathlib import Path
 import numpy as np
 
 from lda_common import (
-    BASELINE_MODEL_DIR, DEFAULT_SEED, PERIOD_TOPICS, fit_lda_model, load_baseline_vectorizer, load_period_body_texts,
+    DEFAULT_SEED, PERIOD_TOPICS, fit_lda_model, fit_period_vectorizer, load_period_body_texts,
 )
 
 TOP_WORDS = 20
 
 
-def period_vectorizers(periods, vectorizer):
-    """Vectorizer per period. Option A: the same global vectorizer for every period."""
-    return {period: vectorizer for period in periods}
+def period_vectorizers(periods):
+    """Vectorizer per period, each fitted on that period's motions only."""
+    return {period: fit_period_vectorizer(texts) for period, (texts, _) in periods.items()}
 
 
 def fit_period_models(periods, vectorizers, num_topics, seed=DEFAULT_SEED):
@@ -43,21 +43,11 @@ def fit_period_models(periods, vectorizers, num_topics, seed=DEFAULT_SEED):
     for period, (texts, _) in periods.items():
         vectorizer = vectorizers[period]
         doc_term_matrix = vectorizer.transform(texts)
-        print(f"   {period}: {len(texts)} motions...")
+        print(f"   {period}: {len(texts)} motions, {len(vectorizer.vocabulary_)} words in its vocabulary...")
         lda = fit_lda_model(doc_term_matrix, num_topics, seed)
         print(f"      Training perplexity: {lda.perplexity(doc_term_matrix):.2f}")
         models[period] = (lda, vectorizer.get_feature_names_out())
     return models
-
-
-def check_same_vocabulary(models):
-    """Raise ValueError unless every period model has the same vocabulary in the same order (option A)."""
-    vocabularies = [vocab for _, vocab in models.values()]
-    for period, (lda, vocab) in models.items():
-        if lda.components_.shape[1] != len(vocab):
-            raise ValueError(f"{period}: model columns do not match its vocabulary")
-        if not np.array_equal(vocab, vocabularies[0]):
-            raise ValueError(f"{period}: vocabulary differs from {next(iter(models))}")
 
 
 def save_top_words(models, num_topics, output_file):
@@ -77,7 +67,6 @@ def save_top_words(models, num_topics, output_file):
 def main():
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
-    VECTORIZER_PATH = PROJECT_ROOT / 'models' / BASELINE_MODEL_DIR / 'baseline_vectorizer.pkl'
     num_topics = int(sys.argv[1]) if len(sys.argv) > 1 else PERIOD_TOPICS
     OUTPUT_DIR = PROJECT_ROOT / 'models' / f'period_lda_{num_topics}'
 
@@ -92,17 +81,17 @@ def main():
         print(f"Error: no texts loaded for some period in {INPUT_DIR}")
         sys.exit(1)
 
-    vectorizer = load_baseline_vectorizer(VECTORIZER_PATH)
-    models = fit_period_models(periods, period_vectorizers(periods, vectorizer), num_topics)
-    check_same_vocabulary(models)
+    vectorizers = period_vectorizers(periods)
+    models = fit_period_models(periods, vectorizers, num_topics)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    for period, (lda, _) in models.items():
+    for period, (lda, vocab) in models.items():
         with open(OUTPUT_DIR / f'period_{period}_lda.pkl', 'wb') as f:
             pickle.dump(lda, f)
-    vocab = next(iter(models.values()))[1]
-    (OUTPUT_DIR / 'vocabulary.txt').write_text('\n'.join(vocab) + '\n', encoding='utf-8')
-    print(f"✅ {len(models)} period models and the shared vocabulary saved to: {OUTPUT_DIR}")
+        with open(OUTPUT_DIR / f'period_{period}_vectorizer.pkl', 'wb') as f:
+            pickle.dump(vectorizers[period], f)
+        (OUTPUT_DIR / f'vocabulary_{period}.txt').write_text('\n'.join(vocab) + '\n', encoding='utf-8')
+    print(f"✅ {len(models)} period models and their vocabularies saved to: {OUTPUT_DIR}")
 
     save_top_words(models, num_topics, PROJECT_ROOT / 'results' / f'period_{num_topics}_topics.csv')
 

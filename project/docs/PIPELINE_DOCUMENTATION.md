@@ -4,7 +4,7 @@
 
 13,957 motions to the Swedish parliament's Education Committee (Utbildningsutskottet, UbU), parliamentary sessions 1985/86–2025/26, processed into lemmatized body text and modelled with Latent Dirichlet Allocation (LDA), following the temporally binned design of Gordon (2026):
 
-- **Four period models**, one per period (1985/86–1993/94, 1994/95–2005/06, 2006/07–2013/14, 2014/15–2025/26; complete electoral terms, see *Periods*), **8 topics each**, aligned across adjacent periods into topic chains
+- **Four period models**, one per period (1985/86–1993/94, 1994/95–2005/06, 2006/07–2013/14, 2014/15–2025/26; complete electoral terms, see *Periods*), **8 topics each**, each with **its own vocabulary**, aligned across adjacent periods over their shared words into topic chains (as Gordon)
 - **One whole-corpus model with 32 topics** (= 4 × 8, the same total capacity as the four period models together), as the point of comparison
 - **Body text only.** Titles are processed and kept as a separate field, but are not part of the model's documents
 - **Seed stability** is tested for every model (5 seeds, Hungarian matching)
@@ -28,13 +28,12 @@ data/output/normalized/               fields: text_normalized, title_normalized
     ↓  preprocessing/05_remove_stopwords.py     ┘ (e.g. after editing the boilerplate or stopword lists)
 data/output/stopword_removed/         fields: text_no_stopwords, title_processed   ← final text used by all models
     ↓
-    └── modeling/07_fit_baseline_lda.py        → models/baseline_lda_32/ (whole-corpus model + the shared vectorizer)
+    └── modeling/07_fit_baseline_lda.py        → models/baseline_lda_32/ (whole-corpus model + its vectorizer)
             ├── modeling/08_display_lda_topics.py       → results/32_TOPICS_FINAL.csv
             ├── modeling/14_generate_topic_explorer.py  → visualizations/topic_explorer.html
-            ├── analysis/09_test_lda_stability.py       → docs/reports/BASELINE_STABILITY_32TOPICS_CORRECTED.md
-            │   (period models: same vocabulary, the vectorizer saved by 07)
-            ├── modeling/15_fit_period_lda.py [k]       → models/period_lda_<k>/, results/period_<k>_topics.csv
-            │       ↓ modeling/17_generate_period_explorer.py → visualizations/period_explorer.html
+            └── analysis/09_test_lda_stability.py       → docs/reports/BASELINE_STABILITY_32TOPICS_CORRECTED.md
+    └── modeling/15_fit_period_lda.py [k]       → models/period_lda_<k>/ (one model and vocabulary per period), results/period_<k>_topics.csv
+            ├── modeling/17_generate_period_explorer.py → visualizations/period_explorer.html
             └── analysis/16_seed_stability_periods.py   → docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md, results/period_stability/
 ```
 
@@ -112,7 +111,7 @@ The four periods are defined once, in `periods.py`, and imported by every script
 ## Models
 
 ### Shared settings (`modeling/lda_common.py`)
-Topic counts (`NUM_TOPICS = 32`, `PERIOD_TOPICS = 8`), the model folder name (`BASELINE_MODEL_DIR`), LDA settings, the reported seed (42), the stability seeds (42, 123, 456, 789, 999) and text loading live in this one module. Every model, stability test and explorer imports them from there, so the stability tests always measure the same models that are reported. A test checks that no other script creates its own LDA model.
+Topic counts (`NUM_TOPICS = 32`, `PERIOD_TOPICS = 8`), the model folder name (`BASELINE_MODEL_DIR`), the period vocabulary settings (`PERIOD_VECTORIZER_PARAMS`), LDA settings, the reported seed (42), the stability seeds (42, 123, 456, 789, 999) and text loading live in this one module. Every model, stability test and explorer imports them from there, so the stability tests always measure the same models that are reported. A test checks that no other script creates its own LDA model.
 
 - **LDA:** scikit-learn `LatentDirichletAllocation`, `learning_method='online'`, `max_iter=50`, `random_state=42`, `n_jobs=2`; symmetric default priors
 - **No convergence check:** with online learning and sklearn's default `evaluate_every=-1`, every fit runs exactly 50 passes. The motions are processed in mini-batches of 128 (about 109 updates per pass) with a step size that decays with every update, so topics stop changing towards the end whether or not they have converged. The iteration count in the reports (always 50) confirms the setting, not convergence
@@ -120,20 +119,21 @@ Topic counts (`NUM_TOPICS = 32`, `PERIOD_TOPICS = 8`), the model folder name (`B
 - **Diagnostic:** training perplexity, reported as a diagnostic only, not evidence of generalization
 
 ### Whole-corpus model (`modeling/07_fit_baseline_lda.py`)
-- **Vectorizer:** `CountVectorizer(max_df=0.5, min_df=5, max_features=10000)`, default token pattern. This vectorizer is **the vocabulary of every model**: the whole-corpus model, the period models, the stability tests and both explorers
+- **Vectorizer:** `CountVectorizer(max_df=0.5, min_df=5, max_features=10000)`, default token pattern. The vocabulary of the whole-corpus model, its stability test and the topic explorer; the period models have their own (below)
 - **Model:** 32 topics
 - **Output:** `models/baseline_lda_32/baseline_lda_32_topics.pkl`, `models/baseline_lda_32/baseline_vectorizer.pkl`, and `results/document_topic_distribution.csv` (doc_id, title, year, session, period and the probability of every topic for every motion, for prevalence analysis)
 - The name *baseline* is kept from the scripts' history; it is the whole-corpus model
 
 ### Period models (`modeling/15_fit_period_lda.py [k]`)
-- One model per period, 8 topics each (`k` overrides the count), with the shared settings and **the global vocabulary** of the whole-corpus vectorizer. Each period's motions are transformed with that vectorizer, so every period model has the same columns in the same order and topics can be compared across periods directly
-- The script checks that all period models have the same vocabulary in the same order; `analysis/topic_matching.py` also refuses to compare models whose vocabularies differ or are reordered (both tested)
-- **Output:** `models/period_lda_<k>/` (one model per period + `vocabulary.txt`), `results/period_<k>_topics.csv` (top 20 words per topic and period). k = 8 (`PERIOD_TOPICS`); another count can be passed to reproduce the topic-count choice
-- **Consequences of the global vocabulary:** words absent from a period get near-zero weight in that period's topics (only the prior), so period-specific vocabulary also makes topics look different across periods. The vocabulary thresholds apply to the full corpus: a word frequent in one period but rare overall is still included; a word in more than half of all motions is excluded everywhere
-- **Vocabulary design is open** (seminar notes 2.2): Gordon uses one vocabulary per period and compares adjacent periods over their shared words. Switching would change `period_vectorizers()` in 15 and add a step restricting two periods' topics to their shared words before matching
+- One model per period, 8 topics each (`k` overrides the count), with the shared LDA settings
+- **Vocabulary per period, as Gordon (2026, 3.3):** each period's vectorizer is built on that period's motions only, keeping words in at least 10 and at most 50% of them, with no cap on the vocabulary size (`PERIOD_VECTORIZER_PARAMS`, `fit_period_vectorizer()` in `lda_common.py`). Vocabularies: 7,302 / 7,981 / 4,926 / 6,876 words. Each period model is built on its own most relevant words: a word typical of one period is not crowded out by frequencies over 40 years, and a word frequent in one period is excluded only there
+- **Output:** `models/period_lda_<k>/` (per period: the model, its vectorizer and `vocabulary_<period>.txt`), `results/period_<k>_topics.csv` (top 20 words per topic and period). k = 8 (`PERIOD_TOPICS`); another count can be passed to reproduce the topic-count choice
 
 ### Topic matching (`analysis/topic_matching.py`)
 Hungarian-algorithm one-to-one matching between two models' topics on cosine similarity over the full topic-word distributions, with Jaccard overlap of the top words as a secondary measure. Used for seed stability (matching models with different seeds) and for alignment across periods (matching adjacent periods). One-to-one matching cannot represent a topic splitting or merging.
+
+- **Seed stability:** the models share one vectorizer; cosine is computed over the full, identical vocabularies, and different or reordered vocabularies are an error
+- **Adjacent periods (`shared_vocabulary=True`), as Gordon (2026, 3.4):** cosine over the words both periods' vocabularies contain (4,236–5,464 words per transition), put in the same order. Cosine does not depend on the scale of the vectors, so this equals Gordon's cosine on L2-normalized distributions over the shared words. Words outside the intersection do not count: so that vocabulary change is not hidden, the share of each topic's weight outside the shared words is reported (*Current Results*)
 
 ## Seed-Stability Testing
 
@@ -173,17 +173,19 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 
 | Period | Mean cosine | Stable (3–4 of 4) |
 |---|---|---|
-| 1985/86–1993/94 | 0.70 | 4 of 8 (50%) |
-| 1994/95–2005/06 | 0.77 | 7 of 8 (88%) |
-| 2006/07–2013/14 | 0.80 | 6 of 8 (75%) |
-| 2014/15–2025/26 | 0.72 | 4 of 8 (50%) |
+| 1985/86–1993/94 | 0.74 | 4 of 8 (50%) |
+| 1994/95–2005/06 | 0.78 | 6 of 8 (75%) |
+| 2006/07–2013/14 | 0.76 | 6 of 8 (75%) |
+| 2014/15–2025/26 | 0.77 | 5 of 8 (62%) |
 | **All periods** | | **21 of 32 (66%)** |
 
 - The period models are more stable than the whole-corpus model, which supports Gordon's case for period models
-- The first and last periods are exactly at half stable; the smallest period (2006/07–2013/14) is not less stable than the others
+- The first period is exactly at half stable; the smallest period (2006/07–2013/14) is not less stable than the others
 - **How 8 was chosen:** see *Design Decisions*
 
-**Alignment across periods (8 topics):** matched mean cosine 0.65, 0.69 and 0.67 for the three transitions. All 8 chains hold by Gordon's criterion (mean link ≥ 0.50), 4 of them with every link ≥ 0.50: research (mean link 0.81), school and pupils, ending in preschool (0.81), higher education (0.77), and teachers and pupils (0.71). The other four hold on the mean but have one or two weak links (0.27–0.48), so they may join different topics. Without the permutation null these are provisional.
+**Alignment across periods (8 topics):** matched mean cosine 0.67, 0.78 and 0.76 for the three transitions. All 8 chains hold by Gordon's criterion (mean link ≥ 0.50), 4 of them with every link ≥ 0.50: upper secondary school, pupils and teachers (mean link 0.85), higher education and research (0.82), municipalities and independent schools (0.79), and children, health and bullying (0.63). The other four hold on the mean but have one weak link: preschool (0.498 at the first link, just below the threshold, then 0.94 and 0.95), research (0.42 at the last link), higher education turning into labour market (0.32) and students (0.36). Without the permutation null these are provisional.
+
+**Vocabulary outside the shared words:** on average 3.5–9.8% of a topic's weight falls on words outside the vocabulary it shares with the neighbouring period (range per topic 2.4–12.9%). The share is highest for the first period against the second (9.8%) and for the last against the third (7.8%).
 
 ### Comparison with Gordon (2026)
 
@@ -192,18 +194,18 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 | | Gordon | This study |
 |---|---|---|
 | Whole-corpus seed stability (mean Jaccard of the top words) | 0.26–0.31 | 0.270, per-pair range 0.22–0.33 (32 topics) |
-| Matched mean cosine between adjacent periods, 8 topics per period | — | 0.65, 0.69, 0.67 |
-| Same, at Gordon's 15 topics per period (fitted once for this comparison) | 0.44–0.59 | 0.41, 0.47, 0.55 |
+| Matched mean cosine between adjacent periods, 8 topics per period | — | 0.67, 0.78, 0.76 |
+| Same, at Gordon's 15 topics per period (fitted once for this comparison) | 0.44–0.59 | 0.43, 0.60, 0.62 |
 | Chains with mean cosine ≥ 0.50 over the three transitions | 7 of 15 | 8 of 8 (8 topics); 9 of 15 at 15 topics |
 
 - **Seed instability is of the same size as Gordon's**, so it is not a weakness of this pipeline; Gordon uses the same finding as part of his argument for period models
-- **At Gordon's topic count (15 per period) the alignment is close to his:** matched cosine slightly lower, and a few more chains pass his criterion. At 8 topics the links are stronger, as expected with fewer, broader topics
-- Different corpora, algorithms and vocabulary designs: the agreement shows results of the same order, not equivalent methods
+- **At Gordon's topic count (15 per period), with his vocabulary design, the alignment is close to his:** matched cosine in the same range, and a few more chains pass his criterion (9 against 7). At 8 topics the links are stronger, as expected with fewer, broader topics
+- Different corpora and algorithms: the agreement shows results of the same order, not equivalent methods
 
 | Point | Gordon | This study | Assessment |
 |---|---|---|---|
 | Algorithm | MALLET, Gibbs sampling, 1,000 iterations, asymmetric hyperparameter optimization every 10 iterations | scikit-learn, online variational Bayes, 50 passes, symmetric priors | Probably the largest difference; convergence not checked |
-| Vocabulary | Per period, adjacent periods compared over their shared words | One global vocabulary | Open (seminar notes 2.2) |
+| Vocabulary | Per period (≥ 10 documents, ≤ 50%), adjacent periods compared over their shared words | The same for the period models; the whole-corpus model has its own vocabulary (≥ 5 motions, ≤ 50%, 10,000 words) | Followed |
 | Author signal | Authorless preprocessing (MALLET `DownsampleLabelWords`) | None | Counterpart here: MP/constituency signal (place names) |
 | Documents | 1,000-word book chunks | Whole motions | Natural units, most shorter than 1,000 words |
 | Proper names | Removed | Kept | Open (seminar notes 2.7) |
@@ -219,7 +221,7 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 |---|---|---|
 | `modeling/08_display_lda_topics.py [model_dir]` | `models/baseline_lda_32/` | `results/32_TOPICS_FINAL.csv` (top 20 words per topic, as P(word \| topic)) |
 | `modeling/14_generate_topic_explorer.py` | `models/baseline_lda_32/`, `data/output/stopword_removed/`, template `modeling/topic_explorer_template.html` | `visualizations/topic_explorer.html` |
-| `modeling/17_generate_period_explorer.py` | `models/period_lda_8/`, the shared vectorizer, `data/output/stopword_removed/`, the per-topic CSVs of 16, template `modeling/period_explorer_template.html` | `visualizations/period_explorer.html` |
+| `modeling/17_generate_period_explorer.py` | `models/period_lda_8/` (models and vectorizers), `data/output/stopword_removed/`, the per-topic CSVs of 16, template `modeling/period_explorer_template.html` | `visualizations/period_explorer.html` |
 
 Both pages are self-contained HTML (open in a browser; internet needed only for the fonts). Word weights are shown as P(word | topic). Topics have neutral names (Topic 1–32, T1–T8 per period), so they can be inspected without interpretive labels.
 
@@ -231,11 +233,11 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 
 ### Period explorer (period models)
 - **8 topics per period,** the chosen count
-- **Rows are chains.** Each period model has its own topics, so topic numbers do not correspond across periods. Topics of adjacent periods are matched one-to-one (Hungarian algorithm on cosine) and each row follows the matches from a topic of the first period to the last
+- **Rows are chains.** Each period model has its own topics, so topic numbers do not correspond across periods. Topics of adjacent periods are matched one-to-one (Hungarian algorithm on cosine over the words both periods' vocabularies contain) and each row follows the matches from a topic of the first period to the last
 - **Chain holds (main criterion, Gordon's):** the heading says *holds* if the mean cosine of the chain's three links is at least 0.50, otherwise *does not hold* (gold), with the mean and the weakest link
 - **Weak links (additional information):** a single link below 0.50 breaks the row: the accent bar over the clouds stops, a dashed gold rule separates the cells and the cell reads *Alignment uncertain*. The heading names the strongly linked segments, or says *forced matches, not a continuous topic* when no link reaches 0.50. A chain can hold on the mean and still have one weak link
 - **Per cloud:** the period, the topic's number in that period model, its share (mean θ over the period's motions), its seed stability from 16 (`seed n/4`, gold when below 3; shown only if the stability CSV's top words match the model) and the cosine with the matched topic of the previous period
-- **Word colour = persistence within the chain:** in how many of the chain's four periods the word is among the top 20 words (the words shown): dark blue all four, medium blue three, light blue two, grey one. With 8 topics, 14% of the words shown are in all four periods and 39% in only one. Bold marks the three most probable words of each cloud
+- **Word colour = persistence within the chain:** in how many of the chain's four periods the word is among the top 20 words (the words shown): dark blue all four, medium blue three, light blue two, grey one. With 8 topics, 15% of the words shown are in all four periods and 41% in only one. Bold marks the three most probable words of each cloud
 - **Word size:** square root of P(word | topic), on **one scale per chain**, so sizes can be compared across a chain's periods but not between chains; if a word does not fit, the chain's four clouds shrink together. The tooltip gives the exact probability
 - **Order:** opens with the strongest chain first (mean link, high to low); also by chain number, weakest link first, and rise or fall in share (first vs last period, only for chains with every link ≥ 0.50, since a change across a weak link may compare unrelated topics; other chains are listed last, marked *no change computed*)
 - **Search:** covers only the 20 words shown per cloud (also as part of longer words), as stated next to the search box
@@ -256,9 +258,9 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
   | 2014/15–2025/26 | 0.72 / 4 of 8 (50%) | 0.67 / 6 of 11 (55%) | 0.62 / 9 of 15 (60%) |
   | **All periods** | **21 of 32 (66%)** | **20 of 44 (45%)** | **25 of 60 (42%)** |
 
-  The number of robust themes per period is about 4–9 at every count (8 → 15 adds 28 topics but only 4 stable ones), and the mean cosine falls with the topic count in every period. The 11- and 15-topic models were deleted after the choice; they can be refitted with `15_fit_period_lda.py <k>`. The whole-corpus model has the same total capacity as the four period models, as in Gordon (60 = 4 × 15)
+  The number of robust themes per period is about 4–9 at every count (8 → 15 adds 28 topics but only 4 stable ones), and the mean cosine falls with the topic count in every period. The test was run with the earlier global vocabulary (see *Vocabulary per period* below); with the per-period vocabularies the 8-topic models are as stable (21 of 32), and 11 and 15 were not re-tested. The 11- and 15-topic models were deleted after the choice; they can be refitted with `15_fit_period_lda.py <k>`. The whole-corpus model has the same total capacity as the four period models, as in Gordon (60 = 4 × 15)
 - **Periods by electoral term, assigned by session** (see *Periods*): whole terms per period, as equal in size as the terms allow. They replaced four calendar-year bins of roughly equal size (1986–1993, 1994–2004, 2005–2014, 2015–2025, assigned by date); at 8 topics the period models became slightly more stable (21 against 19 of 32 topics stable) and the alignment stronger (all 8 chains pass Gordon's criterion, against 5). The differences are small, see seminar notes 2.9
-- **Global vocabulary** for all models, so topics can be compared across periods directly; Gordon's per-period vocabularies are the open alternative (see *Period models*)
+- **Vocabulary per period, compared over shared words** (Gordon's method; see *Period models* and *Topic matching*). It replaced one global vocabulary for all models (the whole-corpus vectorizer). With 8 topics, stability stayed the same (21 of 32 topics stable) and the alignment became stronger (matched mean cosine 0.67, 0.78, 0.76 against 0.65, 0.69, 0.67; all 8 chains hold in both), as expected when words outside the shared vocabulary no longer count
 - **Chain criterion:** Gordon's mean of the three links ≥ 0.50, so results are comparable with his; single weak links are shown as additional information
 
 ## Configuration Files
@@ -274,7 +276,7 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 | Motions | 13,957 | All UbU motions, sessions 1985/86–2025/26; 13,953 with body text are modelled |
 | Periods | 4 | 1985/86–1993/94, 1994/95–2005/06, 2006/07–2013/14, 2014/15–2025/26 (2,879–4,029 motions each) |
 | Duplicates | 515 (3.69%) | Mostly resubmissions in later years; kept |
-| Vocabulary | 10,000 | `max_features`; one global vocabulary |
+| Vocabulary | Period models: 4,926–7,981 per period | ≥ 10 and ≤ 50% of the period's motions (Gordon); whole-corpus model: 10,000 (≥ 5 motions, ≤ 50%) |
 | Stopwords | NLTK (114) + 85 supplementary | |
 | Boilerplate phrases | 440 | Explicit phrases, no wildcards |
 | Lemmatizer | Stanza | Swedish Talbanken model; auxiliaries dropped |
@@ -307,13 +309,13 @@ python preprocessing/05_remove_stopwords.py
 python analysis/check_pipeline_output.py      # sanity checks on the output (read-only)
 python analysis/count_duplicates.py           # for the report
 
-# Whole-corpus model (also creates the vectorizer every other model uses)
+# Whole-corpus model
 python modeling/07_fit_baseline_lda.py        # about 3 minutes
 python modeling/08_display_lda_topics.py
 python modeling/14_generate_topic_explorer.py
 python analysis/09_test_lda_stability.py      # 5 seeds; under an hour
 
-# Period models (after 07: they use its vectorizer)
+# Period models (each with its own vocabulary; independent of 07)
 python modeling/15_fit_period_lda.py          # 8 topics; about 2 minutes
 python analysis/16_seed_stability_periods.py  # 4 periods x 5 seeds = 20 fits; about 10 minutes
                                               # (with 8 11 15: the topic-count choice, about 35 minutes)
@@ -337,10 +339,10 @@ python analysis/check_pipeline_output.py
 - **`tests/test_preprocessing.py`** — HTML parsing (words split across spans are joined), character repair, title heading removal, motion number and author name removal, periods by session (boundaries, the four-digit 1999/2000, invalid sessions, a placeholder date), boilerplate matching on word forms (AUX `ska` dropped while the noun `skola` is kept), normalization, and the stopword list (lemma forms included; content words such as `skola`, `lärare`, `utbildning` excluded)
 - **`tests/test_period_models.py`** — the period models:
   - **Loading:** the periods together hold exactly the motions of the whole-corpus model, in the same order, with the same skip rule; each motion's metadata carries its session and period; periods are shown by their sessions
-  - **Shared vocabulary:** every period model has the same vocabulary in the same order; a word absent from a period still has a column with only prior weight; a reordered vocabulary is rejected; adjacent periods can be matched. A mutation check (giving each period its own vectorizer) makes these tests fail
+  - **Vocabulary per period:** each vocabulary holds exactly the words of its period that pass Gordon's limits (a word in 12 of 40 motions kept, in one dropped, in more than half dropped); a word of one period only is absent from the others; adjacent periods have different vocabularies and are matched over their shared words, and matching them without that step is an error
   - **Stability summary:** per-pair means, found-in-all/none and stable counts; one summary row per period and count
   - **Period explorer chains:** rows follow the Hungarian matches between adjacent periods (shuffled identical topics are linked correctly), a link below the threshold is reported as weak, and the seed-stability CSV is used only if its top words match the model
-- **`tests/test_topic_matching.py`** — Hungarian matching on synthetic topic matrices: identical models match with cosine 1, a known permutation is recovered, mismatched or reordered vocabularies and mismatched topic counts are rejected, summary statistics equal the per-topic values
+- **`tests/test_topic_matching.py`** — Hungarian matching on synthetic topic matrices: identical models match with cosine 1, a known permutation is recovered, mismatched or reordered vocabularies and mismatched topic counts are rejected, summary statistics equal the per-topic values. **Shared vocabulary:** the same topics in different vocabularies (other column order, extra words) match with cosine 1; weight on words outside the intersection does not change the cosine; vocabularies without common words are rejected
 - **`tests/test_seed_stability.py`** — the seed-stability tests and the shared LDA code:
   - **Text loading:** body text only, motions without body text skipped, malformed lines counted
   - **No drift:** the model (07) and the stability test (09) use the very same functions from `lda_common.py`; no other script creates its own LDA model; the whole-corpus topic count is 4 × the period count; the reported seed is among the tested seeds
@@ -363,7 +365,7 @@ project/
 │   └── 05_remove_stopwords.py
 ├── modeling/
 │   ├── lda_common.py                     (shared settings, text loading)
-│   ├── 07_fit_baseline_lda.py            (whole-corpus model + shared vectorizer)
+│   ├── 07_fit_baseline_lda.py            (whole-corpus model + its vectorizer)
 │   ├── 08_display_lda_topics.py
 │   ├── 14_generate_topic_explorer.py
 │   ├── 15_fit_period_lda.py              (one model per period)
@@ -403,7 +405,7 @@ project/
 
 ## Open Points and Next Steps
 
-1. **Vocabulary design** (global vs. Gordon's per-period vocabularies; seminar notes 2.2) and **place names** (keep, remove or downweight; 2.7)
+1. **Place names** (keep, remove or downweight; seminar notes 2.7)
 2. **Party analysis:** with the session and author metadata, which parties' motions carry each topic, per period (seminar notes 2.9)
 3. **Algorithm and framing** (under discussion with the supervisor; seminar notes 0.4): the current plan is to keep scikit-learn and present the study as an adaptation of Gordon's workflow rather than a computational replication (MALLET, Gibbs sampling). If so, check convergence of the 50-pass fits (a 200-pass fit and a second seed)
 4. **Alignment evidence:** Gordon's permutation null and z-scores for the period transitions (2.5)

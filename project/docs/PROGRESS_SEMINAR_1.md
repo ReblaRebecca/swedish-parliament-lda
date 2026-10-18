@@ -20,7 +20,7 @@ Technical detail is in `PIPELINE_DOCUMENTATION.md` and `MODEL_REVIEW.md`.
 1. Status
 2. Decisions to make
    - 2.1 Title weighting (decided: not used)
-   - 2.2 Shared vocabulary for cross-period alignment
+   - 2.2 Shared vocabulary for cross-period alignment (decided: per period, as Gordon)
    - 2.3 Comparing the whole-corpus model with the period models
    - 2.4 What "thematic change" means: vocabulary, prominence, or both
    - 2.5 Statistical evidence for cross-period alignment
@@ -37,21 +37,16 @@ Technical detail is in `PIPELINE_DOCUMENTATION.md` and `MODEL_REVIEW.md`.
 
 ## 0. Att få svar på under seminariet
 
-The questions below are the ones to settle at the seminar: 0.1–0.3 decide whether the period models have to be re-fitted, and 0.4 decides how the study relates to Gordon. Everything else in section 2 can be settled later. For each: what has to be decided, what each answer means in practice, and what I would do by default if there is no clear answer.
+The questions below are the ones to settle at the seminar: 0.2 and 0.3 decide whether the period models have to be re-fitted again (0.1 is decided), and 0.4 decides how the study relates to Gordon. Everything else in section 2 can be settled later. For each: what has to be decided, what each answer means in practice, and what I would do by default if there is no clear answer.
 
 ### 0.1 Vocabulary for the period models (details in 2.2)
 
-**To decide:** how the four period models get comparable topic-word vectors.
+**Decided 2026-10-18: Gordon's method.** Each period model has its own vocabulary, built within the period (words in at least 10 and at most 50% of the period's motions, no size cap: 4,926–7,981 words). Adjacent periods are compared over the words both vocabularies contain (4,236–5,464 per transition).
 
-- **A: one global vocabulary.** One vectorizer is built on the whole corpus and used for all four periods. Every period model has the same 10,000 columns in the same order, so topics can be compared directly.
-  - *In practice:* works with the existing code (the whole-corpus vectorizer and `topic_matching.py`) with no extra steps.
-  - *Cost:* frequency thresholds are computed over 40 years. A word typical of one period but rare overall (*nyanländ*, *digitalisering*) may be crowded out of the 10,000 most frequent words, and a word used in more than half of all motions is excluded in every period. Words absent from a period still have a column there with near-zero weight, which lowers cosine between periods.
-- **B: per-period vocabularies, compared over shared words (Gordon).** Each period gets its own vocabulary with thresholds applied within the period. Two adjacent periods are compared only over the words both vocabularies contain, re-normalized.
-  - *In practice:* one vectorizer per period, plus a step that builds the intersection and reorders both vectors before matching. The existing safety check still applies at that point.
-  - *Cost:* more code; and since only shared words are compared, words that appear or disappear must be reported separately (e.g. the share of a topic's probability mass outside the intersection).
-- **Why it matters now:** the choice decides how the period models are fitted (one vectorizer or four), not just how they are compared, so it must be settled before the period-model code is written.
-- **Default without a clear answer:** B, since the proposal follows Gordon (as suggested in 2.2), with the out-of-intersection mass reported. If speed matters more, A, since it works with the current code.
-- **Questions:** Is replicating Gordon's intersection method important, or is a global vocabulary acceptable as a documented simplification? If B, is the out-of-intersection mass a sufficient report of vocabulary change?
+- **Effect, at 8 topics:** stability unchanged (21 of 32 topics stable); the alignment is stronger (matched mean cosine 0.67, 0.78, 0.76 against 0.65, 0.69, 0.67 with one global vocabulary), as expected when words outside the shared vocabulary no longer count. All 8 chains hold, 4 with every link ≥ 0.50.
+- **Vocabulary change outside the shared words** is reported separately: on average 3.5–9.8% of a topic's weight falls on words outside the vocabulary shared with the neighbouring period.
+- **At Gordon's 15 topics** (fitted once for the comparison): 0.43, 0.60, 0.62 against his 0.44–0.59; 9 of 15 chains hold against his 7.
+- **Question:** is the share of weight outside the shared words a sufficient report of vocabulary change?
 
 ### 0.2 Place names (details in 2.7)
 
@@ -87,11 +82,11 @@ The questions below are the ones to settle at the seminar: 0.1–0.3 decide whet
 **To decide:** whether the study keeps scikit-learn and is presented as an adaptation of Gordon's workflow, or switches to MALLET to replicate his computation.
 
 - **Current plan: keep scikit-learn and frame the study as an adaptation.** Proposed wording:
-  > The study follows Gordon's (2026) framework of temporally binned LDA and cross-period topic alignment, but adapts its implementation. Models are fitted with scikit-learn's online variational Bayes rather than MALLET's Gibbs sampling, with symmetric rather than optimised asymmetric priors, and all periods share one vocabulary rather than being compared over their shared words. The results should therefore be read as an adaptation of the workflow to Swedish parliamentary text, not as a direct computational replication. Differences from Gordon's results may reflect the implementation as well as the corpus.
+  > The study follows Gordon's (2026) framework of temporally binned LDA and cross-period topic alignment, but adapts its implementation. Models are fitted with scikit-learn's online variational Bayes rather than MALLET's Gibbs sampling, and with symmetric rather than optimised asymmetric priors. The results should therefore be read as an adaptation of the workflow to Swedish parliamentary text, not as a direct computational replication. Differences from Gordon's results may reflect the implementation as well as the corpus.
 - **What the adaptation means:** the study can show that the workflow transfers to political text, but not whether Gordon's method itself gives the same kind of results there, since differences may come from the corpus or from the implementation. Gordon's own reason for MALLET is practical: his Authorless step is a MALLET transform (`DownsampleLabelWords`), and he optimises asymmetric priors, which scikit-learn does not offer.
-- **Related choices:** the global vocabulary (0.1) is the same kind of adaptation and should be stated together with the algorithm. Convergence of the 50-pass fits is not checked; with scikit-learn kept, a convergence check (a 200-pass fit and a second seed, about 30 minutes) would answer the obvious examiner question.
+- **Related choices:** the vocabulary now follows Gordon (0.1), so the algorithm is the main remaining difference. Convergence of the 50-pass fits is not checked; with scikit-learn kept, a convergence check (a 200-pass fit and a second seed, about 30 minutes) would answer the obvious examiner question.
 - **Alternatives:** switch to MALLET with Gordon's settings (refit all models and stability tests, a few days), or keep scikit-learn and fit MALLET once for the 8-topic period models as a sensitivity check.
-- **Questions:** Is the adaptation framing acceptable for the thesis? Is the convergence check needed? Should the vocabulary follow Gordon even if the algorithm does not?
+- **Questions:** Is the adaptation framing acceptable for the thesis? Is the convergence check needed?
 
 ---
 
@@ -232,6 +227,8 @@ So the weighting is **moderate for a typical motion but strong for short motions
 
 **Question (supervisor):** how to guarantee that topic-word vectors from separately trained period models refer to the same words in the same order before computing cosine similarities?
 
+**Decided 2026-10-18: option B, Gordon's method** (results in 0.1). Implemented in `topic_matching.py` (`shared_vocabulary=True`): both topic vectors are restricted to the words in both vocabularies and put in the same order before cosine is computed; covered by unit tests (the same topics in different vocabularies and column orders match with cosine 1; weight outside the intersection does not change the cosine). Seed stability still compares models with one vectorizer, and different vocabularies remain an error there. The options below are kept as the reasoning.
+
 #### Why it matters
 
 A topic is a vector of word probabilities. Cosine similarity compares two vectors position by position. If position 512 is *lärare* in one model and *elev* in the other, the similarity is meaningless, and nothing in the arithmetic would show it. Separately trained models build their own vocabularies, so their columns do not line up by default.
@@ -325,7 +322,7 @@ Fitting the full corpus at two sizes separates two questions: "is binning better
 
 **How it would be done:**
 
-1. **Common vocabulary.** The period topics and the whole-corpus topics must be compared over the same words in the same order, as in 2.2. With option A they share the global vocabulary directly. With option B we use the intersection of each period's vocabulary with the whole-corpus vocabulary.
+1. **Common vocabulary.** The period topics and the whole-corpus topics must be compared over the same words in the same order, as in 2.2: the intersection of each period's vocabulary with the whole-corpus vocabulary.
 2. **Similarity matrix.** For each period, compute the cosine similarity between each of its 8 topics and each of the 32 whole-corpus topics, giving an 8 × 32 matrix.
 3. **Record the matches.** For each period topic, record its best-matching whole-corpus topic and the cosine, plus the second- and third-best.
 4. **Threshold.** A match counts only if the cosine is at least a threshold, e.g. 0.50 (the value Gordon uses for chains), or a value calibrated against a permutation null as in 2.5.
@@ -531,7 +528,7 @@ Both current models have about 8 topics organized around places (e.g. *Skövde, 
 - The number of robust themes per period is about 4–9 at every count, so more topics mainly add seed-dependent ones (8 → 15 adds 28 topics but only 4 stable ones).
 - All period models are more stable than the 44-topic whole-corpus model of the first version (mean cosine 0.525, about 27% stable), which supports Gordon's case for period models.
 - The whole-corpus model follows the period count, as in Gordon (60 = 4 × 15), so the two designs have the same total capacity. 32 also coincides with the original topic-concentration choice on the earlier pipeline.
-- Caveats: one set of seeds, the 0.70 threshold, and vocabulary option A (2.2).
+- Caveats: one set of seeds, the 0.70 threshold, and the global vocabulary used at the time. With the per-period vocabularies chosen later (2.2), the 8-topic models are as stable (21 of 32 topics); 11 and 15 were not re-tested.
 - **The 32-topic whole-corpus model** is more stable than the 44-topic one: mean cosine 0.568 against 0.525, and 12 of 32 topics stable (38%) against 12 of 44 (27%); 7 topics are found in all four other seeds (compulsory school and grades, research, preschool, universities and students, upper secondary school, special support, society and democracy). It remains less stable than the 8-topic period models (0.70–0.80, 66%), as Gordon's argument for period models expects. Found in no other seed: youth and mental health, bullying, costs and fees, vocational and apprenticeship education, Stockholm institutions, and three residual topics of unrelated words (possibly a few motions each).
 
 The original question and options are kept below for reference.
@@ -595,6 +592,7 @@ These should be stated explicitly in the methods section.
 |---|---|---|---|
 | Lemmatization | Proposal: initially follow Bruinsma & Johansson (no stemming, lemmatization not discussed). Gordon: none | Stanza lemmatization, with a small table correcting known Stanza errors | Decided. Justification: Swedish inflection splits one word into many forms (*skola, skolan, skolor, skolornas*), which fragments topics. Gordon's English corpus does not have this problem to the same degree |
 | LDA implementation | Gordon: MALLET (Gibbs sampling), 1,000 iterations, asymmetric hyperparameter optimization | scikit-learn, online variational inference, 50 passes, symmetric priors; no convergence check (always 50 passes) | **Open, for the supervisor (0.4):** current plan is to keep scikit-learn and present the study as an adaptation of Gordon's workflow, not a computational replication |
+| Vocabulary | Gordon: per period (≥ 10 documents, ≤ 50%), adjacent periods compared over shared words | The same for the period models; the whole-corpus model has its own (≥ 5 motions, ≤ 50%, 10,000 words) | Decided (0.1, 2.2): follows Gordon |
 | Document unit | Gordon: 1,000-word chunks of books | Whole motions | Decided: motions are natural units of meaning, and most are shorter than 1,000 words |
 | Proper names | Gordon: removed | Kept | Open (2.7) |
 | Duplicates | Proposal: investigate and monitor | Counted for the report, not removed (515, 3.69%; mostly the same motion resubmitted in a later session) | **Open:** keep or drop. Duplicates are typically identical motions submitted in several years, or by several MPs |
@@ -608,7 +606,7 @@ These should be stated explicitly in the methods section.
 **How the results compare with Gordon so far** (details in `PIPELINE_DOCUMENTATION.md`, *Comparison with Gordon*):
 
 - Whole-corpus seed instability is of the same size as his (mean Jaccard 0.270 against his 0.26–0.31).
-- At his 15 topics per period, our adjacent-period alignment is close to his (matched mean cosine 0.41, 0.47, 0.55 against 0.44–0.59; 9 of 15 chains pass his criterion against his 7). At our 8 topics: 0.65–0.69, and all 8 chains pass.
+- At his 15 topics per period, with his vocabulary design, our adjacent-period alignment is close to his (matched mean cosine 0.43, 0.60, 0.62 against 0.44–0.59; 9 of 15 chains pass his criterion against his 7). At our 8 topics: 0.67–0.78, and all 8 chains pass.
 - His chain criterion is the mean of the three links ≥ 0.50, and it is the main criterion in the period explorer. Requiring every link ≥ 0.50 is stricter: 4 of the 8 chains. Single weak links are marked in the explorer.
 - Not yet comparable: permutation null and z-scores (2.5), rubric coding (2.6), a whole-corpus model with 8 topics (his k = 15 control). Convergence of our 50-pass fits is not checked.
 
@@ -624,7 +622,7 @@ These should be stated explicitly in the methods section.
 ## 3. Questions for the Seminar (Summary)
 
 1. **Title weighting:** dropped after the stability runs (small gain). Is that acceptable, or report the weighted model as a robustness check? (2.1)
-2. **Shared vocabulary:** one global vocabulary, or Gordon's per-period vocabularies compared over shared words? (2.2)
+2. **Shared vocabulary:** decided, Gordon's per-period vocabularies compared over shared words. Is the share of weight outside the shared words enough to report vocabulary change? (0.1, 2.2)
 3. **Baseline comparison:** is Gordon's quality comparison (same rubric for whole-corpus and period models) enough, or should the topic mapping be added? (2.3)
 4. **Thematic change:** vocabulary only (as Gordon), or vocabulary and prominence? Is the mean topic proportion per period the right summary? (2.4)
 5. **Evidence:** adopt Gordon's permutation null, z-scores and chain criterion? Add the seed-stability ceiling? (2.5)
@@ -642,7 +640,7 @@ These should be stated explicitly in the methods section.
 2. ✅ Period models fitted and seed-tested at 8, 11 and 15 topics (global vocabulary); topic count set to 8 per period and 32 for the whole corpus (2.8). Only the 8-topic models are kept; the period explorer shows 8 topics only. ✅ Whole-corpus model re-fitted and seed-tested at 32 (mean cosine 0.568, 12 of 32 topics stable).
 3. ✅ Periods set to complete electoral terms, motions assigned by session (2.9).
 4. Settle the alignment design (2.2, 2.5) and the definition of thematic change (2.4).
-5. Re-fit the period models if the vocabulary design changes (2.2); implement the alignment with permutation null, and the chains.
+5. ✅ Period models re-fitted with per-period vocabularies, compared over shared words (2.2). Next: the permutation null for the alignment (2.5).
 6. If agreed: the topic mapping (2.3.2) and the prevalence analysis (2.4).
 7. Party analysis per topic and period (2.9).
 8. Manual evaluation with the rubric (2.6), within the proposal's four-week time box.

@@ -168,9 +168,9 @@
   </div>
 
   <dl class="howto">
-    <div><dt>Rows are chains</dt><dd>Each period model has its own topics. Topics of adjacent periods are matched one-to-one (Hungarian algorithm on cosine similarity), and a row follows these matches from the first period to the last.</dd></div>
+    <div><dt>Rows are chains</dt><dd>Each period model has its own topics and its own vocabulary. Topics of adjacent periods are matched one-to-one (Hungarian algorithm on cosine similarity over the words both periods' vocabularies contain), and a row follows these matches from the first period to the last.</dd></div>
     <div><dt>Chain holds</dt><dd id="holds-help">Gordon's criterion: the mean cosine of the chain's three links is at least 0.50.</dd></div>
-    <div><dt>Link</dt><dd id="link-help">The cosine similarity between a topic and the matched topic of the previous period.</dd></div>
+    <div><dt>Link</dt><dd id="link-help">The cosine similarity between a topic and the matched topic of the previous period, over the words both periods' vocabularies contain.</dd></div>
     <div><dt>Share</dt><dd>Mean topic proportion over the period's motions; every motion counts equally. Rise and fall (first vs last period) are computed only for chains with every link at or above the threshold, which is stricter than “holds”: a change across a weak link may compare unrelated topics. Broken chains are listed after the others.</dd></div>
     <div><dt>Word size</dt><dd id="size-help">The word's probability in that period's topic, on one scale per chain.</dd></div>
     <div><dt>Word colour</dt><dd id="colour-help">In how many of the chain's four periods the word is among the top words.</dd>
@@ -398,10 +398,10 @@
   const total = DATA.periodCounts.reduce((a, b) => a + b, 0);
   document.getElementById('lede').innerHTML =
     `One LDA model per period, fitted on the body text of <strong>${total.toLocaleString('en')} motions</strong> ` +
-    `with one shared vocabulary. Each row links a topic through the four periods; the four word clouds show it in each period. ` +
+    `each with its own vocabulary. Each row links a topic through the four periods; the four word clouds show it in each period. ` +
     `<strong>${DATA.numTopics} topics per period</strong>.`;
   document.getElementById('link-help').textContent =
-    `The cosine similarity between a topic and the matched topic of the previous period. Below ${DATA.chainCosine.toFixed(2)} ` +
+    `The cosine similarity between a topic and the matched topic of the previous period, over the words both periods' vocabularies contain. Below ${DATA.chainCosine.toFixed(2)} ` +
     'the link is weak and shown in gold: the Hungarian matching pairs every topic, so a weak link may join two unrelated ' +
     'topics. The row is broken there: the accent bar stops, a dashed gold rule separates the cells, and the cell says that ' +
     'the alignment is uncertain. A chain can hold on the mean and still have one weak link.';

@@ -19,7 +19,6 @@ import unittest
 from pathlib import Path
 
 import numpy as np
-from sklearn.feature_extraction.text import CountVectorizer
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / 'modeling'))
@@ -111,21 +110,23 @@ class TestPeriodLoading(unittest.TestCase):
 
 
 class TestPeriodModels(unittest.TestCase):
-    """All period models share one vocabulary, so their topics can be compared directly."""
+    """Each period model has its own vocabulary (Gordon); adjacent periods are compared over shared words."""
 
     @classmethod
     def setUpClass(cls):
-        rng = np.random.default_rng(0)
         words = ['skola', 'lärare', 'elev', 'universitet', 'forskning', 'student', 'förskola', 'barn',
                  'digitalisering', 'betyg']
-        cls.periods = {
-            period: ([' '.join(rng.choice(words[2 * i:2 * i + 4], 20)) for _ in range(30)], [{}] * 30)
-            for i, period in enumerate(['1985-1994', '1994-2006', '2006-2014', '2014-2026'])
-        }
-        # Global vocabulary, as 07 builds it from all periods
-        cls.vectorizer = CountVectorizer().fit([t for texts, _ in cls.periods.values() for t in texts])
-        cls.models = quiet(period_models.fit_period_models, cls.periods,
-                           period_models.period_vectorizers(cls.periods, cls.vectorizer), num_topics=3)
+        # 40 motions per period; period i uses words 2i..2i+3, each in 10 motions (the minimum kept),
+        # 'common' in 12 motions of every period and 'rare' in one (below the minimum)
+        cls.periods = {}
+        for i, period in enumerate(['1985-1994', '1994-2006', '2006-2014', '2014-2026']):
+            texts = [' '.join([words[2 * i + j % 4]] * 10) for j in range(40)]
+            for j in range(12):
+                texts[j] += ' common'
+            texts[0] += ' rare'
+            cls.periods[period] = (texts, [{}] * 40)
+        cls.vectorizers = period_models.period_vectorizers(cls.periods)
+        cls.models = quiet(period_models.fit_period_models, cls.periods, cls.vectorizers, num_topics=3)
 
     def test_one_model_per_period_with_shared_settings(self):
         self.assertEqual(list(self.models), list(self.periods))
@@ -136,35 +137,32 @@ class TestPeriodModels(unittest.TestCase):
             for key, value in lda_common.LDA_PARAMS.items():
                 self.assertEqual(params[key], value, key)
 
-    def test_same_vocabulary_same_order(self):
-        reference = self.vectorizer.get_feature_names_out()
-        for period, (lda, vocab) in self.models.items():
-            np.testing.assert_array_equal(vocab, reference, period)
-            self.assertEqual(lda.components_.shape, (3, len(reference)), period)
-        period_models.check_same_vocabulary(self.models)  # does not raise
+    def test_vocabulary_built_within_each_period(self):
+        # Period i uses words 2i..2i+3 only; its vocabulary holds those words that pass the limits
+        for i, (period, (lda, vocab)) in enumerate(self.models.items()):
+            texts = self.periods[period][0]
+            self.assertEqual(lda.components_.shape[1], len(vocab), period)
+            self.assertEqual(set(vocab) - {'common'}, set(w for t in texts for w in t.split()) - {'common', 'rare'}, period)
+        self.assertNotIn('digitalisering', self.models['1985-1994'][1])
+        self.assertIn('digitalisering', self.models['2014-2026'][1])
 
-    def test_words_absent_from_a_period_still_have_a_column(self):
-        # 'betyg' occurs only in the last period: a column everywhere, near-zero weight in the first
-        vocab = list(self.vectorizer.get_feature_names_out())
-        betyg = vocab.index('betyg')
-        first, _ = self.models['1985-1994']
-        last, _ = self.models['2014-2026']
-        # Only the prior: far below a word that occurs in the period
-        skola = vocab.index('skola')
-        self.assertLess(first.components_[:, betyg].sum(), 0.05 * first.components_[:, skola].sum())
-        self.assertGreater(last.components_[:, betyg].max(), first.components_[:, betyg].max())
+    def test_gordon_document_frequency_limits(self):
+        self.assertEqual(lda_common.PERIOD_VECTORIZER_PARAMS, {'min_df': 10, 'max_df': 0.5})
+        for period, (_, vocab) in self.models.items():
+            self.assertIn('common', vocab, period)   # in 12 of 40 motions: kept
+            self.assertNotIn('rare', vocab, period)  # in 1 motion: below 10
+        # A word in more than half of a period's motions is dropped in that period
+        texts = ['skola elev'] * 10 + ['skola lärare'] * 10 + ['skola'] * 5  # skola in all, elev and lärare in 10 of 25
+        vocab = lda_common.fit_period_vectorizer(texts).get_feature_names_out()
+        self.assertEqual(list(vocab), ['elev', 'lärare'])
 
-    def test_check_rejects_different_vocabulary(self):
-        lda, vocab = self.models['1985-1994']
-        changed = dict(self.models)
-        changed['2014-2026'] = (lda, vocab[::-1])
-        with self.assertRaises(ValueError):
-            period_models.check_same_vocabulary(changed)
-
-    def test_adjacent_periods_can_be_matched(self):
+    def test_adjacent_periods_matched_over_shared_words(self):
         (lda1, vocab1), (lda2, vocab2) = self.models['1985-1994'], self.models['1994-2006']
-        matches, summary, _ = match_and_evaluate(lda1, lda2, vocab1, vocab2)
+        self.assertFalse(np.array_equal(vocab1, vocab2))
+        matches, _, _ = match_and_evaluate(lda1, lda2, vocab1, vocab2, shared_vocabulary=True)
         self.assertEqual(len(matches), 3)
+        with self.assertRaises(ValueError):  # without the shared-vocabulary step, a mismatch is an error
+            match_and_evaluate(lda1, lda2, vocab1, vocab2)
 
     def test_top_words_csv(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -178,6 +176,7 @@ class TestPeriodModels(unittest.TestCase):
         self.assertIs(period_models.fit_lda_model, lda_common.fit_lda_model)
         self.assertIs(period_models.load_period_body_texts, lda_common.load_period_body_texts)
         self.assertIs(period_stability.load_period_body_texts, lda_common.load_period_body_texts)
+        self.assertIs(period_stability.fit_period_vectorizer, lda_common.fit_period_vectorizer)
         self.assertIs(period_stability.run_seed_stability, seed_stability.run_seed_stability)
 
 
@@ -226,7 +225,7 @@ class TestPeriodExplorerChains(unittest.TestCase):
             FakeModel([topic_c, topic_a, topic_b]),   # same topics, shuffled
             FakeModel([topic_b, topic_c, topic_a]),
         ]
-        chains, links = period_explorer.build_chains(models, vocab)
+        chains, links = period_explorer.build_chains(models, [vocab] * len(models))
         # Row 0 is topic a in every period: index 0, then 1, then 2
         self.assertEqual(chains, [[0, 1, 2], [1, 2, 0], [2, 0, 1]])
         for row_links in links:
@@ -237,7 +236,7 @@ class TestPeriodExplorerChains(unittest.TestCase):
     def test_weak_link_is_reported(self):
         vocab = np.array(['a', 'b', 'c', 'd'])
         models = [FakeModel([[10, 1, 1, 1], [1, 10, 1, 1]]), FakeModel([[10, 1, 1, 1], [1, 1, 10, 10]])]
-        chains, links = period_explorer.build_chains(models, vocab)
+        chains, links = period_explorer.build_chains(models, [vocab] * len(models))
         self.assertEqual(chains, [[0, 0], [1, 1]])
         self.assertGreater(links[0][0], 0.99)
         self.assertLess(links[1][0], period_explorer.CHAIN_COSINE)

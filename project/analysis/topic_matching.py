@@ -8,6 +8,10 @@ or model variants, accounting for the fact that topic indices are arbitrary.
 Key insight: Topic ordering is random across LDA runs. Topic 5 in seed 42 might
 correspond to Topic 23 in seed 123. Comparing by index (5 vs 5) is invalid.
 This module finds the optimal one-to-one correspondence before computing stability metrics.
+
+Vocabularies: models fitted with the same vectorizer (seed stability) are compared over their full,
+identical vocabularies. Models with their own vocabularies (adjacent period models) are compared over the
+words both vocabularies contain (shared_vocabulary=True), as Gordon (2026, 3.4).
 """
 
 import numpy as np
@@ -94,6 +98,34 @@ def compute_topic_similarity_matrix(lda1, lda2, vocab1, vocab2, metric='cosine')
     return similarity_matrix
 
 
+class _SharedColumns:
+    """A model's topic-word weights restricted to some of its columns (only components_ is used)."""
+
+    def __init__(self, components):
+        self.components_ = components
+
+
+def restrict_to_shared_vocabulary(lda1, lda2, vocab1, vocab2):
+    """Both models' topic-word weights over the words in both vocabularies, in the same order.
+
+    Returns (restricted model 1, restricted model 2, shared vocabulary in vocab1's order).
+    Cosine is scale-invariant, so normalizing over the shared words (to probabilities, as
+    compute_topic_similarity_matrix does, or to unit length, as Gordon) gives the same similarity.
+    """
+    vocab1, vocab2 = np.asarray(vocab1), np.asarray(vocab2)
+    if len(vocab1) != lda1.components_.shape[1] or len(vocab2) != lda2.components_.shape[1]:
+        raise ValueError("Vocabulary length mismatch with components")
+    if len(set(vocab1)) != len(vocab1) or len(set(vocab2)) != len(vocab2):
+        raise ValueError("Vocabularies must not contain duplicate words")
+    column2 = {word: j for j, word in enumerate(vocab2)}
+    shared = [i for i, word in enumerate(vocab1) if word in column2]
+    if not shared:
+        raise ValueError("The two vocabularies have no words in common")
+    columns2 = [column2[vocab1[i]] for i in shared]
+    return (_SharedColumns(lda1.components_[:, shared]), _SharedColumns(lda2.components_[:, columns2]),
+            vocab1[shared])
+
+
 def match_topics_hungarian(similarity_matrix):
     """
     Use Hungarian algorithm to find optimal one-to-one topic matching.
@@ -167,16 +199,19 @@ def compute_topword_jaccard(lda1, lda2, vocab1, vocab2, matches, top_n=20):
     return jaccard_scores
 
 
-def match_and_evaluate(lda1, lda2, vocab1, vocab2, top_n=20, require_same_n_topics=True):
+def match_and_evaluate(lda1, lda2, vocab1, vocab2, top_n=20, require_same_n_topics=True, shared_vocabulary=False):
     """
     Complete pipeline: match topics optimally and compute all metrics.
 
     Args:
         lda1, lda2: Fitted LDA models to compare
-        vocab1, vocab2: Vocabulary arrays (must be identical for valid cosine comparison)
+        vocab1, vocab2: Vocabulary arrays (identical, unless shared_vocabulary is True)
         top_n: Number of top words for Jaccard calculation (must be positive integer)
         require_same_n_topics: If True, raise error if models have different topic counts
                               (required for seed-stability tests; can be False for cross-model comparison)
+        shared_vocabulary: If True, the models may have different vocabularies and cosine is computed over
+                           the words both contain (Gordon's alignment of period models). Jaccard always
+                           compares the top words of the full distributions.
 
     Returns:
         matches: List of (topic_idx1, topic_idx2, cosine_sim, jaccard_sim) tuples
@@ -209,7 +244,11 @@ def match_and_evaluate(lda1, lda2, vocab1, vocab2, top_n=20, require_same_n_topi
 
     # Step 1: Build similarity matrix using cosine similarity
     # This validates vocabulary consistency, finiteness, and non-negativity
-    similarity_matrix = compute_topic_similarity_matrix(lda1, lda2, vocab1, vocab2, metric='cosine')
+    if shared_vocabulary:
+        shared1, shared2, shared_vocab = restrict_to_shared_vocabulary(lda1, lda2, vocab1, vocab2)
+        similarity_matrix = compute_topic_similarity_matrix(shared1, shared2, shared_vocab, shared_vocab, metric='cosine')
+    else:
+        similarity_matrix = compute_topic_similarity_matrix(lda1, lda2, vocab1, vocab2, metric='cosine')
 
     # Step 2: Find optimal matching
     matches = match_topics_hungarian(similarity_matrix)

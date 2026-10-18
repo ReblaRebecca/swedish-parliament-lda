@@ -5,7 +5,7 @@ Current Results). By default for the chosen topic count (PERIOD_TOPICS in lda_co
 was chosen by running it at 8, 11 and 15 topics (`16_seed_stability_periods.py 8 11 15`; reports kept
 in docs/reports/topic_count_choice/).
 
-For every period and topic count: fit one model per seed on the period's motions with the global
+For every period and topic count: fit one model per seed on the period's motions with the period's own
 vocabulary (as 15_fit_period_lda.py), match every pair of seeds and count how many topics of the
 seed-42 model are found again in the other seeds' models. Writes a full report per period and
 count (as 09_test_lda_stability.py) and one summary over all of them.
@@ -29,7 +29,7 @@ from seed_stability import (
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'modeling'))
 from lda_common import (  # noqa: E402
-    BASELINE_MODEL_DIR, DEFAULT_SEED, PERIOD_TOPICS, STABILITY_SEEDS, load_baseline_vectorizer, load_period_body_texts, period_display,
+    DEFAULT_SEED, PERIOD_TOPICS, STABILITY_SEEDS, fit_period_vectorizer, load_period_body_texts, period_display,
 )
 
 
@@ -58,8 +58,8 @@ def summary_report(summaries):
     lines = [
         "# Seed Stability of the Period Models",
         "",
-        f"Seeds: {', '.join(map(str, STABILITY_SEEDS))}. Reference model: seed {DEFAULT_SEED}. Global vocabulary",
-        "(baseline vectorizer). *Stable* = found again (matched cosine ≥ 0.70) in at least",
+        f"Seeds: {', '.join(map(str, STABILITY_SEEDS))}. Reference model: seed {DEFAULT_SEED}. Each period's own",
+        "vocabulary (as the period models). *Stable* = found again (matched cosine ≥ 0.70) in at least",
         f"{others - 1} of the other {others} seeds' models. Mean cosine is the mean of the per-pair means.",
         "",
         f"The analysis uses {PERIOD_TOPICS} topics per period: the highest tested count (8, 11, 15) at which at least half",
@@ -78,7 +78,6 @@ def summary_report(summaries):
 def main():
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
-    VECTORIZER_PATH = PROJECT_ROOT / 'models' / BASELINE_MODEL_DIR / 'baseline_vectorizer.pkl'
     REPORT_DIR = PROJECT_ROOT / 'docs' / 'reports' / 'period_stability'
     CSV_DIR = PROJECT_ROOT / 'results' / 'period_stability'
     topic_counts = [int(a) for a in sys.argv[1:]] or [PERIOD_TOPICS]
@@ -89,11 +88,12 @@ def main():
     if not periods or not all(texts for texts, _ in periods.values()):
         print(f"Error: no texts loaded for some period in {INPUT_DIR}")
         sys.exit(1)
-    vectorizer = load_baseline_vectorizer(VECTORIZER_PATH)
-    vocab = vectorizer.get_feature_names_out()
 
     summaries = {}
     for period, (texts, _) in periods.items():
+        # The period's own vocabulary, as 15_fit_period_lda.py (same texts and settings, so the same vocabulary)
+        vectorizer = fit_period_vectorizer(texts)
+        vocab = vectorizer.get_feature_names_out()
         doc_term_matrix = vectorizer.transform(texts)
         for k in topic_counts:
             print("=" * 80)
