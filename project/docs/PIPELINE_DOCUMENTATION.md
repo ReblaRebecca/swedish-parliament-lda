@@ -2,9 +2,9 @@
 
 ## Overview
 
-13,917 motions to the Swedish parliament's Education Committee (Utbildningsutskottet, UbU), 1986–2025, processed into lemmatized body text and modelled with Latent Dirichlet Allocation (LDA), following the temporally binned design of Gordon (2026):
+13,957 motions to the Swedish parliament's Education Committee (Utbildningsutskottet, UbU), parliamentary sessions 1985/86–2025/26, processed into lemmatized body text and modelled with Latent Dirichlet Allocation (LDA), following the temporally binned design of Gordon (2026):
 
-- **Four period models**, one per period (1986–1993, 1994–2004, 2005–2014, 2015–2025), **8 topics each**, aligned across adjacent periods into topic chains
+- **Four period models**, one per period (1985/86–1993/94, 1994/95–2005/06, 2006/07–2013/14, 2014/15–2025/26; complete electoral terms, see *Periods*), **8 topics each**, aligned across adjacent periods into topic chains
 - **One whole-corpus model with 32 topics** (= 4 × 8, the same total capacity as the four period models together), as the point of comparison
 - **Body text only.** Titles are processed and kept as a separate field, but are not part of the model's documents
 - **Seed stability** is tested for every model (5 seeds, Hungarian matching)
@@ -16,7 +16,7 @@ All paths below are relative to `project/`. Documentation and reports are in `do
 ## Pipeline Architecture
 
 ```
-../../swedish-parliament-data/ (raw riksdag XML, one folder per period)
+../../swedish-parliament-data/ (raw riksdag XML, as downloaded)
     ↓  extraction/01_extract_from_xml.py        ┐ run once
 data/input/extracted_text_xml/        fields: text, title_text           │ (minutes)
     ↓  preprocessing/02_lemmatize.py            │ run once
@@ -38,9 +38,25 @@ data/output/stopword_removed/         fields: text_no_stopwords, title_processed
             └── analysis/16_seed_stability_periods.py   → docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md, results/period_stability/
 ```
 
-Every data stage stores one JSONL file per period: `group1_1986-1993.jsonl`, `group2_1994-2004.jsonl`, `group3_2005-2014.jsonl`, `group4_2015-2025.jsonl`. Each stage adds fields and keeps earlier ones, so metadata (`dok_id`, title, date, author names) is carried through to the models. Every stage counts and reports malformed JSON lines per period, so no data is lost silently.
+Every data stage stores one JSONL file per period: `group1_1985-1994.jsonl`, `group2_1994-2006.jsonl`, `group3_2006-2014.jsonl`, `group4_2014-2026.jsonl` (named after the calendar years the period's sessions span). Each stage adds fields and keeps earlier ones, so metadata (`dok_id`, session, title, date, author names) is carried through to the models. Every stage counts and reports malformed JSON lines per period, so no data is lost silently.
 
 **Why this order:** Stanza is the only slow step, so it runs once, right after extraction, and saves every word with its original form, lemma and part of speech. Everything after it works from that saved output and takes minutes, so the boilerplate list and stopwords can be changed and re-run without running Stanza again.
+
+### Periods (`periods.py`)
+
+The four periods are defined once, in `periods.py`, and imported by every script. They follow **complete electoral terms** (mandatperioder), grouped so that the periods are as equal in size as the terms allow:
+
+| Period | Sessions | Electoral terms beginning | UbU motions |
+|---|---|---|---|
+| 1 | 1985/86–1993/94 | 1985, 1988, 1991 | 4,029 |
+| 2 | 1994/95–2005/06 | 1994, 1998, 2002 | 3,477 |
+| 3 | 2006/07–2013/14 | 2006, 2010 | 2,879 |
+| 4 | 2014/15–2025/26 | 2014, 2018, 2022 | 3,572 |
+
+- **Why electoral terms:** a period then covers whole terms of the Riksdag and its governments, so no term is split between two periods. Of the possible groupings of the 11 terms into four consecutive periods, this one has the most even sizes (largest / smallest = 1.40)
+- **Assigned by session, not by date:** a motion belongs to the period of its parliamentary session (riksmöte, XML field `rm`, e.g. `1993/94`; session 1999/2000 is written with four digits). The session is the unit of parliamentary work, and some motions carry a placeholder date (motions of 1985/86 dated 1985-01-01)
+- **Coverage:** the first session in the data is 1985/86, but UbU motions start in January 1986 (motions of autumn 1985 are not tagged with the committee); the last period runs to the end of session 2025/26, the last session before the 2026 election
+- Pages and reports name the periods by their sessions (1985/86–1993/94); file and model names use the calendar years (`1985-1994`)
 
 **Titles** go through exactly the same steps as the body text, in the same scripts (fields prefixed `title_`). The final title (`title_processed`) is kept in the data for later use (e.g. labelling topics).
 
@@ -53,10 +69,10 @@ Every data stage stores one JSONL file per period: `group1_1986-1993.jsonl`, `gr
 - **Extract:** dok_id, date, title, author names, body text (between the introduction and signature markers); HTML entities decoded
 - **HTML to text:** text pieces are joined without separators, with whitespace only at block-level tags (`<p>`, `<br>`, `<td>`, headings, …). The source HTML often splits single words across inline `<span>`s (`uppföljni</span><span>ng`, and in some motions every å/ä/ö is its own span), so joining with spaces would fragment words (see `PREPROCESSING_ARTIFACTS.md`)
 - **Character repair (body and title):** soft hyphens (U+00AD) removed; text NFC-normalized; spacing diacritics after a base letter replaced (`a°` → `å`, `a¨` → `ä`, `o¨` → `ö`)
-- **Title heading removed:** the title appears as a heading near the start of the body in ~97% of motions. The first word-by-word match of the title within the first 400 characters is removed (13,532 motions), so the body holds the motion's own text. Later mentions of the title phrase (e.g. in the proposed decision) are kept
+- **Title heading removed:** the title appears as a heading near the start of the body in ~97% of motions. The first word-by-word match of the title within the first 400 characters is removed, so the body holds the motion's own text. Later mentions of the title phrase (e.g. in the proposed decision) are kept
 - **Metadata removed (body and title):** motion numbers (`1989/90:Ub742`, `GE02A1`) and the motion's own author names (from the XML author list, whole-word, case-insensitive). Done before Stanza, so numbers are not split into odd tokens and names are not lemmatized
-- **Period:** assigned from the year of the motion's date
-- **Output:** 13,917 motions (13,957 UbU files; 40 have no body text or a date outside 1986–2025) in `data/input/extracted_text_xml/`. Fields: `text` (cleaned body), `title` (original title, for display), `title_text` (cleaned title, for processing). The files are JSONL; the folder name means "text extracted from XML"
+- **Period:** assigned from the motion's session (`rm`), see *Periods*
+- **Output:** 13,957 motions in `data/input/extracted_text_xml/`. Fields: `session`, `text` (cleaned body), `title` (original title, for display), `title_text` (cleaned title, for processing). The files are JSONL; the folder name means "text extracted from XML"
 
 ### 2. Tagging and Lemmatization (`preprocessing/02_lemmatize.py`) — run once
 - **Tool:** [Stanza](https://stanfordnlp.github.io/stanza/) Swedish pipeline (`tokenize,pos,lemma`, default Talbanken model), stored in `SU/stanza_resources/` and downloaded there automatically if missing
@@ -88,8 +104,8 @@ Every data stage stores one JSONL file per period: `group1_1986-1993.jsonl`, `gr
 - Models use all motions; duplicates are not removed
 - MD5 hash of the whitespace-normalized final text; one hash dictionary across all periods, so duplicates are found across periods. Prints duplicates per period, the total and each duplicate → original `dok_id`; writes no data
 - The count depends on the final text, so re-run it after changing the boilerplate or stopword lists
-- **Current result: 515 duplicates of 13,917 motions (3.70%)** in 404 groups of identical texts; per period 11 / 25 / 177 / 302
-  - Almost all are the **same motion resubmitted in a later year** (only 26 of the 515 copies share the year of their original), e.g. *Forskningsreaktor i Oskarshamn* 2015–2017. Motion numbers and author names are removed at extraction, so a resubmitted motion is identical to its original
+- **Current result: 515 duplicates of 13,957 motions (3.69%)**; per period 11 / 31 / 154 / 319
+  - Almost all are the **same motion resubmitted in a later session**, e.g. *Forskningsreaktor i Oskarshamn* 2015–2017. Motion numbers and author names are removed at extraction, so a resubmitted motion is identical to its original
   - Most are full-length texts (307 copies over 100 words, 200 of 21–100 words); 8 are near-empty bodies
   - A resubmitted motion counts once per year it was submitted, which weights recurring proposals in prominence; whether to keep them is open (seminar notes 2.10)
 
@@ -100,13 +116,13 @@ Topic counts (`NUM_TOPICS = 32`, `PERIOD_TOPICS = 8`), the model folder name (`B
 
 - **LDA:** scikit-learn `LatentDirichletAllocation`, `learning_method='online'`, `max_iter=50`, `random_state=42`, `n_jobs=2`; symmetric default priors
 - **No convergence check:** with online learning and sklearn's default `evaluate_every=-1`, every fit runs exactly 50 passes. The motions are processed in mini-batches of 128 (about 109 updates per pass) with a step size that decays with every update, so topics stop changing towards the end whether or not they have converged. The iteration count in the reports (always 50) confirms the setting, not convergence
-- **Input:** `text_no_stopwords` (body text only). Motions with no body text left after preprocessing are skipped (4 motions)
+- **Input:** `text_no_stopwords` (body text only). Motions with no body text left after preprocessing are skipped (4 motions), so the models use 13,953 motions (per period 4,025 / 3,477 / 2,879 / 3,572)
 - **Diagnostic:** training perplexity, reported as a diagnostic only, not evidence of generalization
 
 ### Whole-corpus model (`modeling/07_fit_baseline_lda.py`)
 - **Vectorizer:** `CountVectorizer(max_df=0.5, min_df=5, max_features=10000)`, default token pattern. This vectorizer is **the vocabulary of every model**: the whole-corpus model, the period models, the stability tests and both explorers
 - **Model:** 32 topics
-- **Output:** `models/baseline_lda_32/baseline_lda_32_topics.pkl`, `models/baseline_lda_32/baseline_vectorizer.pkl`, and `results/document_topic_distribution.csv` (doc_id, title, year and the probability of every topic for every motion, for prevalence analysis)
+- **Output:** `models/baseline_lda_32/baseline_lda_32_topics.pkl`, `models/baseline_lda_32/baseline_vectorizer.pkl`, and `results/document_topic_distribution.csv` (doc_id, title, year, session, period and the probability of every topic for every motion, for prevalence analysis)
 - The name *baseline* is kept from the scripts' history; it is the whole-corpus model
 
 ### Period models (`modeling/15_fit_period_lda.py [k]`)
@@ -141,34 +157,34 @@ Report: `docs/reports/BASELINE_STABILITY_32TOPICS_CORRECTED.md`.
 
 | | 32 topics |
 |---|---|
-| Mean cosine (mean of the 10 per-pair means) | 0.591 |
-| Range of the 10 per-pair means | 0.554–0.646 |
-| Mean Jaccard (top 20) | 0.283 (per-pair 0.25–0.35) |
-| Seed-42 topics found in 4 / 3 / 2 / 1 / 0 of the other 4 models | 8 / 4 / 2 / 7 / 11 |
+| Mean cosine (mean of the 10 per-pair means) | 0.568 |
+| Range of the 10 per-pair means | 0.515–0.621 |
+| Mean Jaccard (top 20) | 0.270 (per-pair 0.22–0.33) |
+| Seed-42 topics found in 4 / 3 / 2 / 1 / 0 of the other 4 models | 7 / 5 / 7 / 5 / 8 |
 | Stable (3–4 of 4) | 12 of 32 (38%) |
-| Training perplexity, 5 seeds | 1691–1704 |
+| Training perplexity, 5 seeds | 1702–1736 |
 
-- **Found in all four other models (8):** preschool/childcare (mean cosine 0.98), independent schools/school choice (0.96), teachers/teacher education (0.94), research/universities (0.89), compulsory and upper secondary school (0.87), society/knowledge/curriculum (0.85), higher-education places (0.84), medical research/health care (0.73). **In 3 of 4:** regional higher education, adult education/labour market, regional development, student finance
-- **Unstable:** grades (*betyg, godkänd, betygssystem, mälardalens, ant*; found in no other model, mean cosine 0.015, possibly a few motions with repeated words rather than a theme; to check); SFI/immigrants (*sfi, invandrare, nyanländ*; 0.16, a clear theme whose words other seeds spread over other topics); residual topics (*idrott, it, västerås*; *stat, statlig, stiftelse*); place-name topics (*Göteborg, Lund, Malmö*; *läkare, Jönköping, Gävle*)
+- **Found in all four other models (7):** compulsory school, teaching and grades (mean cosine 0.97), research (0.92), preschool/childcare (0.90), universities and students (0.90), upper secondary school (0.90), special support and disability (0.84), society, knowledge and democracy (0.84). **In 3 of 4:** higher-education places (0.86), regional higher education and business (0.81), international/SFI/immigrants (0.78), general problem words (*hög, många, problem, öka*; 0.73), medical education and health care (0.69)
+- **Found in no other model (8):** youth and mental health (0.46), bullying (0.50), costs and fees (0.44), Stockholm institutions (0.23), vocational and apprenticeship education (0.06), and three residual topics of unrelated words (*mälardalens, sexualitet, helårsstudent*; *riksrevision, hbt, genusforskning*; *skog, värmland, skåne*; 0.12–0.14). Some are clear themes whose words other seeds spread over other topics (vocational education, bullying); the residual topics are probably held together by a few motions
 - **Use:** prominence trends and any mapping of period topics onto whole-corpus topics should rely on the stable topics, or report the range over seeds
-- For comparison, the earlier 44-topic model had mean cosine 0.525 and 12 of 44 topics stable: fewer topics removed mainly seed-dependent ones
 
 ### Period models
 Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 
 | Period | 8 topics: mean cosine / stable | 11 topics | 15 topics |
 |---|---|---|---|
-| 1986–1993 | 0.73 / 4 of 8 (50%) | 0.63 / 4 of 11 (36%) | 0.52 / 5 of 15 (33%) |
-| 1994–2004 | 0.71 / 4 of 8 (50%) | 0.65 / 7 of 11 (64%) | 0.59 / 7 of 15 (47%) |
-| 2005–2014 | 0.75 / 6 of 8 (75%) | 0.70 / 6 of 11 (55%) | 0.62 / 6 of 15 (40%) |
-| 2015–2025 | 0.76 / 5 of 8 (62%) | 0.70 / 4 of 11 (36%) | 0.61 / 6 of 15 (40%) |
-| **All periods** | **19 of 32 (59%)** | **21 of 44 (48%)** | **24 of 60 (40%)** |
+| 1985/86–1993/94 | 0.70 / 4 of 8 (50%) | 0.63 / 4 of 11 (36%) | 0.55 / 4 of 15 (27%) |
+| 1994/95–2005/06 | 0.77 / 7 of 8 (88%) | 0.67 / 6 of 11 (55%) | 0.62 / 6 of 15 (40%) |
+| 2006/07–2013/14 | 0.80 / 6 of 8 (75%) | 0.65 / 4 of 11 (36%) | 0.58 / 6 of 15 (40%) |
+| 2014/15–2025/26 | 0.72 / 4 of 8 (50%) | 0.67 / 6 of 11 (55%) | 0.62 / 9 of 15 (60%) |
+| **All periods** | **21 of 32 (66%)** | **20 of 44 (45%)** | **25 of 60 (42%)** |
 
 - The period models are more stable than the whole-corpus model, which supports Gordon's case for period models
-- The number of robust themes per period is about 4–7 whatever the topic count (8 → 15 adds 28 topics but only 5 stable ones), and stability falls with the topic count in every period
-- The oldest period (1986–1993) is the least stable at 11 and 15 topics, although it has the most motions
+- The number of robust themes per period is about 4–9 whatever the topic count (8 → 15 adds 28 topics but only 4 stable ones). The mean cosine falls with the topic count in every period
+- The first period (1985/86–1993/94) is the least stable at every count, although it has the most motions; the smallest period (2006/07–2013/14) is not less stable than the others
+- At 8 topics the first and last periods are exactly at half stable, so the margin of the chosen count is small there. The last period is the only one whose stable share rises with the topic count (50%, 55%, 60%)
 
-**Alignment across periods (8 topics):** matched mean cosine 0.53, 0.62 and 0.68 for the three transitions. 5 of 8 chains hold by Gordon's criterion (mean link ≥ 0.50): research and higher education, higher education and regions, school (pupils, teachers), and two chains (7 and 3) whose first link, 1986–1993 → 1994–2004, is weak. 3 of 8 have every link ≥ 0.50. Without the permutation null these are provisional.
+**Alignment across periods (8 topics):** matched mean cosine 0.65, 0.69 and 0.67 for the three transitions. All 8 chains hold by Gordon's criterion (mean link ≥ 0.50), 4 of them with every link ≥ 0.50: research (mean link 0.81), school and pupils, ending in preschool (0.81), higher education (0.77), and teachers and pupils (0.71). The other four hold on the mean but have one or two weak links (0.27–0.48), so they may join different topics. Without the permutation null these are provisional.
 
 ### Comparison with Gordon (2026)
 
@@ -176,13 +192,13 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 
 | | Gordon | This study |
 |---|---|---|
-| Whole-corpus seed stability (mean Jaccard of the top words) | 0.26–0.31 | 0.283, per-pair range 0.25–0.35 (32 topics) |
-| Matched mean cosine between adjacent periods, 15 topics per period | 0.44–0.59 | 0.41–0.54 |
-| Same, 8 topics per period (the chosen count) | — | 0.53, 0.62, 0.68 |
-| Chains with mean cosine ≥ 0.50 over the three transitions | 7 of 15 | 7 of 15 (15 topics); 7 of 11 (11 topics); 5 of 8 (8 topics) |
+| Whole-corpus seed stability (mean Jaccard of the top words) | 0.26–0.31 | 0.270, per-pair range 0.22–0.33 (32 topics) |
+| Matched mean cosine between adjacent periods, 15 topics per period | 0.44–0.59 | 0.41, 0.47, 0.55 |
+| Same, 8 topics per period (the chosen count) | — | 0.65, 0.69, 0.67 |
+| Chains with mean cosine ≥ 0.50 over the three transitions | 7 of 15 | 9 of 15 (15 topics); 6 of 11 (11 topics); 8 of 8 (8 topics) |
 
 - **Seed instability is of the same size as Gordon's**, so it is not a weakness of this pipeline; Gordon uses the same finding as part of his argument for period models
-- **At Gordon's topic count (15 per period) the alignment is almost identical to his**, in matched cosine and in the number of chains that pass his criterion. At 8 topics the links are stronger, as expected with fewer, broader topics
+- **At Gordon's topic count (15 per period) the alignment is close to his:** matched cosine slightly lower, and a few more chains pass his criterion. At 8 topics the links are stronger, as expected with fewer, broader topics
 - Different corpora, algorithms and vocabulary designs: the agreement shows results of the same order, not equivalent methods
 
 | Point | Gordon | This study | Assessment |
@@ -209,7 +225,7 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 Both pages are self-contained HTML (open in a browser; internet needed only for the fonts). Word weights are shown as P(word | topic). Topics have neutral names (Topic 1–32, T1–T8 per period), so they can be inspected without interpretive labels.
 
 ### Topic explorer (whole-corpus model)
-- **Per topic, two columns:** the word cloud (top 30 words) with the share-by-period chart under it on the left; the top 8 motions (year, party, id, θ) on the right; stacked on narrow screens. The heading gives the overall share and the party concentration among the top 5 motions (gold when 4 or 5 share the first signatory's party)
+- **Per topic, two columns:** the word cloud (top 30 words) with the share-by-period chart under it on the left; the top 8 motions (session, party, id, θ) on the right; stacked on narrow screens. The heading gives the overall share and the party concentration among the top 5 motions (gold when 4 or 5 share the first signatory's party)
 - **Word size:** square root of P(word | topic), on **one scale for all clouds**, so sizes can be compared between topics; if a word does not fit, all clouds shrink together. A topic spread over many words has a smaller, sparser cloud. The tooltip gives the exact probability
 - **Order:** opens sorted by overall share, largest first (topic numbers are arbitrary); also by topic number, rise or fall (first vs last period; valid here since one model covers all periods, but the middle periods are ignored) and party concentration
 - **Search:** covers only the 30 words shown per cloud (also as part of longer words), as stated next to the search box; a word that is not found can still have some probability in the topic
@@ -220,7 +236,7 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 - **Chain holds (main criterion, Gordon's):** the heading says *holds* if the mean cosine of the chain's three links is at least 0.50, otherwise *does not hold* (gold), with the mean and the weakest link
 - **Weak links (additional information):** a single link below 0.50 breaks the row: the accent bar over the clouds stops, a dashed gold rule separates the cells and the cell reads *Alignment uncertain*. The heading names the strongly linked segments, or says *forced matches, not a continuous topic* when no link reaches 0.50. A chain can hold on the mean and still have one weak link
 - **Per cloud:** the period, the topic's number in that period model, its share (mean θ over the period's motions), its seed stability from 16 (`seed n/4`, gold when below 3; shown only if the stability CSV's top words match the model) and the cosine with the matched topic of the previous period
-- **Word colour = persistence within the chain:** in how many of the chain's four periods the word is among the top 20 words (the words shown): dark blue all four, medium blue three, light blue two, grey one. With 8 topics, 12% of the words shown are in all four periods and 44% in only one. Bold marks the three most probable words of each cloud
+- **Word colour = persistence within the chain:** in how many of the chain's four periods the word is among the top 20 words (the words shown): dark blue all four, medium blue three, light blue two, grey one. With 8 topics, 14% of the words shown are in all four periods and 39% in only one. Bold marks the three most probable words of each cloud
 - **Word size:** square root of P(word | topic), on **one scale per chain**, so sizes can be compared across a chain's periods but not between chains; if a word does not fit, the chain's four clouds shrink together. The tooltip gives the exact probability
 - **Order:** opens with the strongest chain first (mean link, high to low); also by chain number, weakest link first, and rise or fall in share (first vs last period, only for chains with every link ≥ 0.50, since a change across a weak link may compare unrelated topics; other chains are listed last, marked *no change computed*)
 - **Search:** covers only the 20 words shown per cloud (also as part of longer words), as stated next to the search box
@@ -231,7 +247,8 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 - **Stopwords vs. boilerplate.** Stopwords are general Swedish words, applied to the lemmatized, normalized text; boilerplate is parliamentary and domain-specific language (institutions, procedure, references), matched on the original word forms. Keeping them apart lets the stopword list be reused for other Swedish texts
 - **Stanza lemmatization.** Swedish inflection splits one word into many forms (*skola, skolan, skolor, skolornas*), which fragments topics. Stanza is a general, context-aware lemmatizer run once on full sentences, with a small table of corrections for known errors. Known trade-offs: comparatives are reduced to the positive (*högre utbildning* → `hög utbildning`), rare compounds can get wrong lemmas (*arbetsvillkor* → `arbetsvillka`), and modal *ska* gets the lemma `skola` (handled by dropping auxiliaries). spaCy's `sv_core_news_sm` and a hand-made lookup table of education terms were tried earlier and rejected
 - **Body text only.** Appending the title 3× or 5× to the body gave only a small stability gain (mean matched cosine 0.539 against 0.525 at 44 topics, overlapping ranges), too small to justify an extra modelling choice. Titles are kept in the data
-- **Topic count: 8 per period, 32 for the whole corpus.** 8 is the only tested count (8, 11, 15) at which at least half of the topics are stable in every period, and it has the highest mean cosine in every period; since the number of robust themes is about the same at every count, 8 loses little substance and avoids many chance topics. The whole-corpus model has the same total capacity as the four period models, as in Gordon (60 = 4 × 15)
+- **Topic count: 8 per period, 32 for the whole corpus.** 8 is the only tested count (8, 11, 15) at which at least half of the topics are stable in every period, and it has the highest mean cosine in every period; since the number of robust themes is about the same at every count, 8 loses little substance and avoids many chance topics. The margin is small in the first and last periods (exactly half stable). The whole-corpus model has the same total capacity as the four period models, as in Gordon (60 = 4 × 15)
+- **Periods by electoral term, assigned by session** (see *Periods*): whole terms per period, as equal in size as the terms allow
 - **Global vocabulary** for all models, so topics can be compared across periods directly; Gordon's per-period vocabularies are the open alternative (see *Period models*)
 - **Chain criterion:** Gordon's mean of the three links ≥ 0.50, so results are comparable with his; single weak links are shown as additional information
 
@@ -245,9 +262,9 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 
 | Metric | Value | Note |
 |--------|-------|------|
-| Motions | 13,917 | 13,957 UbU files; 40 without body text or outside 1986–2025 |
-| Periods | 4 | 1986–1993, 1994–2004, 2005–2014, 2015–2025 (3,257–3,770 motions each) |
-| Duplicates | 515 (3.70%) | Mostly resubmissions in later years; kept |
+| Motions | 13,957 | All UbU motions, sessions 1985/86–2025/26; 13,953 with body text are modelled |
+| Periods | 4 | 1985/86–1993/94, 1994/95–2005/06, 2006/07–2013/14, 2014/15–2025/26 (2,879–4,029 motions each) |
+| Duplicates | 515 (3.69%) | Mostly resubmissions in later years; kept |
 | Vocabulary | 10,000 | `max_features`; one global vocabulary |
 | Stopwords | NLTK (114) + 85 supplementary | |
 | Boilerplate phrases | 440 | Explicit phrases, no wildcards |
@@ -307,9 +324,9 @@ python -m unittest discover -s tests -v
 python analysis/check_pipeline_output.py
 ```
 
-- **`tests/test_preprocessing.py`** — HTML parsing (words split across spans are joined), character repair, title heading removal, motion number and author name removal, period boundaries, boilerplate matching on word forms (AUX `ska` dropped while the noun `skola` is kept), normalization, and the stopword list (lemma forms included; content words such as `skola`, `lärare`, `utbildning` excluded)
+- **`tests/test_preprocessing.py`** — HTML parsing (words split across spans are joined), character repair, title heading removal, motion number and author name removal, periods by session (boundaries, the four-digit 1999/2000, invalid sessions, a placeholder date), boilerplate matching on word forms (AUX `ska` dropped while the noun `skola` is kept), normalization, and the stopword list (lemma forms included; content words such as `skola`, `lärare`, `utbildning` excluded)
 - **`tests/test_period_models.py`** — the period models:
-  - **Loading:** the periods together hold exactly the motions of the whole-corpus model, in the same order, with the same skip rule
+  - **Loading:** the periods together hold exactly the motions of the whole-corpus model, in the same order, with the same skip rule; each motion's metadata carries its session and period; periods are shown by their sessions
   - **Shared vocabulary:** every period model has the same vocabulary in the same order; a word absent from a period still has a column with only prior weight; a reordered vocabulary is rejected; adjacent periods can be matched. A mutation check (giving each period its own vectorizer) makes these tests fail
   - **Stability summary:** per-pair means, found-in-all/none and stable counts; one summary row per period and count
   - **Period explorer chains:** rows follow the Hungarian matches between adjacent periods (shuffled identical topics are linked correctly), a link below the threshold is reported as weak, and the seed-stability CSV is used only if its top words match the model
@@ -320,12 +337,13 @@ python analysis/check_pipeline_output.py
   - **Seeds:** the same seed reproduces the model exactly, a different seed changes it
   - **Planted topics:** on a synthetic corpus with three clearly separated topics, the full procedure finds cosine > 0.99 for every matched topic, so it can detect stability when it is there
   - **Report:** on a synthetic 5-seed, 44-topic setup, 10 pairs and 440 matched pairs; per-pair and pooled statistics equal those computed directly; the per-seed table and the notes on convergence and pooled statistics are present
-- **`analysis/check_pipeline_output.py`** — for each stage that has been run: all four period files present, no malformed lines, required fields present, no `dok_id` twice, the same motions as extraction; no soft hyphens or broken diacritics after extraction; Stanza output well-formed; final text lowercase letters only with no digits, punctuation, single-character words or stopwords. Warns about empty texts and frequent known extraction fragments. Exit code 1 if any check fails. Optional argument: `[data_dir]`
+- **`analysis/check_pipeline_output.py`** — for each stage that has been run: all four period files present, no malformed lines, required fields present, no `dok_id` twice, the same motions as extraction; every motion in the period of its session; no soft hyphens or broken diacritics after extraction; Stanza output well-formed; final text lowercase letters only with no digits, punctuation, single-character words or stopwords. Warns about empty texts and frequent known extraction fragments. Exit code 1 if any check fails. Optional argument: `[data_dir]`
 
 ## File Organization
 
 ```
 project/
+├── periods.py                            (the four periods, by session)
 ├── extraction/
 │   └── 01_extract_from_xml.py
 ├── preprocessing/
@@ -376,9 +394,10 @@ project/
 ## Open Points and Next Steps
 
 1. **Vocabulary design** (global vs. Gordon's per-period vocabularies; seminar notes 2.2) and **place names** (keep, remove or downweight; 2.7)
-2. **Algorithm and framing** (under discussion with the supervisor; seminar notes 0.4): the current plan is to keep scikit-learn and present the study as an adaptation of Gordon's workflow rather than a computational replication (MALLET, Gibbs sampling). If so, check convergence of the 50-pass fits (a 200-pass fit and a second seed)
-3. **Alignment evidence:** Gordon's permutation null and z-scores for the period transitions (2.5)
-4. **Rubric coding** (coherent, thematic, concentration) of the whole-corpus and period models (2.6), and a whole-corpus model with 8 topics as the counterpart of Gordon's k = 15 control
-5. **Prominence analysis** with the whole-corpus model, restricted to stable topics (2.4)
-6. **Checks:** the unstable *grades* topic (*mälardalens*, *ant*: possibly an artifact of a few motions); remaining small leftovers of the model review (`MODEL_REVIEW.md`); duplicates kept or dropped (2.10)
-7. **Report writing**
+2. **Party analysis:** with the session and author metadata, which parties' motions carry each topic, per period (seminar notes 2.9)
+3. **Algorithm and framing** (under discussion with the supervisor; seminar notes 0.4): the current plan is to keep scikit-learn and present the study as an adaptation of Gordon's workflow rather than a computational replication (MALLET, Gibbs sampling). If so, check convergence of the 50-pass fits (a 200-pass fit and a second seed)
+4. **Alignment evidence:** Gordon's permutation null and z-scores for the period transitions (2.5)
+5. **Rubric coding** (coherent, thematic, concentration) of the whole-corpus and period models (2.6), and a whole-corpus model with 8 topics as the counterpart of Gordon's k = 15 control
+6. **Prominence analysis** with the whole-corpus model, restricted to stable topics (2.4)
+7. **Checks:** the residual topics of the whole-corpus model (*mälardalens, sexualitet*; *riksrevision, hbt*: possibly a few motions); remaining small leftovers of the model review (`MODEL_REVIEW.md`); duplicates kept or dropped (2.10)
+8. **Report writing**

@@ -27,7 +27,7 @@ Technical detail is in `PIPELINE_DOCUMENTATION.md` and `MODEL_REVIEW.md`.
    - 2.6 Manual evaluation rubric
    - 2.7 Proper names and place names
    - 2.8 Number of topics (decided: 8 per period, 32 for the whole corpus)
-   - 2.9 Temporal bins
+   - 2.9 Temporal bins (decided: electoral terms, by session)
    - 2.10 Departures from the proposal and from Gordon
    - 2.11 Smaller open points
 3. Questions for the seminar (summary)
@@ -99,14 +99,16 @@ The questions below are the ones to settle at the seminar: 0.1–0.3 decide whet
 
 ### 1.1 Corpus
 
-13,917 motions referred to the Committee on Education (UbU), 1986–2025, from Riksdagens öppna data, in four bins of roughly equal size:
+13,957 motions referred to the Committee on Education (UbU), parliamentary sessions 1985/86–2025/26, from Riksdagens öppna data, in four periods of complete electoral terms (2.9):
 
-| Period | Motions |
-|---|---|
-| 1986–1993 | 3,770 |
-| 1994–2004 | 3,313 |
-| 2005–2014 | 3,577 |
-| 2015–2025 | 3,257 |
+| Period | Sessions | Motions |
+|---|---|---|
+| 1 | 1985/86–1993/94 | 4,029 |
+| 2 | 1994/95–2005/06 | 3,477 |
+| 3 | 2006/07–2013/14 | 2,879 |
+| 4 | 2014/15–2025/26 | 3,572 |
+
+4 withdrawn motions (titled *Utgår*) have no text, so the models use 13,953.
 
 ### 1.2 Preprocessing pipeline (done)
 
@@ -127,7 +129,7 @@ The questions below are the ones to settle at the seminar: 0.1–0.3 decide whet
 - **Two models, 44 topics each:**
   - a **baseline** on body text only;
   - a **title-weighted** model, with title words appended 5 times. Title weighting was dropped after the seed-stability runs (2.1); the model used from now on is the baseline.
-- Both use the same 13,913 motions (4 withdrawn motions titled *Utgår* have no text) and the same 10,000-word vocabulary.
+- Both use the same motions and the same 10,000-word vocabulary.
 - **First review** (`MODEL_REVIEW.md`): roughly 32–34 of 44 topics in each model are clear education-policy topics, and about 10 are mixed. This is my reading, not a measured score.
   - **Clear topics** include teachers and teacher education, independent schools and school choice, preschool, upper secondary and vocational education, student finance (CSN), SFI and mother-tongue teaching, research and doctoral education, physical education, special needs, values and the curriculum, and bullying.
   - **Mixed topics** collect rare words from unrelated motions, e.g. *homosexuell, helårsstudent, folkmord, takbelopp, cancerfond*.
@@ -190,7 +192,7 @@ After preprocessing, a title has a median of **3 words** and a body a median of 
 | 5× weighting, shortest bodies (top 10%) | 17% or more |
 | 5× weighting, longest bodies (bottom 10%) | 1.6% or less |
 
-So the weighting is **moderate for a typical motion but strong for short motions**, and almost irrelevant for very long ones. The effect is not uniform. It depends on body length, which also differs between periods (median body length 182, 200, 146 and 159 words in the four periods), though without a simple trend.
+So the weighting is **moderate for a typical motion but strong for short motions**, and almost irrelevant for very long ones. The effect is not uniform. It depends on body length, which also differs between periods (median body length 183, 196, 143 and 159 words in the four periods), though without a simple trend.
 
 #### What we have observed
 
@@ -258,7 +260,7 @@ A topic is a vector of word probabilities. Cosine similarity compares two vector
 **Consequences:**
 
 - Replicates Gordon, which is what the proposal promises.
-- Each period's model is built on its own most relevant words. A word typical of 2015–2025 (*digitalisering*, *nyanländ*) is not crowded out by thresholds computed over 40 years.
+- Each period's model is built on its own most relevant words. A word typical of 2014/15–2025/26 (*digitalisering*, *nyanländ*) is not crowded out by thresholds computed over 40 years.
 - The comparison only uses words both periods know, so similarity measures **how the shared vocabulary is used**, not whether new words appeared. Vocabulary that appears or disappears has to be reported separately (e.g. the share of a topic's probability mass outside the intersection).
 - It needs a small extra step that builds the intersection and reorders both vectors. The existing safety check still applies at the moment cosine is computed.
 
@@ -319,7 +321,7 @@ Fitting the full corpus at two sizes separates two questions: "is binning better
 
 #### 2.3.2 Extension: map each period topic to the whole-corpus topics
 
-**Idea:** the whole-corpus model has one fixed set of 32 topics for 1986–2025. Each period model has its own 8. Mapping every period topic to its most similar whole-corpus topics relates the two descriptions of the same corpus.
+**Idea:** the whole-corpus model has one fixed set of 32 topics for all sessions. Each period model has its own 8. Mapping every period topic to its most similar whole-corpus topics relates the two descriptions of the same corpus.
 
 **How it would be done:**
 
@@ -334,7 +336,7 @@ This is **not** one-to-one matching: several period topics may map to the same w
 
 1. **Presence over time.** A table of whole-corpus topics × periods, marking where a matching period topic exists. It shows which themes are present in every period and which only in some.
 2. **Period-specific themes.** A period topic with no whole-corpus match above the threshold is a theme the whole-corpus model did not capture as its own topic, because it was too short-lived or absorbed into broader topics. Each such case is direct evidence for binning, in addition to Gordon's argument.
-3. **Granularity.** A broad period topic often spreads over two or three narrower whole-corpus topics. The second- and third-best matches show this, e.g. a 1986–1993 topic covering both *barnomsorg* and *förskola* might match the preschool topic and the family-policy topic.
+3. **Granularity.** A broad period topic often spreads over two or three narrower whole-corpus topics. The second- and third-best matches show this, e.g. a 1985/86–1993/94 topic covering both *barnomsorg* and *förskola* might match the preschool topic and the family-policy topic.
 4. **A check on the chains.** If a chain (2.5) is a real recurring theme, its topics in the four periods should map to the same or closely related whole-corpus topics. A chain whose links map to unrelated whole-corpus topics suggests the alignment joined different themes, and should be read with caution.
 5. **A bridge to prominence (2.4).** Prominence is measured with the whole-corpus topics. The mapping connects a chain (from the period models) to the whole-corpus topic whose prevalence curve shows how large the theme was in each period. Vocabulary change and prominence can then be reported for the same theme.
 
@@ -518,24 +520,25 @@ Both current models have about 8 topics organized around places (e.g. *Skövde, 
 
 | Period | 8 topics: mean cosine / stable | 11 topics | 15 topics |
 |---|---|---|---|
-| 1986–1993 | 0.73 / 4 of 8 (50%) | 0.63 / 4 of 11 (36%) | 0.52 / 5 of 15 (33%) |
-| 1994–2004 | 0.71 / 4 of 8 (50%) | 0.65 / 7 of 11 (64%) | 0.59 / 7 of 15 (47%) |
-| 2005–2014 | 0.75 / 6 of 8 (75%) | 0.70 / 6 of 11 (55%) | 0.62 / 6 of 15 (40%) |
-| 2015–2025 | 0.76 / 5 of 8 (62%) | 0.70 / 4 of 11 (36%) | 0.61 / 6 of 15 (40%) |
-| **All periods** | **19 of 32 (59%)** | **21 of 44 (48%)** | **24 of 60 (40%)** |
+| 1985/86–1993/94 | 0.70 / 4 of 8 (50%) | 0.63 / 4 of 11 (36%) | 0.55 / 4 of 15 (27%) |
+| 1994/95–2005/06 | 0.77 / 7 of 8 (88%) | 0.67 / 6 of 11 (55%) | 0.62 / 6 of 15 (40%) |
+| 2006/07–2013/14 | 0.80 / 6 of 8 (75%) | 0.65 / 4 of 11 (36%) | 0.58 / 6 of 15 (40%) |
+| 2014/15–2025/26 | 0.72 / 4 of 8 (50%) | 0.67 / 6 of 11 (55%) | 0.62 / 9 of 15 (60%) |
+| **All periods** | **21 of 32 (66%)** | **20 of 44 (45%)** | **25 of 60 (42%)** |
 
 - 8 is the only count at which at least half of the topics are stable in every period, and it has the highest mean cosine everywhere.
-- The number of robust themes per period is about 4–7 at every count, so more topics mainly add seed-dependent ones (8 → 15 adds 28 topics but only 5 stable ones).
-- All period models are more stable than the 44-topic whole-corpus model (mean cosine 0.525, about 27% stable), which supports Gordon's case for period models.
+- The margin is small in periods 1 and 4, which are exactly at half stable at 8 topics. Period 4 is the only period whose stable share rises with the topic count (50%, 55%, 60%).
+- The number of robust themes per period is about 4–9 at every count, so more topics mainly add seed-dependent ones (8 → 15 adds 28 topics but only 4 stable ones).
+- All period models are more stable than the 44-topic whole-corpus model of the first version (mean cosine 0.525, about 27% stable), which supports Gordon's case for period models.
 - The whole-corpus model follows the period count, as in Gordon (60 = 4 × 15), so the two designs have the same total capacity. 32 also coincides with the original topic-concentration choice on the earlier pipeline.
 - Caveats: one set of seeds, the 0.70 threshold, and vocabulary option A (2.2).
-- **The 32-topic whole-corpus model (seed test 2026-10-17)** is more stable than the 44-topic one: mean cosine 0.591 against 0.525, and 12 of 32 topics stable (38%) against 12 of 44 (27%); 8 topics are found in all four other seeds (preschool, independent schools, teachers, research, compulsory/upper secondary school, curriculum, higher-education places, medical research). It remains less stable than the 8-topic period models (0.71–0.76, 59%), as Gordon's argument for period models expects. Unstable: grades (found in no other seed; possibly an artifact of a few motions), SFI/immigrants, two residual topics and the place-name topics.
+- **The 32-topic whole-corpus model** is more stable than the 44-topic one: mean cosine 0.568 against 0.525, and 12 of 32 topics stable (38%) against 12 of 44 (27%); 7 topics are found in all four other seeds (compulsory school and grades, research, preschool, universities and students, upper secondary school, special support, society and democracy). It remains less stable than the 8-topic period models (0.70–0.80, 66%), as Gordon's argument for period models expects. Found in no other seed: youth and mental health, bullying, costs and fees, vocational and apprenticeship education, Stockholm institutions, and three residual topics of unrelated words (possibly a few motions each).
 
 The original question and options are kept below for reference.
 
 - 44 was chosen on the earlier pipeline by **topic-concentration testing** (how concentrated documents are on few topics), not by semantic coherence. Several values from 6 to 64 were tested.
 - 44 ÷ 4 = 11 per period, matching total capacity as in Gordon's design (2.3.1).
-- Gordon uses 15 per bin, and his bins are similar in size to ours (2,000–5,000 chunks against our 3,250–3,770 motions).
+- Gordon uses 15 per bin, and his bins are similar in size to ours (2,000–5,000 chunks against our 2,879–4,029 motions).
 - About 10 of the 44 whole-corpus topics are mixed. That may mean 44 is too many for this corpus, or it may be the normal long tail of a heterogeneous corpus where some topics collect rare subjects.
 - The proposal time-boxes model evaluation to four weeks and treats unstable or uninterpretable topics as a finding if time runs out.
 
@@ -551,29 +554,31 @@ The original question and options are kept below for reference.
 
 ### 2.9 Temporal bins
 
-**Question:** keep four bins of roughly equal size, or use political periods?
+**Question:** four bins of roughly equal size, or political periods?
 
-**Current bins:** 1986–1993, 1994–2004, 2005–2014, 2015–2025, chosen for roughly equal numbers of motions (3,257–3,770), as in the proposal.
+**Decided: four periods of complete electoral terms, as equal in size as the terms allow, with motions assigned by parliamentary session.**
 
-Gordon chose literary-historical periods (the Verne era, scientific romance, Edwardian SF, the early pulp era) and accepted unequal sizes.
+| Period | Sessions | Electoral terms beginning | UbU motions |
+|---|---|---|---|
+| 1 | 1985/86–1993/94 | 1985, 1988, 1991 | 4,029 |
+| 2 | 1994/95–2005/06 | 1994, 1998, 2002 | 3,477 |
+| 3 | 2006/07–2013/14 | 2006, 2010 | 2,879 |
+| 4 | 2014/15–2025/26 | 2014, 2018, 2022 | 3,572 |
 
-**A political alternative** would follow:
+- **Electoral terms:** every period covers whole terms of the Riksdag, so no term, and no government formed after an election, is split between two periods. The boundaries fall at the elections of 1994, 2006 and 2014, which are also changes of government.
+- **Equal size within that constraint:** of the possible groupings of the 11 terms into four consecutive periods, this one has the most even sizes (largest / smallest = 1.40). Equal sizes keep the period models comparable in quality: a much smaller bin gives noisier topics, and Gordon's weakest alignment was from his smallest bin. The smallest period here (period 3) is not less stable than the others (2.8).
+- **Assigned by session (riksmöte), not by date:** the session is the unit of parliamentary work, and some motions carry a placeholder date (motions of 1985/86 dated 1985-01-01).
+- **Coverage:** UbU motions start in January 1986 (motions of autumn 1985 are not tagged with the committee), so period 1 effectively starts then. Period 4 runs to the end of session 2025/26, the last session before the 2026 election.
+- **Uneven sessions:** session 1995/96 has only 44 UbU motions (735 motions in all that session), probably because of the change to the new budget process; the other sessions have 187–594.
 
-- **changes of government:** 1991, 1994, 2006, 2014, 2022;
-- **major school reforms:** municipalization of schools (1991), the independent-school reform (1992), the preschool curriculum (1998), Lgr11 (2011).
+Gordon chose literary-historical periods (the Verne era, scientific romance, Edwardian SF, the early pulp era) and accepted unequal sizes. Electoral terms are the political counterpart, without giving up comparable sizes.
 
-The current boundaries already roughly follow 1994, 2006 and 2014. The 1986–1993 bin spans the 1991–1992 reforms.
+**What the periods do not follow:**
 
-**Trade-off:**
+- **Major school reforms** fall inside periods: municipalization of schools (1991) and the independent-school reform (1992) in period 1, the preschool curriculum (1998) in period 2, Lgr11 (2011) in period 3.
+- **Government and opposition are not held fixed.** Periods 2 and 3 each have one government side throughout (Social Democratic governments 1994–2006, the Alliance 2006–2014), so the opposition, which writes most motions, is largely the same parties within each of them; periods 1 and 4 include changes of government (1991, 2022). A change between periods can therefore reflect who was in opposition as well as a change in the debate. This is a confound for the interpretation of the chains, to be examined with the party analysis below.
 
-- Political periods make results easier to interpret historically.
-- Equal sizes make the period models comparable in quality: a much smaller bin gives noisier topics. Gordon's weakest alignment was from his smallest bin.
-
-**Options:**
-
-- Keep the current bins.
-- Shift one boundary, e.g. 1986–1991 / 1992–…, at the cost of unequal sizes.
-- Report the current bins and test one alternative as a sensitivity check. Gordon lists untested binning schemes as a limitation.
+**Planned later:** a party analysis with the session and author metadata: which parties' motions carry each topic, per period, compared with each party's share of all motions in the period (2.6).
 
 ---
 
@@ -587,7 +592,7 @@ These should be stated explicitly in the methods section.
 | LDA implementation | Gordon: MALLET (Gibbs sampling), 1,000 iterations, asymmetric hyperparameter optimization | scikit-learn, online variational inference, 50 passes, symmetric priors; no convergence check (always 50 passes) | **Open, for the supervisor (0.4):** current plan is to keep scikit-learn and present the study as an adaptation of Gordon's workflow, not a computational replication |
 | Document unit | Gordon: 1,000-word chunks of books | Whole motions | Decided: motions are natural units of meaning, and most are shorter than 1,000 words |
 | Proper names | Gordon: removed | Kept | Open (2.7) |
-| Duplicates | Proposal: investigate and monitor | Counted for the report, not removed (133 on the earlier pipeline; to recount) | **Open:** keep or drop. Duplicates are typically identical motions submitted in several years, or by several MPs |
+| Duplicates | Proposal: investigate and monitor | Counted for the report, not removed (515, 3.69%; mostly the same motion resubmitted in a later session) | **Open:** keep or drop. Duplicates are typically identical motions submitted in several years, or by several MPs |
 | Title weighting | Not in Gordon | Not used (3× and 5× tested) | Decided (2.1): stability gain too small |
 | Topic count | Gordon: 15 per period, 60 for the whole corpus. Earlier plan: 44 / 11 | 8 per period, 32 for the whole corpus | Decided (2.8): highest tested count at which at least half of the topics are stable in every period; same total-capacity logic as Gordon |
 | Seed stability | Gordon: whole-corpus runs only | Hungarian-matched stability for every model, period models included | Extension |
@@ -597,9 +602,9 @@ These should be stated explicitly in the methods section.
 
 **How the results compare with Gordon so far** (details in `PIPELINE_DOCUMENTATION.md`, *Comparison with Gordon*):
 
-- Whole-corpus seed instability is of the same size as his (mean Jaccard 0.283 against his 0.26–0.31).
-- At his 15 topics per period, our adjacent-period alignment is almost the same as his (matched mean cosine 0.41–0.54 against 0.44–0.59; 7 of 15 chains pass his criterion in both). At our 8 topics: 0.53–0.68, 5 of 8 chains.
-- His chain criterion is the mean of the three links ≥ 0.50; the period explorer first required every link ≥ 0.50, which is stricter (3 of 8 chains instead of 5). Changed: his criterion is now the main one in the explorer; single weak links are still marked.
+- Whole-corpus seed instability is of the same size as his (mean Jaccard 0.270 against his 0.26–0.31).
+- At his 15 topics per period, our adjacent-period alignment is close to his (matched mean cosine 0.41, 0.47, 0.55 against 0.44–0.59; 9 of 15 chains pass his criterion against his 7). At our 8 topics: 0.65–0.69, and all 8 chains pass.
+- His chain criterion is the mean of the three links ≥ 0.50, and it is the main criterion in the period explorer. Requiring every link ≥ 0.50 is stricter: 4 of the 8 chains. Single weak links are marked in the explorer.
 - Not yet comparable: permutation null and z-scores (2.5), rubric coding (2.6), a whole-corpus model with 8 topics (his k = 15 control). Convergence of our 50-pass fits is not checked.
 
 ### 2.11 Smaller open points
@@ -620,7 +625,7 @@ These should be stated explicitly in the methods section.
 5. **Evidence:** adopt Gordon's permutation null, z-scores and chain criterion? Add the seed-stability ceiling? (2.5)
 6. **Rubric:** adopt Gordon's three dimensions with party/MP concentration instead of author concentration? A second annotator? (2.6)
 7. **Place names:** keep, remove, or merge? (2.7)
-8. **Topic numbers and bins:** 8 per period and 32 for the whole corpus, chosen by seed stability (decided, 2.8). Keep the equal-size bins? (2.9)
+8. **Topic numbers and periods:** 8 per period and 32 for the whole corpus, chosen by seed stability (decided, 2.8); periods of complete electoral terms, assigned by session (decided, 2.9). Is the confound of a largely fixed opposition in periods 2 and 3 acceptable, given the planned party analysis? (2.9)
 9. **LDA implementation:** keep scikit-learn and present the study as an adaptation of Gordon's workflow, or switch to MALLET? Is a convergence check needed? (0.4, 2.10)
 10. **Duplicates:** keep or drop? (2.10)
 
@@ -629,9 +634,11 @@ These should be stated explicitly in the methods section.
 ## 4. Next Steps
 
 1. ✅ Seed-stability tests run (baseline, 3×, 5×); title weighting dropped (2.1). About 12 of 44 topics are found again in 3–4 of the other 4 seeds and about 19 in none; the per-topic table lets unstable topics be flagged before interpretation, and the many seed-dependent topics are an argument for reconsidering the topic count (2.8).
-2. ✅ Period models fitted and seed-tested at 8, 11 and 15 topics (global vocabulary); topic count set to 8 per period and 32 for the whole corpus (2.8). ✅ Whole-corpus model re-fitted and seed-tested at 32 (mean cosine 0.591, 12 of 32 topics stable).
-3. Settle the alignment design (2.2, 2.5) and the definition of thematic change (2.4).
-4. Re-fit the period models if the vocabulary design changes (2.2); implement the alignment with permutation null, and the chains.
-5. If agreed: the topic mapping (2.3.2) and the prevalence analysis (2.4).
-6. Manual evaluation with the rubric (2.6), within the proposal's four-week time box.
-7. Report writing (Nov.–Dec.).
+2. ✅ Period models fitted and seed-tested at 8, 11 and 15 topics (global vocabulary); topic count set to 8 per period and 32 for the whole corpus (2.8). ✅ Whole-corpus model re-fitted and seed-tested at 32 (mean cosine 0.568, 12 of 32 topics stable).
+3. ✅ Periods set to complete electoral terms, motions assigned by session (2.9).
+4. Settle the alignment design (2.2, 2.5) and the definition of thematic change (2.4).
+5. Re-fit the period models if the vocabulary design changes (2.2); implement the alignment with permutation null, and the chains.
+6. If agreed: the topic mapping (2.3.2) and the prevalence analysis (2.4).
+7. Party analysis per topic and period (2.9).
+8. Manual evaluation with the rubric (2.6), within the proposal's four-week time box.
+9. Report writing (Nov.–Dec.).
