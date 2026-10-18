@@ -21,7 +21,7 @@ def main():
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
     BASELINE_VECTORIZER_PATH = PROJECT_ROOT / 'models' / BASELINE_MODEL_DIR / 'baseline_vectorizer.pkl'
-    OUTPUT_FILE = PROJECT_ROOT / 'docs' / 'reports' / f'BASELINE_STABILITY_{NUM_TOPICS}TOPICS_CORRECTED.md'
+    OUTPUT_FILE = PROJECT_ROOT / 'docs' / 'reports' / f'BASELINE_STABILITY_{NUM_TOPICS}TOPICS.md'
 
     print("=" * 80)
     print(f"Seed-Stability Test: {NUM_TOPICS}-Topic Baseline LDA")
@@ -50,16 +50,6 @@ def main():
         f"Seed-Stability Analysis: {NUM_TOPICS}-Topic Baseline LDA",
         "Body text only (titles are not added)",
         NUM_TOPICS, seed_info, pairwise_results,
-        closing_lines=[
-            "## Key Change from Previous Analysis",
-            "",
-            "Previous reports compared Topic 1 to Topic 1, Topic 2 to Topic 2, etc. across seeds.",
-            "This is methodologically invalid because topic indices are arbitrary.",
-            "",
-            "This corrected analysis uses the Hungarian algorithm to find optimal topic correspondences",
-            "before computing similarities. The previous mean Jaccard value of ~0.02 reflected",
-            "invalid index-by-index comparison. The values above reflect matched topics.",
-        ],
     )
     save_report(report, OUTPUT_FILE)
     save_topic_stability(per_topic_stability(pairwise_results, DEFAULT_SEED, NUM_TOPICS), seed_info, DEFAULT_SEED,

@@ -264,11 +264,3 @@ means above.
 - Max: 0.8182
 - Std Dev: 0.1909
 
-## Key Change from Previous Analysis
-
-Previous reports compared Topic 1 to Topic 1, Topic 2 to Topic 2, etc. across seeds.
-This is methodologically invalid because topic indices are arbitrary.
-
-This corrected analysis uses the Hungarian algorithm to find optimal topic correspondences
-before computing similarities. The previous mean Jaccard value of ~0.02 reflected
-invalid index-by-index comparison. The values above reflect matched topics.

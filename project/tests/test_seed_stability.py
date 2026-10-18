@@ -257,7 +257,7 @@ class TestReport(unittest.TestCase):
                           for seed in self.seeds}
         self.report = seed_stability.generate_report(
             'Test report', 'Body text only', self.num_topics,
-            self.seed_info, self.pairwise, closing_lines=['## Closing'])
+            self.seed_info, self.pairwise)
 
     def section(self, heading):
         """Text of one '### heading' section in the overall summary."""
@@ -301,7 +301,7 @@ class TestReport(unittest.TestCase):
         self.assertIn('appears in 4 of the 10 pairs', self.report)
         self.assertIn('does not test for convergence', self.report)
         self.assertIn('**Text:** Body text only', self.report)
-        self.assertTrue(self.report.endswith('## Closing'))
+        self.assertTrue(self.report.rstrip().endswith(f"- Std Dev: {np.std(self.all_jaccard):.4f}"))  # pooled Jaccard last
 
 
 if __name__ == '__main__':

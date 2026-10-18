@@ -31,7 +31,7 @@ data/output/stopword_removed/         fields: text_no_stopwords, title_processed
     └── modeling/07_fit_baseline_lda.py        → models/baseline_lda_32/ (whole-corpus model + its vectorizer)
             ├── modeling/08_display_lda_topics.py       → results/32_TOPICS_FINAL.csv
             ├── modeling/14_generate_topic_explorer.py  → visualizations/topic_explorer.html
-            └── analysis/09_test_lda_stability.py       → docs/reports/BASELINE_STABILITY_32TOPICS_CORRECTED.md
+            └── analysis/09_test_lda_stability.py       → docs/reports/BASELINE_STABILITY_32TOPICS.md
     └── modeling/15_fit_period_lda.py [k]       → models/period_lda_<k>/ (one model and vocabulary per period), results/period_<k>_topics.csv
             ├── modeling/17_generate_period_explorer.py → visualizations/period_explorer.html
             ├── analysis/16_seed_stability_periods.py   → docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md, results/period_stability/
@@ -140,7 +140,7 @@ Hungarian-algorithm one-to-one matching between two models' topics on cosine sim
 
 | Script | Tests | Output |
 |---|---|---|
-| `analysis/09_test_lda_stability.py` | The whole-corpus model | `docs/reports/BASELINE_STABILITY_32TOPICS_CORRECTED.md`, `results/BASELINE_STABILITY_32TOPICS_PER_TOPIC.csv` |
+| `analysis/09_test_lda_stability.py` | The whole-corpus model | `docs/reports/BASELINE_STABILITY_32TOPICS.md`, `results/BASELINE_STABILITY_32TOPICS_PER_TOPIC.csv` |
 | `analysis/16_seed_stability_periods.py [k ...]` | The period models (default 8; `8 11 15` reproduces the topic-count choice) | `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`; full report per period in `docs/reports/period_stability/`; per-topic CSV in `results/period_stability/` (read by the period explorer) |
 
 Both use the shared procedure in `analysis/seed_stability.py`: fit one model per seed (5 seeds), match every pair of models with the Hungarian algorithm (10 pairs), and compare matched topics by cosine (full distributions) and Jaccard (top 20 words).
@@ -154,7 +154,7 @@ Both use the shared procedure in `analysis/seed_stability.py`: fit one model per
 ## Current Results
 
 ### Whole-corpus model (32 topics)
-Report: `docs/reports/BASELINE_STABILITY_32TOPICS_CORRECTED.md`.
+Report: `docs/reports/BASELINE_STABILITY_32TOPICS.md`.
 
 | | 32 topics |
 |---|---|

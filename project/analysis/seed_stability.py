@@ -155,8 +155,7 @@ def stats_lines(values):
     ]
 
 
-def generate_report(title, text_description, num_topics, seed_info, pairwise_results, closing_lines=(),
-                    reference_seed=DEFAULT_SEED):
+def generate_report(title, text_description, num_topics, seed_info, pairwise_results, reference_seed=DEFAULT_SEED):
     """Markdown report: method, per-seed fit, per-topic stability of the reference model,
     per-pair similarity, pooled summary."""
     seed_pairs = list(pairwise_results)
@@ -216,7 +215,6 @@ def generate_report(title, text_description, num_topics, seed_info, pairwise_res
         "",
         "### Cosine Similarity (across all matches)", *stats_lines(all_cosine), "",
         "### Jaccard Similarity (across all matches)", *stats_lines(all_jaccard), "",
-        *closing_lines,
     ]
     return '\n'.join(lines)
 

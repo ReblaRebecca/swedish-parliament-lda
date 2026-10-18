@@ -1,6 +1,5 @@
 # Data processing outputs (too large for git)
 data/
-data_json_not_used/
 
 # Models (too large for git)
 models/

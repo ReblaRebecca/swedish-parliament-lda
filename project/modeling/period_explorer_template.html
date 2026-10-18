@@ -318,7 +318,7 @@
   const meanLink = row => row.links.reduce((a, b) => a + b, 0) / row.links.length;
   const linkedThrough = row => row.links.every(c => c >= DATA.chainCosine);
 
-  function card(row, k, query, showChange) {
+  function card(row, query, showChange) {
     const art = document.createElement('article');
     art.className = 'chain';
     const head = document.createElement('header');
@@ -351,15 +351,13 @@
     const periods = document.createElement('div');
     periods.className = 'periods';
     const persist = persistence(row);
-    const key = `${k}:${row.row}`;
-    if (!layoutCache[key]) layoutCache[key] = layoutChain(row);
-    row.cells.forEach((cell, p) => periods.appendChild(cellEl(cell, p, row, layoutCache[key][p], query, persist)));
+    if (!layoutCache[row.row]) layoutCache[row.row] = layoutChain(row);
+    row.cells.forEach((cell, p) => periods.appendChild(cellEl(cell, p, row, layoutCache[row.row][p], query, persist)));
     art.append(head, periods);
     return art;
   }
 
   function render() {
-    const k = DATA.numTopics;
     const set = DATA;
     const query = searchInput.value.trim().toLowerCase();
     let rows = set.rows.slice();
@@ -382,7 +380,7 @@
     if (query) rows = rows.filter(r => r.cells.some(c => c.words.some(w => w[0].includes(query))));
 
     const showChange = sortSelect.value === 'rise' || sortSelect.value === 'fall';
-    grid.replaceChildren(...rows.map(r => card(r, k, query, showChange)));
+    grid.replaceChildren(...rows.map(r => card(r, query, showChange)));
     if (!rows.length) {
       const p = document.createElement('p');
       p.className = 'empty';

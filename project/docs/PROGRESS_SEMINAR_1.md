@@ -4,13 +4,7 @@
 **Supervisor:** Murathan Kurfalı
 **Main reference:** Gordon (2026), *Tracing Thematic Change in Early English-Language Science Fiction, 1818–1930* (NLP4DH 2026)
 
-This document summarizes where the project stands and sets out the decisions that need to be made before the period models are fitted. Each decision has:
-
-- the background;
-- the options, explained;
-- what each option would mean for the results;
-- a suggestion where I have one;
-- the questions to discuss.
+This document summarizes where the project stands, the decisions made so far and the questions still open. Decided points give the decision and the reason; open points give the background, the options, what each would mean for the results, a suggestion where I have one, and the questions to discuss.
 
 Technical detail is in `PIPELINE_DOCUMENTATION.md` and `MODEL_REVIEW.md`.
 
@@ -119,30 +113,26 @@ The questions below are the ones to settle at the seminar: 0.2 and 0.3 decide wh
 4. **Normalization:** lowercase; no digits, punctuation or single letters.
 5. **Stopwords:** NLTK's Swedish list (114) plus 85 supplementary words, including their lemma forms.
 
-### 1.3 Whole-corpus models (first version, done)
+### 1.3 Models (done)
 
-- **Two models, 44 topics each:**
-  - a **baseline** on body text only;
-  - a **title-weighted** model, with title words appended 5 times. Title weighting was dropped after the seed-stability runs (2.1); the model used from now on is the baseline.
-- Both use the same motions and the same 10,000-word vocabulary.
-- **First review** (`MODEL_REVIEW.md`): roughly 32–34 of 44 topics in each model are clear education-policy topics, and about 10 are mixed. This is my reading, not a measured score.
-  - **Clear topics** include teachers and teacher education, independent schools and school choice, preschool, upper secondary and vocational education, student finance (CSN), SFI and mother-tongue teaching, research and doctoral education, physical education, special needs, values and the curriculum, and bullying.
-  - **Mixed topics** collect rare words from unrelated motions, e.g. *homosexuell, helårsstudent, folkmord, takbelopp, cancerfond*.
-- **Vocabulary problems** found in the review were fixed and the models refitted. Leftover procedural words (*hemställa*, *anförd*, *motent* from *Mot.*) dropped from 1,500–5,000 motions each to almost none.
+- **Whole-corpus model:** 32 topics, body text only; 12 of 32 topics stable across seeds (2.8).
+- **Period models:** 8 topics per period, each with its own vocabulary (2.2); 21 of 32 topics stable. Adjacent periods are aligned into 8 chains, all holding by Gordon's criterion, and every transition is far above the permutation null (2.5).
+- **Visualizations:** a topic explorer (whole-corpus model) and a period explorer (chains across the four periods).
+- **First version:** two 44-topic models (body text, and title ×5) on the same corpus were reviewed (`MODEL_REVIEW.md`); the vocabulary problems found there were fixed, title weighting was dropped (2.1) and the topic count changed (2.8).
 
 ### 1.4 Quality assurance
 
-- **81 unit tests:**
-  - preprocessing rules;
-  - topic matching;
-  - the seed-stability code, including a check that the models and the stability tests can never use different settings.
-- **A sanity check of every pipeline stage:** same motions in every stage, no leftover stopwords or punctuation.
+- **110 unit tests:**
+  - preprocessing rules and the period of each session;
+  - topic matching, over identical and over shared vocabularies, and the permutation null;
+  - the seed-stability code, including a check that the models and the stability tests can never use different settings;
+  - the period models and their chains.
+- **A sanity check of every pipeline stage:** same motions in every stage, every motion in the period of its session, no leftover stopwords or punctuation.
 
 ### 1.5 Not yet done
 
-- The period (binned) models.
-- Cross-period alignment and topic chains.
-- Manual evaluation.
+- Manual evaluation with the rubric (2.6).
+- Party analysis (2.9) and, if agreed, prominence (2.4) and the topic mapping (2.3.2).
 
 ---
 
@@ -161,65 +151,9 @@ The questions below are the ones to settle at the seminar: 0.2 and 0.3 decide wh
 | Mean Jaccard (top 20) | 0.24 | 0.24 | 0.23 |
 | Topics found in all 4 other seeds (cosine ≥ 0.70) | 5 | 7 | 10 |
 
-Weighting raises stability only slightly, and the ranges overlap, so it is not clearly better (step 3 of *How to decide* below). Option (a) was chosen: the model uses body text only, which follows Gordon and removes a free parameter. Titles are still separated at extraction, preprocessed and kept in the data (`title_processed`) for later use. The weighting code was removed and is in the git history. Full results: `PIPELINE_DOCUMENTATION.md`, *Design Decisions*; full results in `docs/reports/`. The background and arguments below are kept as the reasoning behind the decision.
+Weighting raises stability only slightly, and the ranges overlap, so it is not clearly better. The model uses body text only, which follows Gordon (his book chunks have no titles) and removes a free parameter (the weight, 3× or 5×, has no theoretical anchor). The effect of weighting would also depend on body length, which differs between periods, a possible confound for diachronic comparison. Titles are still separated at extraction, preprocessed and kept in the data (`title_processed`) for later use, e.g. labelling topics. The weighting code was removed and is in the git history.
 
 **For the seminar:** is dropping weighting acceptable, or should the weighted model be reported as a robustness check after all?
-
-#### Background
-
-A motion's title states its intent in a few words (*Högskoleutbildning i Gävle*, *Lärarnas löner*, *Simundervisning i skolan*). The body is longer and often covers several subjects: background, arguments, related reforms, budget. LDA treats every word equally, so a motion whose body discusses many things gets a spread-out topic mixture even when its purpose is narrow.
-
-**Current setup:**
-
-- The processed title is appended **5 times** to the body before the document is counted.
-- The title heading that opens every motion body is removed at extraction, so the title counts exactly 5 times (plus any genuine mentions of the title phrase in the argument).
-- A 3× variant is prepared for comparison.
-
-#### How large the effect is
-
-After preprocessing, a title has a median of **3 words** and a body a median of **169 words** (mean 331).
-
-| | Title share of the document's words |
-|---|---|
-| No weighting | about 1.7% (median) |
-| 5× weighting, median motion | 7% |
-| 5× weighting, mean | 9% |
-| 5× weighting, shortest bodies (top 10%) | 17% or more |
-| 5× weighting, longest bodies (bottom 10%) | 1.6% or less |
-
-So the weighting is **moderate for a typical motion but strong for short motions**, and almost irrelevant for very long ones. The effect is not uniform. It depends on body length, which also differs between periods (median body length 183, 196, 143 and 159 words in the four periods), though without a simple trend.
-
-#### What we have observed
-
-- The two models' topics are of similar quality.
-- Both have several topics organized around places, about 8 each, e.g. *Skövde, Västsverige, Skaraborg* and *Örebro, Karlstad, Värmland*. Titles often name a place (*Högskoleutbildning i Gävle*). In the first version the weighted model had more of these, but after the vocabulary fixes the difference is small.
-- The decisive evidence, seed stability, has not been run yet.
-
-#### Arguments
-
-| For weighting | Against weighting |
-|---|---|
-| Pulls each motion's topic mixture towards its stated purpose | Gordon does not weight titles (his documents are 1,000-word book chunks without titles), so it is a departure from the reference method |
-| Parliamentary titles are written by the authors as a summary, a strong signal | The weight (3× or 5×) is a free parameter with no theoretical anchor; it must be justified empirically |
-| May stabilize topics across seeds (to be tested) | Effect varies with body length, which differs between periods, a possible confound for diachronic comparison |
-| | Changes θ (document-topic proportions), so any prominence measure (2.4) depends on it |
-| | 16–34 motions have no title words left after preprocessing and get no weighting |
-
-#### Options
-
-- **(a) No weighting.** Follows Gordon and is simplest to justify. The weighted models become a reported sensitivity check, or are dropped.
-- **(b) Weighted model as the primary model** (3× or 5×), chosen on evidence.
-- **(c) Baseline as primary, weighting as a robustness check.** Results are reported for the baseline, and the weighted model shows whether conclusions change.
-
-#### How to decide
-
-1. Run the seed-stability tests: baseline, 3×, 5×, each with 5 seeds and 10 matched pairs. Higher matched cosine and Jaccard means more stable topics.
-2. Compare manual topic quality with the rubric in 2.6.
-3. If weighting is not clearly better on both, choose (a) or (c).
-
-**Also to decide:** if weighting is kept, whether the period models are weighted the same way. They should be, for consistency.
-
-**Suggestion:** decide after the stability runs. Lean towards (c) unless weighting is clearly more stable, since (c) keeps the main analysis close to Gordon.
 
 ---
 
@@ -227,41 +161,11 @@ So the weighting is **moderate for a typical motion but strong for short motions
 
 **Question (supervisor):** how to guarantee that topic-word vectors from separately trained period models refer to the same words in the same order before computing cosine similarities?
 
-**Decided 2026-10-18: option B, Gordon's method** (results in 0.1). Implemented in `topic_matching.py` (`shared_vocabulary=True`): both topic vectors are restricted to the words in both vocabularies and put in the same order before cosine is computed; covered by unit tests (the same topics in different vocabularies and column orders match with cosine 1; weight outside the intersection does not change the cosine). Seed stability still compares models with one vectorizer, and different vocabularies remain an error there. The options below are kept as the reasoning.
+**Decided 2026-10-18: Gordon's method** (results in 0.1). Each period model has its own vocabulary, built within the period (words in at least 10 and at most 50% of the period's motions). Adjacent periods are compared over the words both vocabularies contain, put in the same order (`topic_matching.py`, `shared_vocabulary=True`).
 
-#### Why it matters
-
-A topic is a vector of word probabilities. Cosine similarity compares two vectors position by position. If position 512 is *lärare* in one model and *elev* in the other, the similarity is meaningless, and nothing in the arithmetic would show it. Separately trained models build their own vocabularies, so their columns do not line up by default.
-
-**Already guaranteed in code:** the matching module refuses to compute similarities unless both models have an identical vocabulary in identical order. Different or reordered vocabularies raise an error, and both cases are covered by unit tests. A misaligned comparison cannot pass silently. The question is which design produces aligned vectors.
-
-#### Option A: one global vocabulary
-
-- One vectorizer is built on the whole corpus.
-- Every period's motions are converted with that same vectorizer before its LDA model is fitted.
-- All period models therefore have exactly the same columns.
-
-**Consequences:**
-
-- Simple, and works with the existing code.
-- Frequency thresholds (a word must occur in at least 5 motions and at most 50%) apply to the **whole corpus**:
-  - A word frequent in one period but rare overall is still included.
-  - A word in more than half of all motions is excluded everywhere.
-- A word that does not occur in a period still has a column in that period's model, with near-zero weight (only the LDA prior). Period-specific words therefore lower the cosine between periods. That is a correct reflection of vocabulary change, but it should be kept in mind when interpreting the values.
-
-#### Option B: per-period vocabularies, compared over shared words (Gordon's method)
-
-- Each period model gets its own vocabulary, with the frequency thresholds applied **within the period**.
-- When two adjacent periods are compared, both topic vectors are restricted to the **intersection**: the words present in both vocabularies, put in the same order, and re-normalized. Gordon uses L2 normalization over the shared vocabulary.
-
-**Consequences:**
-
-- Replicates Gordon, which is what the proposal promises.
-- Each period's model is built on its own most relevant words. A word typical of 2014/15–2025/26 (*digitalisering*, *nyanländ*) is not crowded out by thresholds computed over 40 years.
-- The comparison only uses words both periods know, so similarity measures **how the shared vocabulary is used**, not whether new words appeared. Vocabulary that appears or disappears has to be reported separately (e.g. the share of a topic's probability mass outside the intersection).
-- It needs a small extra step that builds the intersection and reorders both vectors. The existing safety check still applies at the moment cosine is computed.
-
-**Suggestion:** **B**, since the proposal follows Gordon. Report the share of each topic's mass that falls outside the shared vocabulary, so that vocabulary change is not hidden.
+- **Why:** the proposal follows Gordon, and each period's model is built on its own most relevant words: a word typical of 2014/15–2025/26 (*digitalisering*, *nyanländ*) is not crowded out by frequencies over 40 years. The alternative, one global vocabulary for all periods, was used first and gave the same stability but weaker alignment.
+- **Consequence:** similarity measures how the shared vocabulary is used, not whether new words appeared, so vocabulary that appears or disappears is reported separately (the share of a topic's weight outside the shared words, 0.1).
+- **Safety:** the same topics in different vocabularies and column orders match with cosine 1, and weight outside the intersection does not change the cosine (unit tests). Seed stability still compares models with one vectorizer, and different vocabularies remain an error there.
 
 ---
 
@@ -523,8 +427,6 @@ Both current models have about 8 topics organized around places (e.g. *Skövde, 
 
 ### 2.8 Number of topics
 
-**Question:** keep 44 topics for the whole corpus and about 11 per period?
-
 **Decided 2026-10-17: 8 topics per period, 32 = 4 × 8 for the whole corpus.** The period models were fitted and seed-tested at 8, 11 and 15 topics (5 seeds, global vocabulary; *stable* = found again with cosine ≥ 0.70 in at least 3 of the 4 other seeds):
 
 | Period | 8 topics: mean cosine / stable | 11 topics | 15 topics |
@@ -543,21 +445,7 @@ Both current models have about 8 topics organized around places (e.g. *Skövde, 
 - Caveats: one set of seeds, the 0.70 threshold, and the global vocabulary used at the time. With the per-period vocabularies chosen later (2.2), the 8-topic models are as stable (21 of 32 topics); 11 and 15 were not re-tested.
 - **The 32-topic whole-corpus model** is more stable than the 44-topic one: mean cosine 0.568 against 0.525, and 12 of 32 topics stable (38%) against 12 of 44 (27%); 7 topics are found in all four other seeds (compulsory school and grades, research, preschool, universities and students, upper secondary school, special support, society and democracy). It remains less stable than the 8-topic period models (0.70–0.80, 66%), as Gordon's argument for period models expects. Found in no other seed: youth and mental health, bullying, costs and fees, vocational and apprenticeship education, Stockholm institutions, and three residual topics of unrelated words (possibly a few motions each).
 
-The original question and options are kept below for reference.
-
-- 44 was chosen on the earlier pipeline by **topic-concentration testing** (how concentrated documents are on few topics), not by semantic coherence. Several values from 6 to 64 were tested.
-- 44 ÷ 4 = 11 per period, matching total capacity as in Gordon's design (2.3.1).
-- Gordon uses 15 per bin, and his bins are similar in size to ours (2,000–5,000 chunks against our 2,879–4,029 motions).
-- About 10 of the 44 whole-corpus topics are mixed. That may mean 44 is too many for this corpus, or it may be the normal long tail of a heterogeneous corpus where some topics collect rare subjects.
-- The proposal time-boxes model evaluation to four weeks and treats unstable or uninterpretable topics as a finding if time runs out.
-
-**Options:**
-
-- Keep 44/11.
-- Test a small range per period (e.g. 8, 11, 15) with the seed-stability and rubric results.
-- Use Gordon's 15 per period (and 60 for the whole corpus).
-
-**Question:** how many values can be tested within the time box?
+- **Background:** the first version used 44 topics (11 per period), chosen on an earlier pipeline by topic concentration rather than coherence; about 10 of its 44 topics were mixed, and only 12 were stable across seeds.
 
 ---
 
@@ -649,12 +537,11 @@ These should be stated explicitly in the methods section.
 
 ## 4. Next Steps
 
-1. ✅ Seed-stability tests run (baseline, 3×, 5×); title weighting dropped (2.1). About 12 of 44 topics are found again in 3–4 of the other 4 seeds and about 19 in none; the per-topic table lets unstable topics be flagged before interpretation, and the many seed-dependent topics are an argument for reconsidering the topic count (2.8).
+1. ✅ Seed-stability tests of the first 44-topic models; title weighting dropped (2.1).
 2. ✅ Period models fitted and seed-tested at 8, 11 and 15 topics (global vocabulary); topic count set to 8 per period and 32 for the whole corpus (2.8). Only the 8-topic models are kept; the period explorer shows 8 topics only. ✅ Whole-corpus model re-fitted and seed-tested at 32 (mean cosine 0.568, 12 of 32 topics stable).
 3. ✅ Periods set to complete electoral terms, motions assigned by session (2.9).
-4. Settle the alignment design (2.2, 2.5) and the definition of thematic change (2.4).
-5. ✅ Period models re-fitted with per-period vocabularies, compared over shared words (2.2). ✅ Permutation null for the alignment (2.5).
-6. If agreed: the topic mapping (2.3.2) and the prevalence analysis (2.4).
-7. Party analysis per topic and period (2.9).
-8. Manual evaluation with the rubric (2.6), within the proposal's four-week time box.
-9. Report writing (Nov.–Dec.).
+4. ✅ Period models re-fitted with per-period vocabularies, compared over shared words (2.2). ✅ Permutation null for the alignment (2.5).
+5. Settle the definition of thematic change (2.4); if agreed, the topic mapping (2.3.2) and the prevalence analysis (2.4).
+6. Party analysis per topic and period (2.9).
+7. Manual evaluation with the rubric (2.6), within the proposal's four-week time box.
+8. Report writing (Nov.–Dec.).

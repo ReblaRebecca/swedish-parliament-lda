@@ -1,23 +1,3 @@
-# Data directories (downloaded, not version controlled)
-data_xml/
-scripts/data/output/
-scripts/data/input/boilerplate_removed/
-scripts/data/input/stopword_removed/
-scripts/data/input/normalized/
-# But preserve extracted input
-# !/scripts/data/input/extracted_text_xml/
-
-# Processing output directories (generated, not version controlled)
-extracted_text/
-stopword_removed/
-stopword_removed_xml/
-boilerplate_removed/
-boilerplate_removed_xml/
-normalized/
-normalized_xml/
-baseline_lda/
-baseline_lda_xml/
-
 # Virtual environment
 venv/
 

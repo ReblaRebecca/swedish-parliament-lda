@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from periods import DISPLAY_NAMES  # noqa: E402
+from periods import DISPLAY_NAMES, period_key  # noqa: E402
 
 try:
     from sklearn.decomposition import LatentDirichletAllocation
@@ -104,7 +104,7 @@ def read_bin_body_texts(bin_file):
 
 def period_label(bin_file):
     """Period key of a period file: 'group2_1994-2006.jsonl' -> '1994-2006' (used in file and model names)."""
-    return Path(bin_file).stem.split('_', 1)[-1]
+    return period_key(Path(bin_file).stem)
 
 
 def period_display(period):

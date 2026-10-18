@@ -67,8 +67,7 @@ class TestTopicMatching(unittest.TestCase):
     def test_mismatched_topic_counts(self):
         """Different topic counts raise ValueError."""
         with self.assertRaisesRegex(ValueError, '(?i)topic'):
-            match_and_evaluate(MockLDA(random_topics(4)), MockLDA(random_topics(5)), VOCAB, VOCAB,
-                               require_same_n_topics=True)
+            match_and_evaluate(MockLDA(random_topics(4)), MockLDA(random_topics(5)), VOCAB, VOCAB)
 
     def test_invalid_top_n(self):
         """top_n must be a positive integer."""
