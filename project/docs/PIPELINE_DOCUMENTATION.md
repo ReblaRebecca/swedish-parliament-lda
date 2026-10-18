@@ -13,6 +13,27 @@ How the design was reached, and the open questions, are in `PROGRESS_SEMINAR_1.m
 
 All paths below are relative to `project/`. Documentation and reports are in `docs/` and the HTML visualizations in `visualizations/` (both in git); generated tables (CSV) are in `results/`, data in `data/` and fitted models in `models/` (not in git). The raw XML is in `../../swedish-parliament-data/`, next to the repository. Every script resolves its default paths from its own location, so scripts can be run from any working directory.
 
+## Data Source
+
+Motions (*motioner*) from **Riksdagens öppna data** (data.riksdagen.se), the Swedish parliament's open data portal, downloaded as XML datasets, one per span of years, and unpacked into `../../swedish-parliament-data/` (one XML file per document):
+
+| Dataset (folder) | Files |
+|---|---|
+| `mot-1980-1989.xml` | 33,517 |
+| `mot-1990-1997.xml` | 24,646 |
+| `mot-1998-2001.xml` | 13,617 |
+| `mot-2002-2005.xml` | 16,549 |
+| `mot-2006-2009.xml` | 14,191 |
+| `mot-2010-2013.xml` | 14,635 |
+| `mot-2014-2017.xml` | 14,389 |
+| `mot-2018-2021.xml` | 15,668 |
+| `mot-2022-2025.xml` | 13,010 |
+| **Total** | **160,222** |
+
+- All motions to all committees; extraction keeps the 13,957 referred to the Committee on Education (UbU) in sessions 1985/86–2025/26 (see *Periods*). The earliest UbU motions are in `mot-1980-1989` (session 1985/86, from January 1986)
+- The datasets are named by calendar years, but `mot-2022-2025` also holds session 2025/26, which ended in June 2026
+- **Unpacked 2026-10-15; download date to be confirmed.** The portal's datasets are updated while a session is running, so a download before the end of session 2025/26 would hold fewer motions of that session. Re-downloading may also bring corrections to older documents; the file counts above identify the version used
+
 ## Pipeline Architecture
 
 ```
@@ -63,7 +84,7 @@ The four periods are defined once, in `periods.py`, and imported by every script
 ## Processing Steps
 
 ### 1. Extraction (`extraction/01_extract_from_xml.py`)
-- **Input:** XML files from the Swedish parliament open data portal, searched recursively (default `../../swedish-parliament-data/`; another location can be passed as the first argument)
+- **Input:** the XML files of the motion datasets (see *Data Source*), searched recursively (default `../../swedish-parliament-data/`; another location can be passed as the first argument)
 - **Method:** follows Bruinsma & Johansson (2024)
 - **Filter:** UbU committee (`organ` field), case-insensitive
 - **Extract:** dok_id, date, title, author names, body text (between the introduction and signature markers); HTML entities decoded
