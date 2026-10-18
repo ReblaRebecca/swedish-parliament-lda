@@ -570,6 +570,11 @@ The original question and options are kept below for reference.
 - **Assigned by session (riksmöte), not by date:** the session is the unit of parliamentary work, and some motions carry a placeholder date (motions of 1985/86 dated 1985-01-01).
 - **Coverage:** UbU motions start in January 1986 (motions of autumn 1985 are not tagged with the committee), so period 1 effectively starts then. Period 4 runs to the end of session 2025/26, the last session before the 2026 election.
 - **Uneven sessions:** session 1995/96 has only 44 UbU motions (735 motions in all that session), probably because of the change to the new budget process; the other sessions have 187–594.
+- **Compared with the earlier bins:** the models were first fitted on four calendar-year bins of roughly equal size (1986–1993, 1994–2004, 2005–2014, 2015–2025, assigned by date). With the electoral-term periods, at the chosen 8 topics:
+  - more period topics are stable: 21 of 32 (66%) against 19 of 32 (59%), with mean cosine 0.70–0.80 per period against 0.71–0.76;
+  - the alignment is stronger: matched mean cosine 0.65, 0.69 and 0.67 for the three transitions against 0.53, 0.62 and 0.68, and all 8 chains pass Gordon's criterion against 5 (every link ≥ 0.50: 4 against 3);
+  - 8 remains the only tested count with at least half of the topics stable in every period. At 11 and 15 topics there is no gain (20 of 44 against 21; 25 of 60 against 24).
+  - The differences are small (one to three stable topics per period, one set of seeds), so they show that the electoral-term periods are at least as stable as the earlier bins, not that they are clearly better. The stronger alignment may partly come from the boundaries falling at elections, which can make adjacent periods more alike without making the topics within a period more stable.
 
 Gordon chose literary-historical periods (the Verne era, scientific romance, Edwardian SF, the early pulp era) and accepted unequal sizes. Electoral terms are the political counterpart, without giving up comparable sizes.
 
