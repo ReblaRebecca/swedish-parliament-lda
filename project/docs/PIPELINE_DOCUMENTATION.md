@@ -57,6 +57,7 @@ data/output/stopword_removed/         fields: text_no_stopwords, title_processed
             ├── modeling/17_generate_period_explorer.py → visualizations/period_explorer.html
             ├── analysis/16_seed_stability_periods.py   → docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md, results/period_stability/
             └── analysis/18_alignment_null.py           → docs/reports/PERIOD_ALIGNMENT_NULL.md
+            (analysis/corpus_statistics.py: words and different words per step, for the report)
 ```
 
 Every data stage stores one JSONL file per period: `group1_1985-1994.jsonl`, `group2_1994-2006.jsonl`, `group3_2006-2014.jsonl`, `group4_2014-2026.jsonl` (named after the calendar years the period's sessions span). Each stage adds fields and keeps earlier ones, so metadata (`dok_id`, session, title, date, author names) is carried through to the models. Every stage counts and reports malformed JSON lines per period, so no data is lost silently.
@@ -305,6 +306,27 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 - **`config/lemma_corrections.txt`:** corrections for known Stanza lemma errors, one `wrong correct` pair per line with `#` comments, applied in step 03 to body and title, case-insensitively. A wrong lemma with a leading `*` is also corrected at the end of a compound (`*kompet kompetens`: `gymnasiekompet` → `gymnasiekompetens`); mark an entry only after checking its compounds (`anslagen` must not be marked, because of *sammanslagen*). After editing, re-run steps 03–05
 - **Stopwords:** hard-coded in `preprocessing/05_remove_stopwords.py` (NLTK base + supplementary list, including lemma forms)
 
+## Corpus Size per Step
+
+Body text of all 13,957 motions (`analysis/corpus_statistics.py`, read-only). Words are Stanza's tokens throughout, so every step is counted the same way: step 02 runs Stanza on the extracted text, so its word forms are the extracted text as Stanza splits it. A word is a token with at least one letter (punctuation and pure numbers are not counted); different words are counted case-insensitively.
+
+| Step | Words | Different words | Words per motion (median / mean) |
+|---|---|---|---|
+| 01 Extraction (word forms) | 10,360,566 | 137,918 | 383 / 742 |
+| 02 Lemmatization (lemmas) | 10,360,566 | 96,875 | 383 / 742 |
+| 03 Boilerplate removed | 8,800,067 | 95,956 | 325 / 631 |
+| 04 Normalized | 8,494,260 | 84,342 | 313 / 609 |
+| 05 Stopwords removed (final text) | 4,622,680 | 84,176 | 169 / 331 |
+| Whole-corpus model vocabulary | 3,960,935 | 10,000 | 143 / 284 |
+| Period models' vocabularies (together) | 3,899,123 | 11,661 | – |
+
+- **Extraction:** Stanza keeps punctuation inside and next to some tokens, so the extracted text has spelling variants of the same word among its different words: abbreviations (*t.ex.*, *bl.a.*, *mot.*), party letters from "(m)" (*m)*, *s)*), and compound ellipsis (*läs-* in "läs- och skrivförmåga"). Steps 03 and 04 remove them
+- **Lemmatization** reduces the number of different words by 30% (137,918 word forms to 96,875 lemmas) without removing any words: each word is replaced by its lemma (*skolan*, *skolorna*, *skolor* → *skola*), so word forms and lemmas are the same tokens and have the same count
+- **Boilerplate removal** (with auxiliaries and multi-word abbreviation lemmas) removes 15% of the words but few different ones: the removed words are a small set of frequent parliamentary phrases
+- **Normalization** removes digits, turns punctuation inside tokens into spaces (hyphenated lemmas are split: *it-kompetens* → *it*, *kompetens*; *1990-talet* → *talet*) and drops single characters: −3% words, −12% different words
+- **Stopword removal** halves the number of words (−46%) but removes only 166 different words: stopwords are few and very frequent
+- **The models' vocabularies** keep 86% of the final words (whole corpus: 10,000 of 84,176 different words); most of the 84,176 are rare. Per period: 1,052,497 / 1,263,414 / 571,556 / 1,011,656 words in vocabularies of 7,302 / 7,981 / 4,926 / 6,876 different words
+
 ## Data Summary
 
 | Metric | Value | Note |
@@ -344,6 +366,8 @@ python preprocessing/04_normalize_text.py
 python preprocessing/05_remove_stopwords.py
 python analysis/check_pipeline_output.py      # sanity checks on the output (read-only)
 python analysis/count_duplicates.py           # for the report
+python analysis/corpus_statistics.py          # words per step, for the report (a few minutes; after 15)
+python analysis/word_lists_latex.py           # stopword and boilerplate lists as LaTeX tables (docs/tables/)
 
 # Whole-corpus model
 python modeling/07_fit_baseline_lda.py        # about 3 minutes
@@ -386,6 +410,7 @@ python analysis/check_pipeline_output.py
   - **Seeds:** the same seed reproduces the model exactly, a different seed changes it
   - **Planted topics:** on a synthetic corpus with three clearly separated topics, the full procedure finds cosine > 0.99 for every matched topic, so it can detect stability when it is there
   - **Report:** on a synthetic 5-seed, 44-topic setup, 10 pairs and 440 matched pairs; per-pair and pooled statistics equal those computed directly; the per-seed table and the notes on convergence and pooled statistics are present
+- **`tests/test_corpus_statistics.py`** — the corpus size per step on two hand-worked motions: what counts as a word (no punctuation or pure numbers), different words counted case-insensitively, lemmatization keeping the number of words while merging forms (*skolan*, *skolorna* → *skola*), one lemma counted per word form even when the lemma has no letter (*6:e* → *6:*), the counts after boilerplate, normalization and stopwords, and the words inside the models' vocabularies
 - **`analysis/check_pipeline_output.py`** — for each stage that has been run: all four period files present, no malformed lines, required fields present, no `dok_id` twice, the same motions as extraction; every motion in the period of its session; no soft hyphens or broken diacritics after extraction; Stanza output well-formed; final text lowercase letters only with no digits, punctuation, single-character words or stopwords. Warns about empty texts and frequent known extraction fragments. Exit code 1 if any check fails. Optional argument: `[data_dir]`
 
 ## File Organization
@@ -416,12 +441,15 @@ project/
 │   ├── 16_seed_stability_periods.py
 │   ├── 18_alignment_null.py               (Gordon's permutation test of the alignment)
 │   ├── check_pipeline_output.py          (sanity checks on pipeline output)
-│   └── count_duplicates.py               (duplicate count for the report)
+│   ├── count_duplicates.py               (duplicate count for the report)
+│   ├── corpus_statistics.py              (words and different words per step, for the report)
+│   └── word_lists_latex.py               (stopword and boilerplate lists as LaTeX tables)
 ├── tests/
 │   ├── test_preprocessing.py
 │   ├── test_topic_matching.py
 │   ├── test_seed_stability.py
-│   └── test_period_models.py
+│   ├── test_period_models.py
+│   └── test_corpus_statistics.py
 ├── config/
 │   ├── boilerplate_phrases.txt
 │   └── lemma_corrections.txt
@@ -430,6 +458,7 @@ project/
 │   ├── PROGRESS_SEMINAR_1.md              (status, decisions and open questions, seminar 2026-10-19)
 │   ├── MODEL_REVIEW.md                    (review of the first models on the Stanza pipeline)
 │   ├── PREPROCESSING_ARTIFACTS.md         (the extraction artifacts and their fix)
+│   ├── tables/                            (LaTeX tables for the report: preprocessing decisions with corpus size per step, word lists, design decisions; compile preprocessing_preview.tex or preview.tex)
 │   └── reports/                           (seed-stability reports of 09 and 16; period_stability/ per period; topic_count_choice/ the 8/11/15 test)
 ├── visualizations/                        (in git: topic_explorer.html, period_explorer.html)
 ├── results/                               (not in git: generated CSV tables)
