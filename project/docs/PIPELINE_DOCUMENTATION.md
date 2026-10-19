@@ -458,7 +458,7 @@ project/
 │   ├── PROGRESS_SEMINAR_1.md              (status, decisions and open questions, seminar 2026-10-19)
 │   ├── MODEL_REVIEW.md                    (review of the first models on the Stanza pipeline)
 │   ├── PREPROCESSING_ARTIFACTS.md         (the extraction artifacts and their fix)
-│   ├── tables/                            (LaTeX tables for the report: preprocessing decisions with corpus size per step, word lists, design decisions; compile preprocessing_preview.tex or preview.tex)
+│   ├── tables/                            (LaTeX tables for the report: preprocessing decisions with corpus size per step and the word lists; model-training decisions compared with Gordon; compile preprocessing_preview.tex or training_preview.tex)
 │   └── reports/                           (seed-stability reports of 09 and 16; period_stability/ per period; topic_count_choice/ the 8/11/15 test)
 ├── visualizations/                        (in git: topic_explorer.html, period_explorer.html)
 ├── results/                               (not in git: generated CSV tables)
