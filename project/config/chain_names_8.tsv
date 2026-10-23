@@ -1,0 +1,15 @@
+# Swedish names for the chains of the period explorer (period models with 8 topics), used by
+# modeling/17_generate_period_explorer.py. A chain follows matched topics through the four
+# periods; its name summarizes the four period topics (config/period_topic_names_8.tsv).
+#
+# Format: chain number, the chain's topic numbers in the four periods, name (tab-separated).
+# The generator shows a name only if the chain still consists of these topics, so a refitted
+# model or a changed matching gets no wrong names.
+1	1 5 3 6	Forskningspolitik och forskningsområden
+2	2 6 7 4	Högskolornas regionala utbyggnad och forskning
+3	3 7 5 2	Undervisning, betyg och lärare
+4	4 2 1 5	Barns och ungas hälsa, mobbning och jämställdhet
+5	5 4 2 3	Förskola och barnomsorg
+6	6 8 6 1	Kommunal skola och fristående skolor
+7	7 3 4 8	Högskola, vuxenutbildning och arbetsmarknad
+8	8 1 8 7	Studiestöd och studenters villkor

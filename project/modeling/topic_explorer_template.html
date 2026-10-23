@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-  /* Layout: masthead, sticky control bar, then one column of topic cards; each card puts the
+  /* Layout: masthead, then one column of topic cards; each card puts the
      word cloud with the period chart under it in the left column and the topic's top motions in the
      right column, stacking on narrow screens. */
   :root {
@@ -71,7 +71,8 @@
   .masthead { display: grid; gap: 8px; }
   .eyebrow { font-family: var(--font-data); font-size: var(--step--1); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
   h1 { font-family: var(--font-display); font-weight: 700; font-size: var(--step-3); line-height: 1.1; text-wrap: balance; }
-  .lede { color: var(--muted); max-width: 65ch; }
+  .lede { color: var(--muted); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 32px; }
+  @media (max-width: 760px) { .lede { grid-template-columns: minmax(0, 1fr); } }
   .lede strong { color: var(--ink); font-weight: 600; }
 
   .grid { display: grid; gap: 16px; }
@@ -112,8 +113,6 @@
   /* The party chip sits on the Top motions heading line, without the heading's uppercase */
   .motions-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
   .motions-head .chip { text-transform: none; letter-spacing: 0; }
-  /* The top 5 motions are the ones the party chip counts; a dashed rule separates the rest */
-  .motions li.beyond { border-top: 1px dashed var(--rule); padding-top: 6px; }
   .m-meta { font-family: var(--font-data); font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 
   footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid var(--rule); padding-top: 14px; max-width: 80ch; }
@@ -123,7 +122,7 @@
   <header class="masthead">
     <p class="eyebrow">Riksdagen · Utbildningsutskottet (UbU) · Motions, sessions 1985/86–2025/26</p>
     <h1>Topics in education motions</h1>
-    <p class="lede" id="lede">An LDA model of the motions.</p>
+    <div class="lede" id="lede"></div>
   </header>
 
   <main class="grid" id="grid" aria-live="polite"></main>
@@ -249,7 +248,7 @@
     const head = document.createElement('header');
     head.className = 'topic-head';
     const h2 = document.createElement('h2');
-    h2.textContent = `Topic ${topic.num}`;
+    h2.textContent = topic.name || `Topic ${topic.num}`;
     const share = document.createElement('span');
     share.className = 'share';
     share.textContent = `share ${pct(topic.share)}`;
@@ -270,15 +269,15 @@
     mh.className = 'motions-head';
     mh.textContent = 'Top motions';
     const chip = document.createElement('span');
-    chip.className = 'chip' + (topic.partyCount >= 4 ? ' concentrated' : '');
-    chip.textContent = `${topic.partyName} ${topic.partyCount}/5`;
-    chip.title = `${topic.partyCount} of the top 5 motions have a first signatory from ${topic.partyName}`;
+    // Gold when at least 80% of the motions shown share the first signatory's party
+    chip.className = 'chip' + (topic.partyCount >= 0.8 * topic.partyOf ? ' concentrated' : '');
+    chip.textContent = `${topic.partyName} ${topic.partyCount}/${topic.partyOf}`;
+    chip.title = `${topic.partyCount} of the top ${topic.partyOf} motions have a first signatory from ${topic.partyName}`;
     mh.appendChild(chip);
     const ol = document.createElement('ol');
     ol.className = 'motions';
-    topic.motions.forEach((m, i) => {
+    topic.motions.forEach(m => {
       const li = document.createElement('li');
-      if (i === 5) li.className = 'beyond';
       const title = document.createElement('span');
       title.className = 'm-title';
       title.textContent = m.title || '(no title)';
@@ -304,7 +303,11 @@
 
   // Static text from the data
   document.getElementById('lede').innerHTML =
-    `A ${DATA.topics}-topic LDA model fitted on the body text of <strong>${DATA.motions.toLocaleString('en')} motions</strong>.`;
+    `<p><strong>Full-corpus model:</strong> gives an overall picture of the main themes during the entire 40-year period, ` +
+    `with <strong>${DATA.topics} topics</strong> created from the body text of all <strong>${DATA.motions.toLocaleString('en')} motions</strong>.</p>` +
+    `<p>Each word cloud shows the ${DATA.topicList[0].words.length} words most strongly associated with that topic.</p>` +
+    `<p>Since the topics and their words are created from the complete corpus, the same topics can be followed ` +
+    `to see whether their prominence rises or falls over time.</p>`;
   document.getElementById('footer').textContent =
     `Generated ${DATA.generated} by modeling/14_generate_topic_explorer.py from models/baseline_lda_${DATA.topics} ` +
     `(scikit-learn LDA, ${DATA.topics} topics). Motions per period: ` +

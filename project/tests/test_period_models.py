@@ -241,21 +241,26 @@ class TestPeriodExplorerChains(unittest.TestCase):
         self.assertGreater(links[0][0], 0.99)
         self.assertLess(links[1][0], period_explorer.CHAIN_COSINE)
 
-    def test_stability_only_used_for_the_same_model(self):
-        vocab = np.array([f'w{i}' for i in range(10)])
-        model = FakeModel([list(range(10, 0, -1)), list(range(1, 11))])
-        top = [' '.join(f'w{i}' for i in range(8)), ' '.join(f'w{i}' for i in range(9, 1, -1))]
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / 'stability.csv'
-            path.write_text('topic,found,compared,mean_cosine,min_cosine,mean_jaccard,top_words\n'
-                            f'1,4,4,0.9,0.8,0.5,{top[0]}\n2,1,4,0.5,0.3,0.2,{top[1]}\n', encoding='utf-8')
-            self.assertEqual(period_explorer.load_stability(path, model, vocab),
-                             {0: {'found': 4, 'of': 4}, 1: {'found': 1, 'of': 4}})
-            # Different top words: the CSV describes another model and is not used
-            other = FakeModel([list(range(1, 11)), list(range(10, 0, -1))])
-            self.assertIsNone(period_explorer.load_stability(path, other, vocab))
-            self.assertIsNone(period_explorer.load_stability(Path(tmp) / 'missing.csv', model, vocab))
 
 
 if __name__ == '__main__':
     unittest.main()
+
+
+
+class TestTopicNames(unittest.TestCase):
+    def test_name_shown_only_when_top_words_match(self):
+        top3 = {('1',): 'skola elev lärare', ('2',): 'forskning högskola universitet'}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'names.tsv'
+            path.write_text('# comment\n1\tskola elev lärare\tSkolan\n2\tforskning student högskola\tForskning\n',
+                            encoding='utf-8')
+            self.assertEqual(quiet(lda_common.load_topic_names, path, top3), {('1',): 'Skolan'})
+            self.assertEqual(quiet(lda_common.load_topic_names, Path(tmp) / 'missing.tsv', top3), {})
+
+    def test_period_names_keyed_by_period_and_topic(self):
+        top3 = {('1985-1994', '1'): 'skola elev lärare', ('1994-2006', '1'): 'skola elev lärare'}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'names.tsv'
+            path.write_text('1994-2006\t1\tskola elev lärare\tSkolan\n', encoding='utf-8')
+            self.assertEqual(quiet(lda_common.load_topic_names, path, top3), {('1994-2006', '1'): 'Skolan'})

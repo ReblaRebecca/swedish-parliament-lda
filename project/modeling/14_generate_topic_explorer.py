@@ -2,18 +2,18 @@
 """
 Generate the topic explorer: one self-contained HTML page with a word cloud per topic of the
 whole-corpus model (body text only), each topic's share overall and per period, its
-highest-loading motions, and the party concentration among its top 5 motions.
+highest-loading motions, and the party concentration among them.
 
 Reads the fitted model directly (not the CSV export), so the page always shows the model
 in models/.
 
-Input:  models/<BASELINE_MODEL_DIR>/, data/output/stopword_removed/
+Input:  models/<BASELINE_MODEL_DIR>/, data/output/stopword_removed/, config/topic_names_<k>.tsv
 Output: visualizations/topic_explorer.html (open in a browser; needs internet for the fonts)
 
 Definitions used on the page:
-- Word size: P(word | topic), square-root scaled, top 30 words, on one scale for all clouds (comparable between topics).
+- Word size: P(word | topic), square-root scaled, top 20 words, on one scale for all clouds (comparable between topics).
 - Share: mean topic proportion over the motions (every motion counts equally).
-- Party concentration: share of the topic's top 5 motions whose first signatory belongs to
+- Party concentration: share of the topic's top 10 motions (those shown) whose first signatory belongs to
   the most frequent party among them (parliamentary analogue of Gordon's author concentration).
   Renamed parties count as one party (FP = L, KDS = KD, VPK = V; see PARTIES).
 """
@@ -27,16 +27,16 @@ from pathlib import Path
 
 import numpy as np
 
-from lda_common import BASELINE_MODEL_DIR, NUM_TOPICS, load_baseline_vectorizer, load_body_texts, period_display
+from lda_common import BASELINE_MODEL_DIR, NUM_TOPICS, load_baseline_vectorizer, load_body_texts, load_topic_names, period_display
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from periods import PERIODS, period_key  # noqa: E402
 
 # Period keys in order ('1985-1994', ...); a motion's period is the file it is stored in
 PERIOD_KEYS = [period_key(stem) for stem, _, _ in PERIODS]
-TOP_WORDS = 30
-TOP_MOTIONS = 8
-CONCENTRATION_TOP = 5
+TOP_WORDS = 20
+TOP_MOTIONS = 10
+CONCENTRATION_TOP = TOP_MOTIONS
 
 # Party code in the data -> (party it is counted as, name at the time). Folkpartiet became Liberalerna
 # (2015), Kristen demokratisk samling became Kristdemokraterna (1996) and Vänsterpartiet kommunisterna
@@ -128,6 +128,7 @@ def model_data(lda, vocab, theta, metadata, parties):
             'party': party,
             'partyName': PARTY_NAMES.get(party, party),
             'partyCount': count,
+            'partyOf': len(motions[:CONCENTRATION_TOP]),
         })
     return topics
 
@@ -153,9 +154,15 @@ def main():
     print(f"Inferring topic proportions for {len(texts)} motions...")
     theta = lda.transform(vectorizer.transform(texts))
     theta = theta / theta.sum(axis=1, keepdims=True)
+    topic_list = model_data(lda, vocab, theta, metadata, parties)
+    top3 = {(str(t['num']),): ' '.join(w for w, _ in t['words'][:3]) for t in topic_list}
+    names = load_topic_names(PROJECT_ROOT / 'config' / f'topic_names_{NUM_TOPICS}.tsv', top3)
+    for t in topic_list:
+        t['name'] = names.get((str(t['num']),), '')
+    print(f"Topic names: {len(names)} of {len(topic_list)}")
     data = {
         'periods': [period_display(p) for p in PERIOD_KEYS],
-        'topicList': model_data(lda, vocab, theta, metadata, parties),
+        'topicList': topic_list,
         'motions': len(texts),
         'periodCounts': [sum(1 for m in metadata if m['period'] == p) for p in PERIOD_KEYS],
     }

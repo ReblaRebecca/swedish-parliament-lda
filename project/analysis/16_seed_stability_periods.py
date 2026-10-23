@@ -14,7 +14,7 @@ Runtime: 4 periods x 5 seeds = 20 fits per topic count; about 10 minutes at 8 to
 
 Usage: python analysis/16_seed_stability_periods.py [num_topics ...]   (default: PERIOD_TOPICS)
 Output: docs/reports/period_stability/PERIOD_<period>_<k>TOPICS.md (report),
-        results/period_stability/PERIOD_<period>_<k>TOPICS_PER_TOPIC.csv (used by 17_generate_period_explorer.py),
+        results/period_stability/PERIOD_<period>_<k>TOPICS_PER_TOPIC.csv,
         docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md
 """
 

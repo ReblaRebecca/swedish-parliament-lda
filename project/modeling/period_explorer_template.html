@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-  /* Layout: masthead, sticky control bar, then one card per chain; each card holds four word
+  /* Layout: masthead, then one card per chain; each card holds four word
      clouds, one per period, in a row that wraps to two columns on narrow screens. */
   :root {
     --paper: #f4f6f8;
@@ -77,8 +77,13 @@
   .masthead { display: grid; gap: 8px; }
   .eyebrow { font-family: var(--font-data); font-size: var(--step--1); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
   h1 { font-family: var(--font-display); font-weight: 700; font-size: var(--step-3); line-height: 1.1; text-wrap: balance; }
-  .lede { color: var(--muted); max-width: 72ch; }
+  .lede { color: var(--muted); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 32px; }
+  @media (max-width: 1100px) { .lede { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 760px) { .lede { grid-template-columns: minmax(0, 1fr); } }
   .lede strong { color: var(--ink); font-weight: 600; }
+  .lede ul { list-style: none; margin: 6px 0 0; padding: 0; font-variant-numeric: tabular-nums; }
+  .lede li { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--rule); padding: 3px 0; }
+  .lede li span:first-child { color: var(--ink); }
 
   .grid { display: grid; gap: 16px; }
   .chain {
@@ -100,13 +105,7 @@
   .break-note { flex-basis: 100%; font-family: var(--font-body); font-size: 0.75rem; color: var(--gold); }
   .cell-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-family: var(--font-data); font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .cell-head .period { color: var(--ink); font-weight: 500; letter-spacing: 0.04em; }
-  .link { font-family: var(--font-data); font-size: 0.75rem; font-variant-numeric: tabular-nums; color: var(--accent); }
-  .link.weak { color: var(--gold); }
-  .chip {
-    font-family: var(--font-data); font-size: 0.75rem; font-weight: 500;
-    padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--ink);
-  }
-  .chip.unstable { background: var(--gold-soft); box-shadow: inset 0 0 0 1px var(--gold); }
+  .cell-name { font-family: var(--font-display); font-weight: 600; font-size: 0.9375rem; line-height: 1.25; color: var(--ink); }
 
   .cloud { width: 100%; height: auto; display: block; }
   .cloud text { font-family: var(--font-display); font-weight: 500; }
@@ -120,7 +119,7 @@
   <header class="masthead">
     <p class="eyebrow">Riksdagen · Utbildningsutskottet (UbU) · Motions, sessions 1985/86–2025/26</p>
     <h1>Topics across periods</h1>
-    <p class="lede" id="lede">One LDA model per period, topics linked across periods.</p>
+    <div class="lede" id="lede"></div>
   </header>
 
   <main class="grid" id="grid" aria-live="polite"></main>
@@ -135,6 +134,8 @@
   const layoutCache = {};
 
   const pct = v => (v * 100).toFixed(1) + '%';
+  // Similarity with two decimals, or three when two would round across the chain criterion (0.498 is not 0.50)
+  const sim = c => ((c < DATA.chainCosine) === (+c.toFixed(2) < DATA.chainCosine) ? c.toFixed(2) : c.toFixed(3));
   const canvas = document.createElement('canvas').getContext('2d');
   function measure(text, size, weight) {
     canvas.font = `${weight} ${size}px "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif`;
@@ -225,31 +226,24 @@
     div.className = 'cell';
     const head = document.createElement('div');
     head.className = 'cell-head';
-    const share = span('', `T${cell.topic} · ${pct(cell.share)}`);
-    share.title = `Topic ${cell.topic} of this period's model; ${pct(cell.share)} of the period's motion content (all the period's topics add up to 100%)`;
+    const share = span('', pct(cell.share));
+    share.title = `${pct(cell.share)} of the period's motion content (all the period's topics add up to 100%); topic ${cell.topic} of this period's model`;
     head.append(span('period', DATA.periods[p]), share);
-    if (cell.stability) {
-      // High: found in every rerun; medium: all but one; low (gold): fewer
-      const { found, of } = cell.stability;
-      const level = found === of ? 'high' : (found === of - 1 ? 'medium' : 'low');
-      const chip = span('chip' + (level === 'low' ? ' unstable' : ''), `stability ${level} (${found}/${of})`);
-      chip.title = `Found again in ${cell.stability.found} of ${cell.stability.of} reruns with different random starting points`;
-      head.appendChild(chip);
-    }
     const strong = c => c !== undefined && c >= DATA.chainCosine;
     if (strong(row.links[p - 1]) || strong(row.links[p])) div.classList.add('joined');
-    if (p > 0) {
-      const c = row.links[p - 1];
-      const weak = c < DATA.chainCosine;
-      const link = span('link' + (weak ? ' weak' : ''), (weak ? '⋯ ' : '← ') + c.toFixed(2));
-      link.title = `Similarity with the matched topic of ${DATA.periods[p - 1]}` + (weak ? ' (weak link: uncertain match)' : '');
-      head.appendChild(link);
-      if (weak) {
-        div.classList.add('after-break');
-        head.appendChild(span('break-note', `Alignment uncertain: not linked to ${DATA.periods[p - 1]}`));
-      }
+    // A weak link to the previous period breaks the row; link values themselves are not shown
+    if (p > 0 && row.links[p - 1] < DATA.chainCosine) {
+      div.classList.add('after-break');
+      head.appendChild(span('break-note', `Alignment uncertain: not linked to ${DATA.periods[p - 1]}`));
     }
-    div.append(head, cloudSvg(cell, placed, persist));
+    div.appendChild(head);
+    if (cell.name) {
+      const name = document.createElement('p');
+      name.className = 'cell-name';
+      name.textContent = cell.name;
+      div.appendChild(name);
+    }
+    div.appendChild(cloudSvg(cell, placed, persist));
     return div;
   }
 
@@ -262,24 +256,9 @@
     const head = document.createElement('header');
     head.className = 'chain-head';
     const h2 = document.createElement('h2');
-    h2.textContent = `Chain ${row.row}`;
-    const weakest = Math.min(...row.links);
+    h2.textContent = row.name || `Chain ${row.row}`;
     const mean = meanLink(row);
-    const holds = mean >= DATA.chainCosine;
-    const verdict = span('chip' + (holds ? '' : ' unstable'), holds ? 'Continuous' : 'Not continuous');
-    verdict.title = `Average similarity of the three links ${mean.toFixed(2)}; continuous at ${DATA.chainCosine.toFixed(2)} or more (Gordon's criterion)`;
-    const weakLinks = row.links.filter(c => c < DATA.chainCosine).length;
-    // Continuous segments: runs of periods joined by links at or above the chain criterion
-    const segments = [[0]];
-    row.links.forEach((c, i) => c >= DATA.chainCosine ? segments[segments.length - 1].push(i + 1) : segments.push([i + 1]));
-    // Period names are sessions ('1985/86–1993/94'): a segment runs from its first period's first session to its last period's last
-    const span_ = seg => seg.length > 1 ? `${DATA.periods[seg[0]].split('–')[0]}–${DATA.periods[seg[seg.length - 1]].split('–').pop()}` : null;
-    const linked = segments.map(span_).filter(Boolean);
-    let summary;
-    if (!weakLinks) summary = 'All links are strong';
-    else if (!linked.length) summary = 'No link reaches ' + DATA.chainCosine.toFixed(2) + ': forced matches, not a continuous topic';
-    else summary = `${weakLinks} weak link${weakLinks > 1 ? 's' : ''}: strongly linked ${linked.join(' and ')} only`;
-    head.append(h2, verdict, span('meta', `Average similarity: ${mean.toFixed(2)} · Lowest similarity: ${weakest.toFixed(2)} · ${summary}`));
+    head.append(h2, span('meta', `Average similarity: ${sim(mean)}`));
     const periods = document.createElement('div');
     periods.className = 'periods';
     const persist = persistence(row);
@@ -298,10 +277,18 @@
 
   // Static text from the data
   const total = DATA.periodCounts.reduce((a, b) => a + b, 0);
+  const topN = DATA.rows[0].cells[0].words.length;
+  const bins = DATA.periods.map((p, i) => `<li><span>${p}</span><span>${DATA.periodCounts[i].toLocaleString('en')} motions</span></li>`).join('');
   document.getElementById('lede').innerHTML =
-    `One LDA model per period, fitted on the body text of <strong>${total.toLocaleString('en')} motions</strong> ` +
-    `each with its own vocabulary. Each row links a topic through the four periods; the four word clouds show it in each period. ` +
-    `<strong>${DATA.numTopics} topics per period</strong>.`;
+    `<div><p><strong>Period models:</strong> the body text of <strong>${total.toLocaleString('en')} motions</strong> is divided into ` +
+    `${DATA.periods.length} periods by electoral term.</p><ul>${bins}</ul></div>` +
+    `<p>New topics are created separately for each period, <strong>${DATA.numTopics} topics per period</strong>, each period with its own vocabulary. ` +
+    `Each word cloud shows the ${topN} words most strongly associated with that topic during that particular period.</p>` +
+    `<p>The percentage above each word cloud shows the topic’s average proportion across all motions in that period. ` +
+    `It is not the percentage of motions about the topic, since every motion can contain several topics; ` +
+    `the ${DATA.numTopics} topics of a period add up to 100%.</p>` +
+    `<p>Similar topics are then connected across periods, one row per chain, making it possible to see how their vocabulary ` +
+    `and meaning may have changed over time.</p>`;
   // Measure words only once the display font has loaded, so the layout matches what is drawn
   const fontsReady = document.fonts && document.fonts.load
     ? Promise.all([document.fonts.load('500 20px "Bricolage Grotesque"'), document.fonts.load('700 20px "Bricolage Grotesque"')]).catch(() => {})

@@ -13,14 +13,13 @@ Word colour shows persistence: in how many of the chain's periods the word is am
 TOP_WORDS words (computed on the page).
 
 Input:  models/period_lda_<k>/ (15_fit_period_lda.py: models and vectorizers), data/output/stopword_removed/,
-        results/period_stability/PERIOD_<period>_<k>TOPICS_PER_TOPIC.csv (16_seed_stability_periods.py; optional)
+        config/period_topic_names_<k>.tsv and config/chain_names_<k>.tsv (names; optional)
         (k = PERIOD_TOPICS)
 Output: visualizations/period_explorer.html (open in a browser; needs internet for the fonts)
 
 Usage: python modeling/17_generate_period_explorer.py
 """
 
-import csv
 import json
 import pickle
 import sys
@@ -28,7 +27,7 @@ from pathlib import Path
 
 import numpy as np
 
-from lda_common import PERIOD_TOPICS, load_period_body_texts, period_display
+from lda_common import PERIOD_TOPICS, load_period_body_texts, load_topic_names, period_display
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'analysis'))
 from topic_matching import match_and_evaluate  # noqa: E402
@@ -37,8 +36,6 @@ TOP_WORDS = 20
 # Gordon's chain criterion: a chain holds if the mean cosine of its links is at least this.
 # The page also marks each single link below it as weak.
 CHAIN_COSINE = 0.50
-# Top words compared with the stability CSV to make sure it describes the same model
-STABILITY_CHECK_WORDS = 8
 
 
 def build_chains(models, vocabs):
@@ -62,32 +59,15 @@ def build_chains(models, vocabs):
     return chains, links
 
 
-def load_stability(csv_path, lda, vocab):
-    """{topic index: found} from the per-topic stability CSV, or None if missing or for another model."""
-    if not csv_path.exists():
-        return None
-    with open(csv_path, encoding='utf-8') as f:
-        rows = list(csv.DictReader(f))
-    if len(rows) != lda.n_components:
-        return None
-    stability = {}
-    for k, row in enumerate(rows):
-        top = [vocab[i] for i in np.argsort(lda.components_[k])[::-1][:STABILITY_CHECK_WORDS]]
-        if row['top_words'].split() != top:
-            return None
-        stability[k] = {'found': int(row['found']), 'of': int(row['compared'])}
-    return stability
-
-
 def topic_words(lda, k, vocab):
     topic_word = lda.components_[k] / lda.components_[k].sum()
     return [[vocab[i], round(float(topic_word[i]), 5)] for i in np.argsort(topic_word)[::-1][:TOP_WORDS]]
 
 
-def model_set_data(num_topics, periods, model_dir, stability_dir):
-    """Chains, clouds, shares and stability for the period models with num_topics topics."""
+def model_set_data(num_topics, periods, model_dir, names_path=None, chain_names_path=None):
+    """Chains, clouds, shares and names for the period models with num_topics topics."""
     labels = list(periods)
-    models, vocabs, shares, stabilities = [], [], [], []
+    models, vocabs, shares = [], [], []
     for period in labels:
         with open(model_dir / f'period_{period}_lda.pkl', 'rb') as f:
             lda = pickle.load(f)
@@ -102,24 +82,30 @@ def model_set_data(num_topics, periods, model_dir, stability_dir):
         models.append(lda)
         vocabs.append(vocab)
         shares.append(theta.mean(axis=0))
-        stabilities.append(load_stability(stability_dir / f'PERIOD_{period}_{num_topics}TOPICS_PER_TOPIC.csv', lda, vocab))
 
     chains, links = build_chains(models, vocabs)
+    top3 = {(period, str(t + 1)): ' '.join(w for w, _ in topic_words(models[p], t, vocabs[p])[:3])
+            for p, period in enumerate(labels) for t in range(num_topics)}
+    names = load_topic_names(names_path, top3) if names_path else {}
+    print(f"Topic names: {len(names)} of {len(top3)}")
+    # A chain is identified by its topic numbers in the four periods
+    signatures = {(str(r + 1),): ' '.join(str(t + 1) for t in chain) for r, chain in enumerate(chains)}
+    chain_names = load_topic_names(chain_names_path, signatures) if chain_names_path else {}
+    print(f"Chain names: {len(chain_names)} of {len(signatures)}")
     rows = []
     for r, chain in enumerate(chains):
         cells = []
         for p, t in enumerate(chain):
-            stability = stabilities[p][t] if stabilities[p] else None
             cells.append({'topic': t + 1, 'words': topic_words(models[p], t, vocabs[p]),
-                          'share': round(float(shares[p][t]), 4), 'stability': stability})
-        rows.append({'row': r + 1, 'cells': cells, 'links': links[r]})
-    return {'rows': rows, 'stabilityAvailable': [s is not None for s in stabilities]}
+                          'share': round(float(shares[p][t]), 4),
+                          'name': names.get((labels[p], str(t + 1)), '')})
+        rows.append({'row': r + 1, 'cells': cells, 'links': links[r], 'name': chain_names.get((str(r + 1),), '')})
+    return {'rows': rows}
 
 
 def main():
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
     INPUT_DIR = PROJECT_ROOT / 'data' / 'output' / 'stopword_removed'
-    STABILITY_DIR = PROJECT_ROOT / 'results' / 'period_stability'
     TEMPLATE = Path(__file__).resolve().parent / 'period_explorer_template.html'
     OUTPUT = PROJECT_ROOT / 'visualizations' / 'period_explorer.html'
 
@@ -137,9 +123,9 @@ def main():
         print(f"Error: {model_dir} not found. Run: python modeling/15_fit_period_lda.py")
         sys.exit(1)
     print(f"{k} topics: inferring topic shares and matching adjacent periods...")
-    data.update(model_set_data(k, periods, model_dir, STABILITY_DIR))
-    if not all(data['stabilityAvailable']):
-        print("   ⚠️  seed stability missing or for another model in some periods (run 16_seed_stability_periods.py)")
+    data.update(model_set_data(k, periods, model_dir,
+                              PROJECT_ROOT / 'config' / f'period_topic_names_{k}.tsv',
+                              PROJECT_ROOT / 'config' / f'chain_names_{k}.tsv'))
 
     html = TEMPLATE.read_text(encoding='utf-8')
     assert html.count('__PERIOD_DATA__') == 1, 'template must contain the data placeholder once'

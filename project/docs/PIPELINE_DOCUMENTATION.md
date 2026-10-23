@@ -163,7 +163,7 @@ Hungarian-algorithm one-to-one matching between two models' topics on cosine sim
 | Script | Tests | Output |
 |---|---|---|
 | `analysis/09_test_lda_stability.py` | The whole-corpus model | `docs/reports/BASELINE_STABILITY_32TOPICS.md`, `results/BASELINE_STABILITY_32TOPICS_PER_TOPIC.csv` |
-| `analysis/16_seed_stability_periods.py [k ...]` | The period models (default 8; `8 11 15` reproduces the topic-count choice) | `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`; full report per period in `docs/reports/period_stability/`; per-topic CSV in `results/period_stability/` (read by the period explorer) |
+| `analysis/16_seed_stability_periods.py [k ...]` | The period models (default 8; `8 11 15` reproduces the topic-count choice) | `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`; full report per period in `docs/reports/period_stability/`; per-topic CSV in `results/period_stability/` |
 
 Both use the shared procedure in `analysis/seed_stability.py`: fit one model per seed (5 seeds), match every pair of models with the Hungarian algorithm (10 pairs), and compare matched topics by cosine (full distributions) and Jaccard (top 20 words).
 
@@ -257,22 +257,22 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 | Script | Reads | Writes |
 |---|---|---|
 | `modeling/08_display_lda_topics.py [model_dir]` | `models/baseline_lda_32/` | `results/32_TOPICS_FINAL.csv` (top 20 words per topic, as P(word \| topic)) |
-| `modeling/14_generate_topic_explorer.py` | `models/baseline_lda_32/`, `data/output/stopword_removed/`, template `modeling/topic_explorer_template.html` | `visualizations/topic_explorer.html` |
-| `modeling/17_generate_period_explorer.py` | `models/period_lda_8/` (models and vectorizers), `data/output/stopword_removed/`, the per-topic CSVs of 16, template `modeling/period_explorer_template.html` | `visualizations/period_explorer.html` |
+| `modeling/14_generate_topic_explorer.py` | `models/baseline_lda_32/`, `data/output/stopword_removed/`, `config/topic_names_32.tsv`, template `modeling/topic_explorer_template.html` | `visualizations/topic_explorer.html` |
+| `modeling/17_generate_period_explorer.py` | `models/period_lda_8/` (models and vectorizers), `data/output/stopword_removed/`, the per-topic CSVs of 16, `config/period_topic_names_8.tsv`, `config/chain_names_8.tsv`, template `modeling/period_explorer_template.html` | `visualizations/period_explorer.html` |
 
-Both pages are self-contained HTML (open in a browser; internet needed only for the fonts). Word weights are shown as P(word | topic). Topics have neutral names (Topic 1–32, T1–T8 per period), so they can be inspected without interpretive labels.
+Both pages are self-contained HTML (open in a browser; internet needed only for the fonts). Word weights are shown as P(word | topic). Topics have Swedish names, an interpretation of each topic's top words and top motions: `config/topic_names_32.tsv` for the whole-corpus model (*Restämne* marks residual topics: unrelated words held together by a few motions) and `config/period_topic_names_8.tsv` for the period models, one name per period topic (*Blandat* marks broad topics without one clear theme). A name is shown only if the topic's three most probable words still match the file (`load_topic_names()` in `lda_common.py`), so a refitted model gets no wrong names. Named topics and chains are shown without their numbers.
 
 ### Topic explorer (whole-corpus model)
-- **Per topic, two columns:** the word cloud (top 30 words) with the share-by-period chart under it on the left; the top 8 motions (session, party, id, θ) on the right; stacked on narrow screens. The heading gives the overall share; the party concentration among the top 5 motions is shown under “Top motions”, with a dashed rule after the fifth motion (gold when 4 or 5 share the first signatory's party; renamed parties count as one: FP = L, KDS = KD, VPK = V). Parties are shown by name: the chip under today's name, each motion under the name at the time
+- **Per topic, two columns:** the word cloud (top 20 words, as in the period explorer, the topic tables and the seed-stability comparison) with the share-by-period chart under it on the left; the top 10 motions (session, party, id, θ) on the right; stacked on narrow screens. The heading gives the overall share; the party concentration among these 10 motions is shown next to “Top motions” (gold when 8 or more share the first signatory's party; renamed parties count as one: FP = L, KDS = KD, VPK = V). Parties are shown by name: the chip under today's name, each motion under the name at the time
 - **Word size:** square root of P(word | topic), on **one scale for all clouds**, so sizes can be compared between topics; if a word does not fit, all clouds shrink together. A topic spread over many words has a smaller, sparser cloud. The tooltip gives the exact probability
 - **Order:** largest overall share first (topic numbers are arbitrary); no sorting or search controls and no explanation block on the page; this section describes what it shows
 
 ### Period explorer (period models)
 - **8 topics per period,** the chosen count
-- **Rows are chains.** The page has no explanation block; this section describes what it shows. Each period model has its own topics, so topic numbers do not correspond across periods. Topics of adjacent periods are matched one-to-one (Hungarian algorithm on cosine over the words both periods' vocabularies contain) and each row follows the matches from a topic of the first period to the last
-- **Chain holds (main criterion, Gordon's):** the heading says *Continuous* if the mean cosine of the chain's three links is at least 0.50, otherwise *Not continuous* (gold), with the mean (*Average similarity*) and the weakest link (*Lowest similarity*)
-- **Weak links (additional information):** a single link below 0.50 breaks the row: the accent bar over the clouds stops, a dashed gold rule separates the cells and the cell reads *Alignment uncertain*. The heading names the strongly linked segments, or says *forced matches, not a continuous topic* when no link reaches 0.50. A chain can hold on the mean and still have one weak link
-- **Per cloud:** the period, the topic's number in that period model, its share (mean θ over the period's motions), its seed stability from 16 (`stability high/medium/low (n/4)`: high 4/4, medium 3/4, low below 3 in gold; shown only if the stability CSV's top words match the model) and the cosine with the matched topic of the previous period
+- **Rows are chains.** The page has no explanation block; this section describes what it shows. Each period model has its own topics, so topic numbers do not correspond across periods. Topics of adjacent periods are matched one-to-one (Hungarian algorithm on cosine over the words both periods' vocabularies contain) and each row follows the matches from a topic of the first period to the last The chains have Swedish names from `config/chain_names_8.tsv`, shown only if the chain still consists of the same four topics
+- **Chain heading:** the chain's name (no chain number) and the mean of its three links (*Average similarity*; Gordon's criterion: the chain holds if it is at least 0.50); no continuity label, weakest link or link summary, since the weak links are visible in the row. The similarity has two decimals, or three where two would round across 0.50
+- **Weak links (additional information):** a single link below 0.50 breaks the row: the accent bar over the clouds stops, a dashed gold rule separates the cells and the cell reads *Alignment uncertain*. A chain can hold on the mean and still have one weak link
+- **Per cloud:** the period, the topic's name (its number in the period model only in the tooltip), its share in percent (mean θ over the period's motions; explained in the introduction). Seed stability is not shown on the page; it is reported in `docs/reports/period_stability/` and *Current Results*. The cosine of each link is not shown: a link is either strong or weak (below 0.50), and a weak one is marked in the row
 - **Word colour = persistence within the chain:** in how many of the chain's four periods the word is among the top 20 words (the words shown): dark blue all four, medium blue three, light blue two, grey one. With 8 topics, 15% of the words shown are in all four periods and 41% in only one. Bold marks the three most probable words of each cloud
 - **Word size:** square root of P(word | topic), on **one scale per chain**, so sizes can be compared across a chain's periods but not between chains; if a word does not fit, the chain's four clouds shrink together. The tooltip gives the exact probability
 - **Order:** strongest chain first (mean link, high to low, ties by the weakest link); no sorting or search controls
@@ -401,7 +401,7 @@ python analysis/check_pipeline_output.py
   - **Loading:** the periods together hold exactly the motions of the whole-corpus model, in the same order, with the same skip rule; each motion's metadata carries its session and period; periods are shown by their sessions
   - **Vocabulary per period:** each vocabulary holds exactly the words of its period that pass Gordon's limits (a word in 12 of 40 motions kept, in one dropped, in more than half dropped); a word of one period only is absent from the others; adjacent periods have different vocabularies and are matched over their shared words, and matching them without that step is an error
   - **Stability summary:** per-pair means, found-in-all/none and stable counts; one summary row per period and count
-  - **Period explorer chains:** rows follow the Hungarian matches between adjacent periods (shuffled identical topics are linked correctly), a link below the threshold is reported as weak, and the seed-stability CSV is used only if its top words match the model
+  - **Period explorer chains:** rows follow the Hungarian matches between adjacent periods (shuffled identical topics are linked correctly), and a link below the threshold is reported as weak
 - **`tests/test_topic_matching.py`** — Hungarian matching on synthetic topic matrices: identical models match with cosine 1, a known permutation is recovered, mismatched or reordered vocabularies and mismatched topic counts are rejected, summary statistics equal the per-topic values. **Permutation null:** a clear matching is far above the null (null mean 0.1 + 0.8/n for a diagonal of 0.9, as expected from one fixed point per random permutation), the matched mean uses the Hungarian matching, a matrix without structure gives z = 0, z and p follow the formula, results are reproducible with a seed. **Shared vocabulary:** the same topics in different vocabularies (other column order, extra words) match with cosine 1; weight on words outside the intersection does not change the cosine; vocabularies without common words are rejected
 - **`tests/test_seed_stability.py`** — the seed-stability tests and the shared LDA code:
   - **Text loading:** body text only, motions without body text skipped, malformed lines counted
@@ -451,7 +451,10 @@ project/
 │   └── test_corpus_statistics.py
 ├── config/
 │   ├── boilerplate_phrases.txt
-│   └── lemma_corrections.txt
+│   ├── lemma_corrections.txt
+│   ├── topic_names_32.tsv
+│   ├── period_topic_names_8.tsv
+│   └── chain_names_8.tsv
 ├── docs/                                  (in git)
 │   ├── PIPELINE_DOCUMENTATION.md          (this file: the current pipeline)
 │   ├── tables/                            (LaTeX tables for the report: preprocessing decisions with corpus size per step and the word lists; model-training decisions compared with Gordon; compile preprocessing_preview.tex or training_preview.tex)

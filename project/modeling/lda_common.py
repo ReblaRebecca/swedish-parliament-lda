@@ -164,3 +164,30 @@ def fit_lda_model(doc_term_matrix, num_topics=NUM_TOPICS, random_state=DEFAULT_S
     lda = LatentDirichletAllocation(n_components=num_topics, random_state=random_state, **LDA_PARAMS)
     lda.fit(doc_term_matrix)
     return lda
+
+
+def load_topic_names(path, top_words):
+    """Topic names from a tab-separated names file, for topics whose top three words still match.
+
+    Each line: the key columns (topic number, or period and topic number), the topic's three most
+    probable words, the name. top_words maps a key tuple of strings to the model's three words.
+    Chain names use the same format with the chain number as key and its topic numbers as words.
+    A name is an interpretation of one fitted model; after a refit the topics differ, so a name
+    whose words no longer match is left out (with a warning) rather than shown on the wrong topic.
+    Returns {key tuple: name}.
+    """
+    if not path.exists():
+        print(f"Note: {path} not found; topics are shown without names.")
+        return {}
+    names = {}
+    for line in path.read_text(encoding='utf-8').splitlines():
+        if not line.strip() or line.startswith('#'):
+            continue
+        *key, words, name = line.split('\t')
+        key = tuple(key)
+        if top_words.get(key) == words:
+            names[key] = name
+        else:
+            print(f"Warning: name '{name}' for {' '.join(key)} skipped: its words '{words}' "
+                  f"do not match the model ('{top_words.get(key)}')")
+    return names

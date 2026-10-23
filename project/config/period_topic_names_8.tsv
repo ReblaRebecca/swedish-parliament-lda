@@ -1,0 +1,39 @@
+# Swedish names for the topics of the period models (models/period_lda_8), used by
+# modeling/17_generate_period_explorer.py. Names are an interpretation of the top words and the
+# top motions of each period's topic. "Blandat" marks broad topics without one clear theme.
+#
+# Format: period, topic number, its three most probable words, name (tab-separated). The
+# generator shows a name only if the three words still match the model, so a refitted model
+# with other topics gets no wrong names.
+1985-1994	1	forskning universitet område	Forskningsområden och forskningsinstitutioner
+1985-1994	2	högskola län utveckling	Regional högskoleutbyggnad
+1985-1994	3	ämne gymnasieskola elev	Skolämnen och språkundervisning
+1985-1994	4	barn hälsa kunskap	Blandat: hälsa, vård och hälsoämnen
+1985-1994	5	skola elev barn	Grundskolan, betyg och arbetsmiljö
+1985-1994	6	kommun skola gymnasieskola	Kommunal skola, vuxenutbildning och statsbidrag
+1985-1994	7	högskola forskning universitet	Högskolans organisation och forskarutbildning
+1985-1994	8	universitet anslag förslag	Högskoleanslag och utbildningslinjer
+1994-2006	1	student högskola studie	Studiestöd och vuxenstudier
+1994-2006	2	barn mobbning elev	Mobbning, hälsa och idrott
+1994-2006	3	högskola universitet forskning	Forskningsanslag till högskolor
+1994-2006	4	barn förskola förälder	Förskola, särskola och funktionshinder
+1994-2006	5	forskning högskola universitet	Forskningspolitik och EU
+1994-2006	6	högskola land utveckling	Högskolor, regioner och näringsliv
+1994-2006	7	elev lärare gymnasieskola	Betyg, gymnasieskola och lärare
+1994-2006	8	kommun fristående elev	Fristående skolor och tillsyn
+2006-2014	1	kunskap undervisning samhälle	Jämställdhet, sex och samlevnad och hbtq
+2006-2014	2	barn förskola förälder	Förskola och fritidshem
+2006-2014	3	forskning svensk läkare	Medicinsk forskning och vård
+2006-2014	4	arbetsmarknad gymnasieskola kunskap	Vuxenutbildning, gymnasieskola och arbetsmarknad
+2006-2014	5	elev lärare kunskap	Undervisning, nationella prov och stöd
+2006-2014	6	kommun elev fristående	Fristående skolor och skolskjuts
+2006-2014	7	högskola universitet hög	Högskolor, regioner och näringsliv
+2006-2014	8	student högskola universitet	Studentkårer och studiemedel
+2014-2026	1	kommun friskola svensk	Friskolor, valfrihet och konfessionella skolor
+2014-2026	2	lärare undervisning svensk	Lärare, kvalitet och statligt ansvar
+2014-2026	3	barn förskola förälder	Barnomsorg och förskola
+2014-2026	4	forskning högskola universitet	Forskning och högskoleanslag
+2014-2026	5	barn ung stöd	Ungas psykiska hälsa, mobbning och elevhälsa
+2014-2026	6	svensk kunskap ämne	Blandat: idrott, kultur och läroplanens innehåll
+2014-2026	7	student hög studie	Studiestöd och fribelopp
+2014-2026	8	arbetsmarknad företag ung	Arbetsmarknad, yrkesutbildning och entreprenörskap
