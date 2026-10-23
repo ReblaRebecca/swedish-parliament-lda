@@ -74,26 +74,6 @@
   .lede { color: var(--muted); max-width: 65ch; }
   .lede strong { color: var(--ink); font-weight: 600; }
 
-  .controls {
-    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
-    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
-    background: var(--paper); border-bottom: 1px solid var(--rule);
-    padding-block: 12px;
-  }
-  .field { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9375rem; color: var(--muted); }
-  .field select, .field input {
-    font: inherit; color: var(--ink); background: var(--surface);
-    border: 1px solid var(--rule); border-radius: 8px; padding: 6px 10px;
-  }
-  .field input { width: 13rem; max-width: 100%; }
-  .field select:focus-visible, .field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .hint { flex-basis: 100%; font-size: var(--step--1); color: var(--muted); margin-top: -6px; }
-  .count { margin-left: auto; font-family: var(--font-data); font-size: var(--step--1); color: var(--muted); font-variant-numeric: tabular-nums; }
-
-  .howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 28px; color: var(--muted); font-size: 0.9375rem; }
-  .howto dt { font-weight: 600; color: var(--ink); }
-  .howto dd { margin: 0; }
-
   .grid { display: grid; gap: 16px; }
   .topic {
     background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
@@ -118,7 +98,6 @@
   .cloud .w1 { fill: var(--accent); font-weight: 700; }
   .cloud .w2 { fill: var(--word-mid); }
   .cloud .w3 { fill: var(--word-low); }
-  .cloud .hl { fill: var(--gold); }
 
   .periods figcaption, .motions-head { font-family: var(--font-data); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
   .periods svg { width: 100%; max-width: 320px; height: auto; display: block; }
@@ -137,7 +116,6 @@
   .motions li.beyond { border-top: 1px dashed var(--rule); padding-top: 6px; }
   .m-meta { font-family: var(--font-data); font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 
-  .empty { color: var(--muted); padding: 24px 0; }
   footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid var(--rule); padding-top: 14px; max-width: 80ch; }
 </style>
 
@@ -148,31 +126,6 @@
     <p class="lede" id="lede">An LDA model of the motions.</p>
   </header>
 
-  <div class="controls" role="group" aria-label="Display options">
-    <label class="field" for="sort">Sort
-      <select id="sort">
-        <option value="share" selected>Overall share (largest first)</option>
-        <option value="num">Topic number</option>
-        <option value="rise">Rise (last vs first period)</option>
-        <option value="fall">Fall (last vs first period)</option>
-        <option value="party">Party concentration</option>
-      </select>
-    </label>
-    <label class="field" for="search">Find word
-      <input type="search" id="search" placeholder="e.g. förskola" autocomplete="off" spellcheck="false" aria-describedby="search-hint">
-    </label>
-    <span class="count" id="count" aria-live="polite"></span>
-    <p class="hint" id="search-hint">Searches only the top words shown in each cloud, also as part of longer words.</p>
-  </div>
-
-  <dl class="howto">
-    <div><dt>Word size</dt><dd>Larger words are more important within the topic. The 30 most probable words are shown, using the same scale for all topics. Hover to see the exact probability.</dd></div>
-    <div><dt>Share</dt><dd>The topic’s average proportion of the motions’ content. Each motion can contain several topics, and all topic shares add up to 100%.</dd></div>
-    <div><dt>Share by period</dt><dd>The topic’s average share in each period. Compare the percentages rather than bar heights, since each chart uses its own scale.</dd></div>
-    <div><dt>Party concentration</dt><dd>Shows how many of the five most representative motions have a first signatory from the same party. Gold indicates four or five. Parties that changed names are grouped together.</dd></div>
-    <div><dt>Top motions</dt><dd>The motions with the highest proportion θ of this topic (θ 0.79: 79% of the motion is assigned to the topic), with session, the first signatory's party under its name at the time, and document id.</dd></div>
-  </dl>
-
   <main class="grid" id="grid" aria-live="polite"></main>
 
   <footer id="footer"></footer>
@@ -182,9 +135,6 @@
 <script>
 (function () {
   const grid = document.getElementById('grid');
-  const sortSelect = document.getElementById('sort');
-  const searchInput = document.getElementById('search');
-  const count = document.getElementById('count');
   const W = 560, H = 300;
   const layoutCache = {};
 
@@ -244,15 +194,14 @@
     return el;
   }
 
-  function cloudSvg(topic, modelKey, query) {
+  function cloudSvg(topic, modelKey) {
     if (!layoutCache[modelKey]) layoutCache[modelKey] = layoutAll(DATA.topicList);
     const svg = svgEl('svg', { class: 'cloud', viewBox: `0 0 ${W} ${H}`, role: 'img',
       'aria-label': 'Word cloud: ' + topic.words.slice(0, 10).map(w => w[0]).join(', ') });
     for (const w of layoutCache[modelKey][topic.num]) {
       const tier = w.rank < 3 ? 'w1' : (w.rank < 12 ? 'w2' : 'w3');
-      const hl = query && w.text.includes(query) ? ' hl' : '';
       const t = svgEl('text', { x: (w.x + w.w / 2).toFixed(1), y: (w.y + w.h / 2).toFixed(1),
-        'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': w.size.toFixed(1), class: tier + hl });
+        'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': w.size.toFixed(1), class: tier });
       t.textContent = w.text;
       const tip = svgEl('title', {});
       tip.textContent = `${w.text}: ${(w.p * 100).toFixed(2)}%`;
@@ -292,7 +241,7 @@
     return svg;
   }
 
-  function card(topic, modelKey, query) {
+  function card(topic, modelKey) {
     const art = document.createElement('article');
     art.className = 'topic';
     art.id = `topic-${modelKey}-${topic.num}`;
@@ -341,55 +290,26 @@
     });
     const motions = document.createElement('div');
     motions.append(mh, ol);
-    left.append(cloudSvg(topic, modelKey, query), fig);
+    left.append(cloudSvg(topic, modelKey), fig);
     body.append(left, motions);
     art.append(head, body);
     return art;
   }
 
+  // Largest overall share first
   function render() {
-    const modelKey = 'model';
-    const query = searchInput.value.trim().toLowerCase();
-    let topics = DATA.topicList.slice();
-    const change = t => t.periods[t.periods.length - 1] - t.periods[0];
-    const sorters = {
-      num: (a, b) => a.num - b.num,
-      share: (a, b) => b.share - a.share,
-      rise: (a, b) => change(b) - change(a),
-      fall: (a, b) => change(a) - change(b),
-      party: (a, b) => b.partyCount - a.partyCount || b.share - a.share,
-    };
-    topics.sort(sorters[sortSelect.value] || sorters.share);
-    if (query) topics = topics.filter(t => t.words.some(w => w[0].includes(query)));
-
-    grid.replaceChildren(...topics.map(t => card(t, modelKey, query)));
-    if (!topics.length) {
-      const p = document.createElement('p');
-      p.className = 'empty';
-      p.textContent = `No topic has “${query}” among its top ${DATA.topicList[0].words.length} words. ` +
-        'This does not mean the word is absent from the topics, only that it is not among the words shown.';
-      grid.appendChild(p);
-    }
-    count.textContent = query ? `${topics.length} of ${DATA.topicList.length} topics with “${query}” in the top ${DATA.topicList[0].words.length}` : `${DATA.topicList.length} topics`;
+    const topics = DATA.topicList.slice().sort((a, b) => b.share - a.share);
+    grid.replaceChildren(...topics.map(t => card(t, 'model')));
   }
 
   // Static text from the data
   document.getElementById('lede').innerHTML =
     `A ${DATA.topics}-topic LDA model fitted on the body text of <strong>${DATA.motions.toLocaleString('en')} motions</strong>.`;
-  const topN = DATA.topicList[0].words.length;
-  document.getElementById('search-hint').innerHTML =
-    `Searches only the top ${topN} words shown in each cloud, also as part of longer words (<em>skola</em> finds <em>gymnasieskola</em>). ` +
-    'A word that is not found can still have some probability in the topic; it is just not among the top words.';
   document.getElementById('footer').textContent =
     `Generated ${DATA.generated} by modeling/14_generate_topic_explorer.py from models/baseline_lda_${DATA.topics} ` +
     `(scikit-learn LDA, ${DATA.topics} topics). Motions per period: ` +
     DATA.periods.map((p, i) => `${p} ${DATA.periodCounts[i].toLocaleString('en')}`).join(', ') + '. ' +
     'Topic numbers are arbitrary: a model fitted with another seed numbers its topics differently.';
-
-
-  sortSelect.addEventListener('change', render);
-  let timer;
-  searchInput.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(render, 150); });
 
   // Measure words only once the display font has loaded, so the layout matches what is drawn
   const fontsReady = document.fonts && document.fonts.load

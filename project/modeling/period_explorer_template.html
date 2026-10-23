@@ -80,26 +80,6 @@
   .lede { color: var(--muted); max-width: 72ch; }
   .lede strong { color: var(--ink); font-weight: 600; }
 
-  .controls {
-    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
-    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
-    background: var(--paper); border-bottom: 1px solid var(--rule);
-    padding-block: 12px;
-  }
-  .field { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9375rem; color: var(--muted); }
-  .field select, .field input {
-    font: inherit; color: var(--ink); background: var(--surface);
-    border: 1px solid var(--rule); border-radius: 8px; padding: 6px 10px;
-  }
-  .field input { width: 13rem; max-width: 100%; }
-  .field select:focus-visible, .field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .hint { flex-basis: 100%; font-size: var(--step--1); color: var(--muted); margin-top: -6px; }
-  .count { margin-left: auto; font-family: var(--font-data); font-size: var(--step--1); color: var(--muted); font-variant-numeric: tabular-nums; }
-
-  .howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 28px; color: var(--muted); font-size: 0.9375rem; }
-  .howto dt { font-weight: 600; color: var(--ink); }
-  .howto dd { margin: 0; }
-
   .grid { display: grid; gap: 16px; }
   .chain {
     background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
@@ -134,12 +114,6 @@
   .cloud .p3 { fill: var(--persist-3); }
   .cloud .p2 { fill: var(--persist-2); }
   .cloud .p1 { fill: var(--persist-1); }
-  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-  .cloud .hl { fill: var(--gold); }
-
-  .empty { color: var(--muted); padding: 24px 0; }
 </style>
 
 <div class="page">
@@ -149,41 +123,6 @@
     <p class="lede" id="lede">One LDA model per period, topics linked across periods.</p>
   </header>
 
-  <div class="controls" role="group" aria-label="Display options">
-    <label class="field" for="sort">Sort
-      <select id="sort">
-        <option value="strong" selected>Strongest chain first (average similarity)</option>
-        <option value="row">Chain number</option>
-        <option value="weak">Weakest link first</option>
-        <option value="rise">Rise in share (all links strong only)</option>
-        <option value="fall">Fall in share (all links strong only)</option>
-      </select>
-    </label>
-    <label class="field" for="search">Find word
-      <input type="search" id="search" placeholder="e.g. förskola" autocomplete="off" spellcheck="false" aria-describedby="search-hint">
-    </label>
-    <span class="count" id="count" aria-live="polite"></span>
-    <p class="hint" id="search-hint">Searches only the top words shown in each cloud, also as part of longer words (<em>skola</em> finds <em>gymnasieskola</em>). A word that is not found can still have some probability in the topic; it is just not among the top words.</p>
-  </div>
-
-  <dl class="howto">
-    <div><dt>Rows are topic chains</dt><dd>Each row follows a possible topic through the four periods. Topics in neighbouring periods are matched according to how similar their vocabularies are.</dd></div>
-    <div><dt>Chain continuity</dt><dd>A chain is considered continuous when its average similarity is at least 0.50. Chains below this value are marked in gold.</dd></div>
-    <div><dt>Link similarity</dt><dd>The number between two periods shows how similar the matched topics are. A value below 0.50 indicates an uncertain match and is marked in gold. Because every topic must be matched, weak links may connect topics that are not meaningfully related.</dd></div>
-    <div><dt>Topic share</dt><dd>The percentage shows the topic’s average proportion across all motions in that period. It does not show the percentage of motions assigned to the topic, since every motion can contain several topics. The topic shares within each period add up to 100%.</dd>
-      <dd>Changes between the first and last periods are only calculated when every link in the chain reaches 0.50.</dd></div>
-    <div><dt>Word size</dt><dd>Larger words have a higher probability within the topic. Word sizes can be compared between periods in the same chain, but not between different chains.</dd></div>
-    <div><dt>Word colour</dt><dd>Colour shows in how many periods the word appears among the topic’s 20 most probable words:</dd>
-      <dd class="legend">
-        <span><i style="background: var(--persist-4)"></i>all four periods</span>
-        <span><i style="background: var(--persist-3)"></i>three periods</span>
-        <span><i style="background: var(--persist-2)"></i>two periods</span>
-        <span><i style="background: var(--persist-1)"></i>one period</span>
-      </dd></div>
-    <div><dt>Stability</dt><dd>The stability label shows how often the topic was found again when the model was rerun four times with different random starting points. Gold indicates that it appeared in fewer than three runs.</dd>
-      <dd><strong>High:</strong> found in all four runs · <strong>Medium:</strong> three runs · <strong>Low</strong> (gold): two or fewer.</dd></div>
-  </dl>
-
   <main class="grid" id="grid" aria-live="polite"></main>
 
 </div>
@@ -192,9 +131,6 @@
 <script>
 (function () {
   const grid = document.getElementById('grid');
-  const sortSelect = document.getElementById('sort');
-  const searchInput = document.getElementById('search');
-  const count = document.getElementById('count');
   const W = 320, H = 210;
   const layoutCache = {};
 
@@ -261,14 +197,13 @@
     return n;
   }
 
-  function cloudSvg(cell, placed, query, persist) {
+  function cloudSvg(cell, placed, persist) {
     const svg = svgEl('svg', { class: 'cloud', viewBox: `0 0 ${W} ${H}`, role: 'img',
       'aria-label': 'Word cloud: ' + cell.words.slice(0, 10).map(w => w[0]).join(', ') });
     for (const w of placed) {
       const n = persist[w.text];
-      const hl = query && w.text.includes(query) ? ' hl' : '';
       const t = svgEl('text', { x: (w.x + w.w / 2).toFixed(1), y: (w.y + w.h / 2).toFixed(1),
-        'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': w.size.toFixed(1), class: 'p' + n + hl });
+        'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': w.size.toFixed(1), class: 'p' + n });
       t.textContent = w.text;
       const tip = svgEl('title', {});
       tip.textContent = `${w.text}: ${(w.p * 100).toFixed(2)}% · top words in ${n} of ${DATA.periods.length} periods`;
@@ -285,7 +220,7 @@
     return s;
   }
 
-  function cellEl(cell, p, row, placed, query, persist) {
+  function cellEl(cell, p, row, placed, persist) {
     const div = document.createElement('div');
     div.className = 'cell';
     const head = document.createElement('div');
@@ -314,15 +249,14 @@
         head.appendChild(span('break-note', `Alignment uncertain: not linked to ${DATA.periods[p - 1]}`));
       }
     }
-    div.append(head, cloudSvg(cell, placed, query, persist));
+    div.append(head, cloudSvg(cell, placed, persist));
     return div;
   }
 
-  // Gordon's chain criterion is the mean of the links; rise and fall use the stricter every-link test
+  // Gordon's chain criterion is the mean of the links
   const meanLink = row => row.links.reduce((a, b) => a + b, 0) / row.links.length;
-  const linkedThrough = row => row.links.every(c => c >= DATA.chainCosine);
 
-  function card(row, query, showChange) {
+  function card(row) {
     const art = document.createElement('article');
     art.className = 'chain';
     const head = document.createElement('header');
@@ -346,54 +280,20 @@
     else if (!linked.length) summary = 'No link reaches ' + DATA.chainCosine.toFixed(2) + ': forced matches, not a continuous topic';
     else summary = `${weakLinks} weak link${weakLinks > 1 ? 's' : ''}: strongly linked ${linked.join(' and ')} only`;
     head.append(h2, verdict, span('meta', `Average similarity: ${mean.toFixed(2)} · Lowest similarity: ${weakest.toFixed(2)} · ${summary}`));
-    if (showChange) {
-      const first = row.cells[0].share, last = row.cells[row.cells.length - 1].share;
-      head.appendChild(span('meta', linkedThrough(row)
-        ? `share ${pct(first)} → ${pct(last)} (${last >= first ? '+' : '−'}${(Math.abs(last - first) * 100).toFixed(1)} points)`
-        : 'no change calculated: a weak link in the chain'));
-    }
     const periods = document.createElement('div');
     periods.className = 'periods';
     const persist = persistence(row);
     if (!layoutCache[row.row]) layoutCache[row.row] = layoutChain(row);
-    row.cells.forEach((cell, p) => periods.appendChild(cellEl(cell, p, row, layoutCache[row.row][p], query, persist)));
+    row.cells.forEach((cell, p) => periods.appendChild(cellEl(cell, p, row, layoutCache[row.row][p], persist)));
     art.append(head, periods);
     return art;
   }
 
+  // Strongest chain first: by mean link, then by weakest link
   function render() {
-    const set = DATA;
-    const query = searchInput.value.trim().toLowerCase();
-    let rows = set.rows.slice();
     const weakest = r => Math.min(...r.links);
-    // Rise and fall only for chains linked through all periods; broken chains (change null) go last
-    const change = r => linkedThrough(r) ? r.cells[r.cells.length - 1].share - r.cells[0].share : null;
-    const byChange = sign => (a, b) => {
-      const ca = change(a), cb = change(b);
-      if (ca === null || cb === null) return (ca === null) - (cb === null) || a.row - b.row;
-      return sign * (cb - ca);
-    };
-    const sorters = {
-      row: (a, b) => a.row - b.row,
-      strong: (a, b) => meanLink(b) - meanLink(a) || weakest(b) - weakest(a),
-      weak: (a, b) => weakest(a) - weakest(b),
-      rise: byChange(1),
-      fall: byChange(-1),
-    };
-    rows.sort(sorters[sortSelect.value] || sorters.strong);
-    if (query) rows = rows.filter(r => r.cells.some(c => c.words.some(w => w[0].includes(query))));
-
-    const showChange = sortSelect.value === 'rise' || sortSelect.value === 'fall';
-    grid.replaceChildren(...rows.map(r => card(r, query, showChange)));
-    if (!rows.length) {
-      const p = document.createElement('p');
-      p.className = 'empty';
-      p.textContent = `No chain has “${query}” among the top ${set.rows[0].cells[0].words.length} words of any period. ` +
-        'This does not mean the word is absent from the topics, only that it is not among the words shown.';
-      grid.appendChild(p);
-    }
-    const topN = set.rows[0].cells[0].words.length;
-    count.textContent = query ? `${rows.length} of ${set.rows.length} chains with “${query}” in the top ${topN}` : `${set.rows.length} chains`;
+    const rows = DATA.rows.slice().sort((a, b) => meanLink(b) - meanLink(a) || weakest(b) - weakest(a));
+    grid.replaceChildren(...rows.map(card));
   }
 
   // Static text from the data
@@ -402,15 +302,6 @@
     `One LDA model per period, fitted on the body text of <strong>${total.toLocaleString('en')} motions</strong> ` +
     `each with its own vocabulary. Each row links a topic through the four periods; the four word clouds show it in each period. ` +
     `<strong>${DATA.numTopics} topics per period</strong>.`;
-  const topN = DATA.rows[0].cells[0].words.length;
-  document.getElementById('search-hint').innerHTML =
-    `Searches only the top ${topN} words shown in each cloud, also as part of longer words (<em>skola</em> finds <em>gymnasieskola</em>). ` +
-    'A word that is not found can still have some probability in the topic; it is just not among the top words.';
-
-  sortSelect.addEventListener('change', render);
-  let timer;
-  searchInput.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(render, 150); });
-
   // Measure words only once the display font has loaded, so the layout matches what is drawn
   const fontsReady = document.fonts && document.fonts.load
     ? Promise.all([document.fonts.load('500 20px "Bricolage Grotesque"'), document.fonts.load('700 20px "Bricolage Grotesque"')]).catch(() => {})
