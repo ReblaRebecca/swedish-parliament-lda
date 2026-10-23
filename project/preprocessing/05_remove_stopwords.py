@@ -38,7 +38,7 @@ def get_swedish_stopwords():
     # Add Swedish general words missing from NLTK
     # Parliamentary document abbreviations (metadata).
     # Not listed, because they are education-policy content: fn (FN), eg (EG), ky (kvalificerad
-    # yrkesutbildning), ib (International Baccalaureate); see docs/MODEL_REVIEW.md
+    # yrkesutbildning), ib (International Baccalaureate)
     supplementary_stops = {'ub', 'dvs', 'etc', 'osv', 'resp', 'ca', 'frn', 'et', 'ds', 'qz', 'iq', 'uö', 'of', 'mr', 'ar'}
     # Spatial/directional words (structural, not content) - NOTE: many duplicated with boilerplate
     # Auxiliary verbs
@@ -58,8 +58,6 @@ def get_swedish_stopwords():
     # More filler words and generic discourse markers (some in boilerplate)
     supplementary_stops.update({'trots', 'hela', 'komma', 'flera', 'första', 'flesta', 'själva', 'heller', 'bland', 'exempel', 'såväl', 'kring', 'även', 'mycket'})
     # Short generic words: 'te' (te sig, appear), 'ut' (out).
-    # The former extraction-fragment stopwords ('tt', 'rn', 'ngd', ...) are no longer needed since the
-    # extraction fix (almost all occur in 0-6 motions); several were real abbreviations (docs/MODEL_REVIEW.md)
     supplementary_stops.update({'te', 'ut'})
     # Lemma forms of the inflected stop words above, as produced by Stanza (text is lemmatized in step 2)
     supplementary_stops.update({'behöva', 'vilja', 'kunna', 'visa', 'hålla', 'sätta', 'gå', 'röra', 'ny', 'stor', 'olik', 'hel', 'mången'})

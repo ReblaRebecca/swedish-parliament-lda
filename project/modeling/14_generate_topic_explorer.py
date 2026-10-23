@@ -5,7 +5,7 @@ whole-corpus model (body text only), each topic's share overall and per period, 
 highest-loading motions, and the party concentration among its top 5 motions.
 
 Reads the fitted model directly (not the CSV export), so the page always shows the model
-in models/. Replaces the earlier word cloud scripts and their template.
+in models/.
 
 Input:  models/<BASELINE_MODEL_DIR>/, data/output/stopword_removed/
 Output: visualizations/topic_explorer.html (open in a browser; needs internet for the fonts)

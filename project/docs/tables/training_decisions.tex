@@ -44,8 +44,7 @@ Representation & Word counts per motion (bag of words); word order is ignored & 
 \hline
 Vocabulary, whole-corpus model & Words in $\geq 10$ and $\leq 50\%$ of motions, no cap: 15,962 words, 87.8\% of the
   words of the final text & Motivated & The same rule as the period models, so the two designs differ only in the time split
-  and the number of topics. Replaced (2026-10-23) a minimum of 5 motions with a cap at the 10,000 most frequent words,
-  inherited from the first scripts and never justified. & Words in $\geq 10$ and $\leq 50\%$ of documents, no cap. \\
+  and the number of topics. & Words in $\geq 10$ and $\leq 50\%$ of documents, no cap. \\
 \hline
 Vocabulary, period models & Own vocabulary per period: words in $\geq 10$ and $\leq 50\%$ of the period's motions, no
   cap: 7,302 / 7,981 / 4,926 / 6,876 words & Gordon & Each period model is built on its own most relevant words.
@@ -102,7 +101,7 @@ Counts tested & 8, 11 and 15 topics per period & Motivated & A small range withi
 Selection rule & The highest count at which at least half of the topics are stable (section 5) in every period & Motivated &
   8 topics: 21 of 32 stable (66\%); 11: 20 of 44 (45\%); 15: 25 of 60 (42\%). The number of stable topics per period is
   about the same at every count (4--9), so more topics mainly add seed-dependent ones. The margin is small: periods 1
-  and 4 are exactly at half. The test used the earlier global vocabulary; with the per-period vocabularies the 8-topic
+  and 4 are exactly at half. The test used one global vocabulary for all periods; with the per-period vocabularies the 8-topic
   models are as stable (21 of 32), and 11 and 15 were not re-tested. & Not chosen by stability. \\
 \hline
 Period models & 8 topics per period & Motivated & The result of the selection rule. & 15 per bin. \\
