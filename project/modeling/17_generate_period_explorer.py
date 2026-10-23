@@ -24,7 +24,6 @@ import csv
 import json
 import pickle
 import sys
-from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -131,7 +130,6 @@ def main():
         'periodCounts': [len(texts) for texts, _ in periods.values()],
         'chainCosine': CHAIN_COSINE,
         'numTopics': PERIOD_TOPICS,
-        'generated': date.today().isoformat(),
     }
     k = PERIOD_TOPICS
     model_dir = PROJECT_ROOT / 'models' / f'period_lda_{k}'

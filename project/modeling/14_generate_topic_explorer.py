@@ -15,6 +15,7 @@ Definitions used on the page:
 - Share: mean topic proportion over the motions (every motion counts equally).
 - Party concentration: share of the topic's top 5 motions whose first signatory belongs to
   the most frequent party among them (parliamentary analogue of Gordon's author concentration).
+  Renamed parties count as one party (FP = L, KDS = KD, VPK = V; see PARTIES).
 """
 
 import json
@@ -36,6 +37,51 @@ PERIOD_KEYS = [period_key(stem) for stem, _, _ in PERIODS]
 TOP_WORDS = 30
 TOP_MOTIONS = 8
 CONCENTRATION_TOP = 5
+
+# Party code in the data -> (party it is counted as, name at the time). Folkpartiet became Liberalerna
+# (2015), Kristen demokratisk samling became Kristdemokraterna (1996) and Vänsterpartiet kommunisterna
+# became Vänsterpartiet (1990): the same parties, so the party concentration counts them together.
+PARTIES = {
+    'S': ('S', 'Socialdemokraterna'),
+    'M': ('M', 'Moderaterna'),
+    'C': ('C', 'Centerpartiet'),
+    'FP': ('L', 'Folkpartiet'),
+    'L': ('L', 'Liberalerna'),
+    'KDS': ('KD', 'Kristen demokratisk samling'),
+    'KD': ('KD', 'Kristdemokraterna'),
+    'VPK': ('V', 'Vänsterpartiet kommunisterna'),
+    'V': ('V', 'Vänsterpartiet'),
+    'MP': ('MP', 'Miljöpartiet'),
+    'SD': ('SD', 'Sverigedemokraterna'),
+    'NYD': ('NYD', 'Ny demokrati'),
+}
+# Name of each party as counted, with its earlier names
+PARTY_NAMES = {
+    'S': 'Socialdemokraterna',
+    'M': 'Moderaterna',
+    'C': 'Centerpartiet',
+    'L': 'Liberalerna/Folkpartiet',
+    'KD': 'Kristdemokraterna/KDS',
+    'V': 'Vänsterpartiet/VPK',
+    'MP': 'Miljöpartiet',
+    'SD': 'Sverigedemokraterna',
+    'NYD': 'Ny demokrati',
+    '?': 'party not given',
+}
+
+
+def party_as_counted(code):
+    """Party a code is counted as ('?' if not given); codes not in PARTIES count as themselves."""
+    if code in ('', '-'):
+        return '?'
+    return PARTIES[code][0] if code in PARTIES else code
+
+
+def party_name(code):
+    """Name of the party at the time, for a motion; the code itself if not in PARTIES."""
+    if code in ('', '-'):
+        return 'party not given'
+    return PARTIES[code][1] if code in PARTIES else code
 
 
 def load_first_signatory_parties(input_dir):
@@ -68,9 +114,10 @@ def model_data(lda, vocab, theta, metadata, parties):
             'year': metadata[d]['year'],
             'session': metadata[d]['session'],
             'party': parties.get(metadata[d]['doc_id'], ''),
+            'partyName': party_name(parties.get(metadata[d]['doc_id'], '')),
             'theta': round(float(theta[d, k]), 3),
         } for d in top_doc_ids]
-        top_parties = Counter(m['party'] or '?' for m in motions[:CONCENTRATION_TOP])
+        top_parties = Counter(party_as_counted(m['party']) for m in motions[:CONCENTRATION_TOP])
         party, count = top_parties.most_common(1)[0]
         topics.append({
             'num': k + 1,
@@ -79,6 +126,7 @@ def model_data(lda, vocab, theta, metadata, parties):
             'periods': [round(float(theta[periods == p, k].mean()), 5) for p in range(len(PERIOD_KEYS))],
             'motions': motions,
             'party': party,
+            'partyName': PARTY_NAMES.get(party, party),
             'partyCount': count,
         })
     return topics
@@ -112,9 +160,9 @@ def main():
         'periodCounts': [sum(1 for m in metadata if m['period'] == p) for p in PERIOD_KEYS],
     }
 
-    all_parties = Counter(p or '?' for p in parties.values())
+    all_parties = Counter(party_as_counted(p) for p in parties.values())
     total = sum(all_parties.values())
-    data['partyShares'] = [[p, round(n / total, 3)] for p, n in all_parties.most_common(8)]
+    data['partyShares'] = [[PARTY_NAMES.get(p, p), round(n / total, 3)] for p, n in all_parties.most_common(8)]
     data['generated'] = date.today().isoformat()
     data['topics'] = NUM_TOPICS
 

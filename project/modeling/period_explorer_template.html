@@ -140,7 +140,6 @@
   .cloud .hl { fill: var(--gold); }
 
   .empty { color: var(--muted); padding: 24px 0; }
-  footer { color: var(--muted); font-size: var(--step--1); border-top: 1px solid var(--rule); padding-top: 14px; max-width: 80ch; }
 </style>
 
 <div class="page">
@@ -153,11 +152,11 @@
   <div class="controls" role="group" aria-label="Display options">
     <label class="field" for="sort">Sort
       <select id="sort">
-        <option value="strong" selected>Strongest chain first (mean link, high to low)</option>
+        <option value="strong" selected>Strongest chain first (average similarity)</option>
         <option value="row">Chain number</option>
         <option value="weak">Weakest link first</option>
-        <option value="rise">Rise in share (linked chains only)</option>
-        <option value="fall">Fall in share (linked chains only)</option>
+        <option value="rise">Rise in share (all links strong only)</option>
+        <option value="fall">Fall in share (all links strong only)</option>
       </select>
     </label>
     <label class="field" for="search">Find word
@@ -168,24 +167,25 @@
   </div>
 
   <dl class="howto">
-    <div><dt>Rows are chains</dt><dd>Each period model has its own topics and its own vocabulary. Topics of adjacent periods are matched one-to-one (Hungarian algorithm on cosine similarity over the words both periods' vocabularies contain), and a row follows these matches from the first period to the last.</dd></div>
-    <div><dt>Chain holds</dt><dd id="holds-help">Gordon's criterion: the mean cosine of the chain's three links is at least 0.50.</dd></div>
-    <div><dt>Link</dt><dd id="link-help">The cosine similarity between a topic and the matched topic of the previous period, over the words both periods' vocabularies contain.</dd></div>
-    <div><dt>Share</dt><dd>Mean topic proportion over the period's motions; every motion counts equally. Rise and fall (first vs last period) are computed only for chains with every link at or above the threshold, which is stricter than “holds”: a change across a weak link may compare unrelated topics. Broken chains are listed after the others.</dd></div>
-    <div><dt>Word size</dt><dd id="size-help">The word's probability in that period's topic, on one scale per chain.</dd></div>
-    <div><dt>Word colour</dt><dd id="colour-help">In how many of the chain's four periods the word is among the top words.</dd>
+    <div><dt>Rows are topic chains</dt><dd>Each row follows a possible topic through the four periods. Topics in neighbouring periods are matched according to how similar their vocabularies are.</dd></div>
+    <div><dt>Chain continuity</dt><dd>A chain is considered continuous when its average similarity is at least 0.50. Chains below this value are marked in gold.</dd></div>
+    <div><dt>Link similarity</dt><dd>The number between two periods shows how similar the matched topics are. A value below 0.50 indicates an uncertain match and is marked in gold. Because every topic must be matched, weak links may connect topics that are not meaningfully related.</dd></div>
+    <div><dt>Topic share</dt><dd>The percentage shows the topic’s average proportion across all motions in that period. It does not show the percentage of motions assigned to the topic, since every motion can contain several topics. The topic shares within each period add up to 100%.</dd>
+      <dd>Changes between the first and last periods are only calculated when every link in the chain reaches 0.50.</dd></div>
+    <div><dt>Word size</dt><dd>Larger words have a higher probability within the topic. Word sizes can be compared between periods in the same chain, but not between different chains.</dd></div>
+    <div><dt>Word colour</dt><dd>Colour shows in how many periods the word appears among the topic’s 20 most probable words:</dd>
       <dd class="legend">
-        <span><i style="background: var(--persist-4)"></i>all 4</span>
-        <span><i style="background: var(--persist-3)"></i>3</span>
-        <span><i style="background: var(--persist-2)"></i>2</span>
-        <span><i style="background: var(--persist-1)"></i>1 period</span>
+        <span><i style="background: var(--persist-4)"></i>all four periods</span>
+        <span><i style="background: var(--persist-3)"></i>three periods</span>
+        <span><i style="background: var(--persist-2)"></i>two periods</span>
+        <span><i style="background: var(--persist-1)"></i>one period</span>
       </dd></div>
-    <div><dt>Seed chip</dt><dd>In how many of the 4 other seeds' models the topic is found again (cosine ≥ 0.70); gold when fewer than 3.</dd></div>
+    <div><dt>Stability</dt><dd>The stability label shows how often the topic was found again when the model was rerun four times with different random starting points. Gold indicates that it appeared in fewer than three runs.</dd>
+      <dd><strong>High:</strong> found in all four runs · <strong>Medium:</strong> three runs · <strong>Low</strong> (gold): two or fewer.</dd></div>
   </dl>
 
   <main class="grid" id="grid" aria-live="polite"></main>
 
-  <footer id="footer"></footer>
 </div>
 
 <script>const DATA = __PERIOD_DATA__;</script>
@@ -290,11 +290,15 @@
     div.className = 'cell';
     const head = document.createElement('div');
     head.className = 'cell-head';
-    head.append(span('period', DATA.periods[p]), span('', `T${cell.topic} · ${pct(cell.share)}`));
+    const share = span('', `T${cell.topic} · ${pct(cell.share)}`);
+    share.title = `Topic ${cell.topic} of this period's model; ${pct(cell.share)} of the period's motion content (all the period's topics add up to 100%)`;
+    head.append(span('period', DATA.periods[p]), share);
     if (cell.stability) {
-      const chip = span('chip' + (cell.stability.found < cell.stability.of - 1 ? ' unstable' : ''),
-        `seed ${cell.stability.found}/${cell.stability.of}`);
-      chip.title = `Found again in ${cell.stability.found} of ${cell.stability.of} other seeds' models`;
+      // High: found in every rerun; medium: all but one; low (gold): fewer
+      const { found, of } = cell.stability;
+      const level = found === of ? 'high' : (found === of - 1 ? 'medium' : 'low');
+      const chip = span('chip' + (level === 'low' ? ' unstable' : ''), `stability ${level} (${found}/${of})`);
+      chip.title = `Found again in ${cell.stability.found} of ${cell.stability.of} reruns with different random starting points`;
       head.appendChild(chip);
     }
     const strong = c => c !== undefined && c >= DATA.chainCosine;
@@ -303,7 +307,7 @@
       const c = row.links[p - 1];
       const weak = c < DATA.chainCosine;
       const link = span('link' + (weak ? ' weak' : ''), (weak ? '⋯ ' : '← ') + c.toFixed(2));
-      link.title = `Cosine with the matched topic of ${DATA.periods[p - 1]}` + (weak ? ' (weak link: forced match)' : '');
+      link.title = `Similarity with the matched topic of ${DATA.periods[p - 1]}` + (weak ? ' (weak link: uncertain match)' : '');
       head.appendChild(link);
       if (weak) {
         div.classList.add('after-break');
@@ -328,8 +332,8 @@
     const weakest = Math.min(...row.links);
     const mean = meanLink(row);
     const holds = mean >= DATA.chainCosine;
-    const verdict = span('chip' + (holds ? '' : ' unstable'), holds ? 'holds' : 'does not hold');
-    verdict.title = `Mean cosine of the three links ${mean.toFixed(2)}; Gordon's criterion is at least ${DATA.chainCosine.toFixed(2)}`;
+    const verdict = span('chip' + (holds ? '' : ' unstable'), holds ? 'Continuous' : 'Not continuous');
+    verdict.title = `Average similarity of the three links ${mean.toFixed(2)}; continuous at ${DATA.chainCosine.toFixed(2)} or more (Gordon's criterion)`;
     const weakLinks = row.links.filter(c => c < DATA.chainCosine).length;
     // Continuous segments: runs of periods joined by links at or above the chain criterion
     const segments = [[0]];
@@ -338,15 +342,15 @@
     const span_ = seg => seg.length > 1 ? `${DATA.periods[seg[0]].split('–')[0]}–${DATA.periods[seg[seg.length - 1]].split('–').pop()}` : null;
     const linked = segments.map(span_).filter(Boolean);
     let summary;
-    if (!weakLinks) summary = 'every link strong';
-    else if (!linked.length) summary = 'no link at or above ' + DATA.chainCosine.toFixed(2) + ': forced matches, not a continuous topic';
+    if (!weakLinks) summary = 'All links are strong';
+    else if (!linked.length) summary = 'No link reaches ' + DATA.chainCosine.toFixed(2) + ': forced matches, not a continuous topic';
     else summary = `${weakLinks} weak link${weakLinks > 1 ? 's' : ''}: strongly linked ${linked.join(' and ')} only`;
-    head.append(h2, verdict, span('meta', `mean link ${mean.toFixed(2)} · weakest ${weakest.toFixed(2)} · ${summary}`));
+    head.append(h2, verdict, span('meta', `Average similarity: ${mean.toFixed(2)} · Lowest similarity: ${weakest.toFixed(2)} · ${summary}`));
     if (showChange) {
       const first = row.cells[0].share, last = row.cells[row.cells.length - 1].share;
       head.appendChild(span('meta', linkedThrough(row)
         ? `share ${pct(first)} → ${pct(last)} (${last >= first ? '+' : '−'}${(Math.abs(last - first) * 100).toFixed(1)} points)`
-        : 'no change computed: a weak link in the chain'));
+        : 'no change calculated: a weak link in the chain'));
     }
     const periods = document.createElement('div');
     periods.className = 'periods';
@@ -398,30 +402,10 @@
     `One LDA model per period, fitted on the body text of <strong>${total.toLocaleString('en')} motions</strong> ` +
     `each with its own vocabulary. Each row links a topic through the four periods; the four word clouds show it in each period. ` +
     `<strong>${DATA.numTopics} topics per period</strong>.`;
-  document.getElementById('link-help').textContent =
-    `The cosine similarity between a topic and the matched topic of the previous period, over the words both periods' vocabularies contain. Below ${DATA.chainCosine.toFixed(2)} ` +
-    'the link is weak and shown in gold: the Hungarian matching pairs every topic, so a weak link may join two unrelated ' +
-    'topics. The row is broken there: the accent bar stops, a dashed gold rule separates the cells, and the cell says that ' +
-    'the alignment is uncertain. A chain can hold on the mean and still have one weak link.';
-  document.getElementById('holds-help').textContent =
-    `Gordon's criterion: the mean cosine of the chain's three links is at least ${DATA.chainCosine.toFixed(2)}. ` +
-    'Gold “does not hold” otherwise.';
   const topN = DATA.rows[0].cells[0].words.length;
   document.getElementById('search-hint').innerHTML =
     `Searches only the top ${topN} words shown in each cloud, also as part of longer words (<em>skola</em> finds <em>gymnasieskola</em>). ` +
     'A word that is not found can still have some probability in the topic; it is just not among the top words.';
-  document.getElementById('colour-help').textContent =
-    `In how many of the chain's four periods the word is among the topic's top ${topN} words (the words shown). ` +
-    'Across a weak link, a shared word says less.';
-  document.getElementById('size-help').textContent =
-    "The word's probability in that period's topic. The four clouds of a chain share one scale, so sizes can be " +
-    'compared across its periods, but not between chains. The tooltip gives the exact probability.';
-  document.getElementById('footer').textContent =
-    `Generated ${DATA.generated} by modeling/17_generate_period_explorer.py from models/period_lda_${DATA.numTopics}/ ` +
-    '(15_fit_period_lda.py; scikit-learn LDA, seed 42) and the seed-stability CSVs of 16_seed_stability_periods.py. ' +
-    'Motions per period: ' + DATA.periods.map((p, i) => `${p} ${DATA.periodCounts[i].toLocaleString('en')}`).join(', ') + '. ' +
-    "Adjacent matching only. Gordon's permutation test (docs/reports/PERIOD_ALIGNMENT_NULL.md): every transition is far above random pairings of the same topics, but single links can still be weak. " +
-    'Topic numbers (T) are arbitrary within each period model.';
 
   sortSelect.addEventListener('change', render);
   let timer;
