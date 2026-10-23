@@ -42,11 +42,10 @@ Documents & 13,953 motions with body text (4 withdrawn motions without text are 
 Representation & Word counts per motion (bag of words); word order is ignored & Default & The standard input of LDA. &
   The same. \\
 \hline
-Vocabulary, whole-corpus model & Words in $\geq 5$ and $\leq 50\%$ of motions, at most the 10,000 most frequent: 10,000
-  words, 85.7\% of the words of the final text & Open & The limits alone keep 25,499 words (89.5\%). The 10,000-word cap was
-  inherited from the first scripts and never justified; it acts as a minimum of 20 motions.
-  \textbf{Question:} keep the cap, use Gordon's rule, or keep $\geq 5$ without a cap? & Words in $\geq 10$ and
-  $\leq 50\%$ of documents, no cap; on our corpus 15,962 words (87.8\%). \\
+Vocabulary, whole-corpus model & Words in $\geq 10$ and $\leq 50\%$ of motions, no cap: 15,962 words, 87.8\% of the
+  words of the final text & Motivated & The same rule as the period models, so the two designs differ only in the time split
+  and the number of topics. Replaced (2026-10-23) a minimum of 5 motions with a cap at the 10,000 most frequent words,
+  inherited from the first scripts and never justified. & Words in $\geq 10$ and $\leq 50\%$ of documents, no cap. \\
 \hline
 Vocabulary, period models & Own vocabulary per period: words in $\geq 10$ and $\leq 50\%$ of the period's motions, no
   cap: 7,302 / 7,981 / 4,926 / 6,876 words & Gordon & Each period model is built on its own most relevant words.
@@ -126,8 +125,9 @@ Matching & Topics of two seeds matched one-to-one (Hungarian algorithm) on cosin
 Stable topic & Found again (matched cosine $\geq 0.70$) in at least 3 of the 4 other seeds' models & Default & A
   judgement call, stated as such; the threshold has not been varied. & No threshold. \\
 \hline
-Results & Whole-corpus model: 12 of 32 topics stable, mean Jaccard 0.270. Period models: 21 of 32 stable & -- & The
-  period models are more stable than the whole-corpus model, which supports Gordon's case for period models. Unstable
+Results & Whole-corpus model: 11 of 32 topics stable, mean Jaccard 0.253. Period models: 21 of 32 stable & -- & The
+  period models are more stable than the whole-corpus model with the same vocabulary rule; part of the difference is the
+  number of topics per model (at 15 per period, 42\% stable). Unstable
   topics are flagged before interpretation. & Whole-corpus runs unstable: mean Jaccard 0.26--0.31. \\
 \hline
 \end{longtable}

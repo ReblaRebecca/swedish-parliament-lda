@@ -3,7 +3,7 @@
 Fit one LDA model per period (the four temporal bins), for cross-period topic alignment.
 
 Vocabulary: one per period, as Gordon (2026, 3.3): built on the period's motions only, keeping words in at
-least 10 and at most 50% of them (PERIOD_VECTORIZER_PARAMS in lda_common.py). Each period model is therefore
+least 10 and at most 50% of them (VECTORIZER_PARAMS in lda_common.py). Each period model is therefore
 built on its own most relevant words; adjacent periods are compared over the words both vocabularies contain
 (topic_matching.match_and_evaluate with shared_vocabulary=True).
 

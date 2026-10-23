@@ -147,7 +147,7 @@ class TestPeriodModels(unittest.TestCase):
         self.assertIn('digitalisering', self.models['2014-2026'][1])
 
     def test_gordon_document_frequency_limits(self):
-        self.assertEqual(lda_common.PERIOD_VECTORIZER_PARAMS, {'min_df': 10, 'max_df': 0.5})
+        self.assertEqual(lda_common.VECTORIZER_PARAMS, {'min_df': 10, 'max_df': 0.5})
         for period, (_, vocab) in self.models.items():
             self.assertIn('common', vocab, period)   # in 12 of 40 motions: kept
             self.assertNotIn('rare', vocab, period)  # in 1 motion: below 10

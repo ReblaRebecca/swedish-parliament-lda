@@ -109,6 +109,15 @@ class TestSharedSettings(unittest.TestCase):
                 offenders.append(path.name)
         self.assertEqual(offenders, [])
 
+    def test_whole_corpus_vocabulary_uses_the_period_rule(self):
+        """The whole-corpus model's vocabulary follows the same rule as the period models' (no size cap)."""
+        with contextlib.redirect_stdout(io.StringIO()):
+            vectorizer, _ = baseline_model.create_vectorizer_and_corpus(['skola lärare', 'universitet student'] * 10)
+        params = vectorizer.get_params()
+        for key, value in lda_common.VECTORIZER_PARAMS.items():
+            self.assertEqual(params[key], value, key)
+        self.assertIsNone(params['max_features'])
+
     def test_fit_uses_shared_settings(self):
         X = CountVectorizer().fit_transform(['skola lärare elev', 'universitet student forskning'] * 5)
         lda = lda_common.fit_lda_model(X, num_topics=2, random_state=7)

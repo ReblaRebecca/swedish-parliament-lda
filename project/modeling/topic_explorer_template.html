@@ -166,10 +166,10 @@
   </div>
 
   <dl class="howto">
-    <div><dt>Word size</dt><dd id="size-help">The word's probability in the topic, square-root scaled, on one scale for all clouds.</dd></div>
-    <div><dt>Share</dt><dd id="share-help">How much of the motions' content the topic accounts for. Every motion is a mix of topics (for example 60% one topic, 30% another), and the share is the topic's proportion θ averaged over the motions, every motion counting equally. It is not the share of motions that are about the topic. The shares of all topics add up to 100%.</dd></div>
-    <div><dt>Share by period</dt><dd id="period-help">The same share computed separately within each period's motions. In each period all topics add up to 100%, so a bar is the topic's slice of that period, and if one topic grows others must shrink. Each chart has its own scale (its highest bar fills the height): compare the percentages, not the bar heights, between topics.</dd></div>
-    <div><dt>Party chip</dt><dd id="party-help">Under “Top motions”: how many of the topic's top 5 motions have a first signatory from the same party.</dd></div>
+    <div><dt>Word size</dt><dd>Larger words are more important within the topic. The 30 most probable words are shown, using the same scale for all topics. Hover to see the exact probability.</dd></div>
+    <div><dt>Share</dt><dd>The topic’s average proportion of the motions’ content. Each motion can contain several topics, and all topic shares add up to 100%.</dd></div>
+    <div><dt>Share by period</dt><dd>The topic’s average share in each period. Compare the percentages rather than bar heights, since each chart uses its own scale.</dd></div>
+    <div><dt>Party concentration</dt><dd>Shows how many of the five most representative motions have a first signatory from the same party. Gold indicates four or five. Parties that changed names are grouped together.</dd></div>
     <div><dt>Top motions</dt><dd>The motions with the highest proportion θ of this topic (θ 0.79: 79% of the motion is assigned to the topic), with session, the first signatory's party under its name at the time, and document id.</dd></div>
   </dl>
 
@@ -377,19 +377,9 @@
   document.getElementById('lede').innerHTML =
     `A ${DATA.topics}-topic LDA model fitted on the body text of <strong>${DATA.motions.toLocaleString('en')} motions</strong>.`;
   const topN = DATA.topicList[0].words.length;
-  document.getElementById('size-help').textContent =
-    `The word's probability in the topic, square-root scaled. Top ${topN} words. All clouds share one scale, so sizes ` +
-    'can be compared between topics: a topic spread over many words has a smaller, sparser cloud. The tooltip gives the exact probability.';
   document.getElementById('search-hint').innerHTML =
     `Searches only the top ${topN} words shown in each cloud, also as part of longer words (<em>skola</em> finds <em>gymnasieskola</em>). ` +
     'A word that is not found can still have some probability in the topic; it is just not among the top words.';
-  document.getElementById('party-help').textContent =
-    "Under “Top motions”: how many of the topic's top 5 motions (above the dashed line) have a first signatory from the same party; " +
-    'gold when 4 or 5 do. ' +
-    'Renamed parties count as one party: Folkpartiet (FP) became Liberalerna (L) in 2015, Kristen demokratisk samling (KDS) ' +
-    'became Kristdemokraterna (KD) in 1996, and Vänsterpartiet kommunisterna (VPK) became Vänsterpartiet (V) in 1990. ' +
-    'For reference, first signatories overall: ' +
-    DATA.partyShares.map(([p, s]) => `${p} ${Math.round(s * 100)}%`).join(', ') + '.';
   document.getElementById('footer').textContent =
     `Generated ${DATA.generated} by modeling/14_generate_topic_explorer.py from models/baseline_lda_${DATA.topics} ` +
     `(scikit-learn LDA, ${DATA.topics} topics). Motions per period: ` +

@@ -134,7 +134,7 @@ The four periods are defined once, in `periods.py`, and imported by every script
 ## Models
 
 ### Shared settings (`modeling/lda_common.py`)
-Topic counts (`NUM_TOPICS = 32`, `PERIOD_TOPICS = 8`), the model folder name (`BASELINE_MODEL_DIR`), the period vocabulary settings (`PERIOD_VECTORIZER_PARAMS`), LDA settings, the reported seed (42), the stability seeds (42, 123, 456, 789, 999) and text loading live in this one module. Every model, stability test and explorer imports them from there, so the stability tests always measure the same models that are reported. A test checks that no other script creates its own LDA model.
+Topic counts (`NUM_TOPICS = 32`, `PERIOD_TOPICS = 8`), the model folder name (`BASELINE_MODEL_DIR`), the vocabulary rule of every model (`VECTORIZER_PARAMS`), LDA settings, the reported seed (42), the stability seeds (42, 123, 456, 789, 999) and text loading live in this one module. Every model, stability test and explorer imports them from there, so the stability tests always measure the same models that are reported. A test checks that no other script creates its own LDA model.
 
 - **LDA:** scikit-learn `LatentDirichletAllocation`, `learning_method='online'`, `max_iter=50`, `random_state=42`, `n_jobs=2`; symmetric default priors
 - **No convergence check:** with online learning and sklearn's default `evaluate_every=-1`, every fit runs exactly 50 passes. The motions are processed in mini-batches of 128 (about 109 updates per pass) with a step size that decays with every update, so topics stop changing towards the end whether or not they have converged. The iteration count in the reports (always 50) confirms the setting, not convergence
@@ -142,14 +142,15 @@ Topic counts (`NUM_TOPICS = 32`, `PERIOD_TOPICS = 8`), the model folder name (`B
 - **Diagnostic:** training perplexity, reported as a diagnostic only, not evidence of generalization
 
 ### Whole-corpus model (`modeling/07_fit_baseline_lda.py`)
-- **Vectorizer:** `CountVectorizer(max_df=0.5, min_df=5, max_features=10000)`, default token pattern. The vocabulary of the whole-corpus model, its stability test and the topic explorer; the period models have their own (below)
+- **Vectorizer:** `CountVectorizer(min_df=10, max_df=0.5)`, default token pattern: the same rule as the period models (`VECTORIZER_PARAMS` in `lda_common.py`; Gordon 2026, 3.3), applied to all motions: words in at least 10 and at most 50% of the motions, no cap on the vocabulary size. 15,962 words. The vocabulary of the whole-corpus model, its stability test and the topic explorer
+- **Earlier vocabulary (until 2026-10-23):** words in at least 5 motions, at most 50%, capped at the 10,000 most frequent. The cap was inherited from the first scripts and never justified, and the rule differed from the period models'; it was replaced so that the two designs differ only in the time split and the topic count
 - **Model:** 32 topics
 - **Output:** `models/baseline_lda_32/baseline_lda_32_topics.pkl`, `models/baseline_lda_32/baseline_vectorizer.pkl`, and `results/document_topic_distribution.csv` (doc_id, title, year, session, period and the probability of every topic for every motion, for prevalence analysis)
 - The name *baseline* is kept from the scripts' history; it is the whole-corpus model
 
 ### Period models (`modeling/15_fit_period_lda.py [k]`)
 - One model per period, 8 topics each (`k` overrides the count), with the shared LDA settings
-- **Vocabulary per period, as Gordon (2026, 3.3):** each period's vectorizer is built on that period's motions only, keeping words in at least 10 and at most 50% of them, with no cap on the vocabulary size (`PERIOD_VECTORIZER_PARAMS`, `fit_period_vectorizer()` in `lda_common.py`). Vocabularies: 7,302 / 7,981 / 4,926 / 6,876 words. Each period model is built on its own most relevant words: a word typical of one period is not crowded out by frequencies over 40 years, and a word frequent in one period is excluded only there
+- **Vocabulary per period, as Gordon (2026, 3.3):** each period's vectorizer is built on that period's motions only, keeping words in at least 10 and at most 50% of them, with no cap on the vocabulary size (`VECTORIZER_PARAMS`, `fit_period_vectorizer()` in `lda_common.py`; the whole-corpus model uses the same rule over all motions). Vocabularies: 7,302 / 7,981 / 4,926 / 6,876 words. Each period model is built on its own most relevant words: a word typical of one period is not crowded out by frequencies over 40 years, and a word frequent in one period is excluded only there
 - **Output:** `models/period_lda_<k>/` (per period: the model, its vectorizer and `vocabulary_<period>.txt`), `results/period_<k>_topics.csv` (top 20 words per topic and period). k = 8 (`PERIOD_TOPICS`); another count can be passed to reproduce the topic-count choice
 
 ### Topic matching (`analysis/topic_matching.py`)
@@ -176,19 +177,20 @@ Both use the shared procedure in `analysis/seed_stability.py`: fit one model per
 ## Current Results
 
 ### Whole-corpus model (32 topics)
-Report: `docs/reports/BASELINE_STABILITY_32TOPICS.md`.
+Report: `docs/reports/BASELINE_STABILITY_32TOPICS.md`. Vocabulary: the same rule as the period models (15,962 words, since 2026-10-23).
 
-| | 32 topics |
-|---|---|
-| Mean cosine (mean of the 10 per-pair means) | 0.568 |
-| Range of the 10 per-pair means | 0.515–0.621 |
-| Mean Jaccard (top 20) | 0.270 (per-pair 0.22–0.33) |
-| Seed-42 topics found in 4 / 3 / 2 / 1 / 0 of the other 4 models | 7 / 5 / 7 / 5 / 8 |
-| Stable (3–4 of 4) | 12 of 32 (38%) |
-| Training perplexity, 5 seeds | 1702–1736 |
+| | 32 topics | Earlier vocabulary (≥ 5 motions, 10,000-word cap) |
+|---|---|---|
+| Mean cosine (mean of the 10 per-pair means) | 0.549 | 0.568 |
+| Range of the 10 per-pair means | 0.496–0.621 | 0.515–0.621 |
+| Mean Jaccard (top 20) | 0.253 (per-pair 0.20–0.30) | 0.270 (per-pair 0.22–0.33) |
+| Seed-42 topics found in 4 / 3 / 2 / 1 / 0 of the other 4 models | 3 / 8 / 4 / 4 / 13 | 7 / 5 / 7 / 5 / 8 |
+| Stable (3–4 of 4) | 11 of 32 (34%) | 12 of 32 (38%) |
+| Training perplexity, 5 seeds | 1987–2014 | 1702–1736 |
 
-- **Found in all four other models (7):** compulsory school, teaching and grades (mean cosine 0.97), research (0.92), preschool/childcare (0.90), universities and students (0.90), upper secondary school (0.90), special support and disability (0.84), society, knowledge and democracy (0.84). **In 3 of 4:** higher-education places (0.86), regional higher education and business (0.81), international/SFI/immigrants (0.78), general problem words (*hög, många, problem, öka*; 0.73), medical education and health care (0.69)
-- **Found in no other model (8):** youth and mental health (0.46), bullying (0.50), costs and fees (0.44), Stockholm institutions (0.23), vocational and apprenticeship education (0.06), and three residual topics of unrelated words (*mälardalens, sexualitet, helårsstudent*; *riksrevision, hbt, genusforskning*; *skog, värmland, skåne*; 0.12–0.14). Some are clear themes whose words other seeds spread over other topics (vocational education, bullying); the residual topics are probably held together by a few motions
+- **Found in all four other models (3):** compulsory school, teaching and goals (mean cosine 0.96), municipalities and independent schools (0.92), research and universities (0.90). **In 3 of 4 (8):** teachers and teacher education (0.86), society, democracy and curriculum (0.84), physical activity and sport (0.84), language and international (0.79), preschool (0.76), students and adult education (0.74), higher-education places and funding (0.72), children, families and sign language (0.59)
+- **Found in no other model (13):** some clear themes whose words other seeds spread over other topics (youth and mental health 0.40, food and home economics 0.58, Swedish and SFI 0.46, research and the EU 0.50, profit and private providers 0.36, vocational and apprenticeship education 0.30, national minorities 0.16), and residual topics of unrelated words or place names (*lund, kalmar, professur*; *ersättning, alliansregering, merkostnad*; *hbt, adhd, folkmord*; *it, digitalisering, utanförskap*; *vinstdrivande, musik, uf*; *utgiftsområde, vetenskapsråd, riksrevision*; 0.02–0.26), probably held together by a few motions
+- **Effect of the vocabulary change:** slightly less stable (11 against 12 of 32 stable; 13 against 8 found in no other model). Compared with the earlier vocabulary, 6,078 words were added (each in 10–26 motions, median 14) and 116 words in 5–9 motions dropped; such rarer words can form residual topics. The gap to the period models (21 of 32 stable, mean cosine 0.74–0.78) remains, so it is not due to the different vocabulary rules. Training perplexity is not comparable between the two vocabularies
 - **Use:** prominence trends and any mapping of period topics onto whole-corpus topics should rely on the stable topics, or report the range over seeds
 
 ### Period models
@@ -202,7 +204,7 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 | 2014/15–2025/26 | 0.77 | 5 of 8 (62%) |
 | **All periods** | | **21 of 32 (66%)** |
 
-- The period models are more stable than the whole-corpus model, which supports Gordon's case for period models
+- The period models are more stable than the whole-corpus model, with the same vocabulary rule. Part of the difference is the topic count: at 15 topics per period (topic-count test, earlier global vocabulary) 42% of the period topics were stable, close to the whole-corpus model's 34%. The comparison supports Gordon's case for period models only together with the choice of 8 topics
 - The first period is exactly at half stable; the smallest period (2006/07–2013/14) is not less stable than the others
 - **How 8 was chosen:** see *Design Decisions*
 
@@ -229,20 +231,20 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 
 | | Gordon | This study |
 |---|---|---|
-| Whole-corpus seed stability (mean Jaccard of the top words) | 0.26–0.31 | 0.270, per-pair range 0.22–0.33 (32 topics) |
+| Whole-corpus seed stability (mean Jaccard of the top words) | 0.26–0.31 | 0.253, per-pair range 0.20–0.30 (32 topics) |
 | Matched mean cosine between adjacent periods, 8 topics per period | — | 0.67, 0.78, 0.76 |
 | Same, at Gordon's 15 topics per period (fitted once for this comparison) | 0.44–0.59 | 0.43, 0.60, 0.62 |
 | Chains with mean cosine ≥ 0.50 over the three transitions | 7 of 15 | 8 of 8 (8 topics); 9 of 15 at 15 topics |
 | Permutation test: null mean, z (per transition) | 0.22–0.25, z = 7–9 (15 topics) | 0.35, z = 4.2–5.6 (8 topics) |
 
-- **Seed instability is of the same size as Gordon's**, so it is not a weakness of this pipeline; Gordon uses the same finding as part of his argument for period models
+- **Seed instability is of the same size as Gordon's** (slightly below his range on average), so it is not a weakness of this pipeline; Gordon uses the same finding as part of his argument for period models
 - **At Gordon's topic count (15 per period), with his vocabulary design, the alignment is close to his:** matched cosine in the same range, and a few more chains pass his criterion (9 against 7). At 8 topics the links are stronger, as expected with fewer, broader topics
 - Different corpora and algorithms: the agreement shows results of the same order, not equivalent methods
 
 | Point | Gordon | This study | Assessment |
 |---|---|---|---|
 | Algorithm | MALLET, Gibbs sampling, 1,000 iterations, asymmetric hyperparameter optimization every 10 iterations | scikit-learn, online variational Bayes, 50 passes, symmetric priors | Probably the largest difference; convergence not checked |
-| Vocabulary | Per period (≥ 10 documents, ≤ 50%), adjacent periods compared over their shared words | The same for the period models; the whole-corpus model has its own vocabulary (≥ 5 motions, ≤ 50%, 10,000 words) | Followed |
+| Vocabulary | Per period (≥ 10 documents, ≤ 50%), adjacent periods compared over their shared words | The same; the whole-corpus model uses the same rule over all motions (15,962 words) | Followed |
 | Author signal | Authorless preprocessing (MALLET `DownsampleLabelWords`) | None | Counterpart here: MP/constituency signal (place names) |
 | Documents | 1,000-word book chunks | Whole motions | Natural units, most shorter than 1,000 words |
 | Proper names | Removed | Kept | Open (seminar notes 2.7) |
@@ -298,6 +300,7 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
   The number of robust themes per period is about 4–9 at every count (8 → 15 adds 28 topics but only 4 stable ones), and the mean cosine falls with the topic count in every period. The test was run with the earlier global vocabulary (see *Vocabulary per period* below); with the per-period vocabularies the 8-topic models are as stable (21 of 32), and 11 and 15 were not re-tested. The 11- and 15-topic models were deleted after the choice; they can be refitted with `15_fit_period_lda.py <k>`. The whole-corpus model has the same total capacity as the four period models, as in Gordon (60 = 4 × 15)
 - **Periods by electoral term, assigned by session** (see *Periods*): whole terms per period, as equal in size as the terms allow. They replaced four calendar-year bins of roughly equal size (1986–1993, 1994–2004, 2005–2014, 2015–2025, assigned by date); at 8 topics the period models became slightly more stable (21 against 19 of 32 topics stable) and the alignment stronger (all 8 chains pass Gordon's criterion, against 5). The differences are small, see seminar notes 2.9
 - **Vocabulary per period, compared over shared words** (Gordon's method; see *Period models* and *Topic matching*). It replaced one global vocabulary for all models (the whole-corpus vectorizer). With 8 topics, stability stayed the same (21 of 32 topics stable) and the alignment became stronger (matched mean cosine 0.67, 0.78, 0.76 against 0.65, 0.69, 0.67; all 8 chains hold in both), as expected when words outside the shared vocabulary no longer count
+- **Whole-corpus vocabulary by the same rule** (2026-10-23): words in at least 10 and at most 50% of all motions, no cap (15,962 words), as the period models. It replaced a minimum of 5 motions with a cap at the 10,000 most frequent words, inherited from the first scripts, so that the two designs differ only in the time split and the topic count. The whole-corpus model became slightly less stable (11 against 12 of 32 topics stable, mean cosine 0.549 against 0.568); see *Current Results*
 - **Chain criterion:** Gordon's mean of the three links ≥ 0.50, so results are comparable with his; single weak links are shown as additional information
 
 ## Configuration Files
@@ -317,7 +320,7 @@ Body text of all 13,957 motions (`analysis/corpus_statistics.py`, read-only). Wo
 | 03 Boilerplate removed | 8,800,067 | 95,956 | 325 / 631 |
 | 04 Normalized | 8,494,260 | 84,342 | 313 / 609 |
 | 05 Stopwords removed (final text) | 4,622,680 | 84,176 | 169 / 331 |
-| Whole-corpus model vocabulary | 3,960,935 | 10,000 | 143 / 284 |
+| Whole-corpus model vocabulary | 4,058,083 | 15,962 | 147 / 291 |
 | Period models' vocabularies (together) | 3,899,123 | 11,661 | – |
 
 - **Extraction:** Stanza keeps punctuation inside and next to some tokens, so the extracted text has spelling variants of the same word among its different words: abbreviations (*t.ex.*, *bl.a.*, *mot.*), party letters from "(m)" (*m)*, *s)*), and compound ellipsis (*läs-* in "läs- och skrivförmåga"). Steps 03 and 04 remove them
@@ -325,7 +328,7 @@ Body text of all 13,957 motions (`analysis/corpus_statistics.py`, read-only). Wo
 - **Boilerplate removal** (with auxiliaries and multi-word abbreviation lemmas) removes 15% of the words but few different ones: the removed words are a small set of frequent parliamentary phrases
 - **Normalization** removes digits, turns punctuation inside tokens into spaces (hyphenated lemmas are split: *it-kompetens* → *it*, *kompetens*; *1990-talet* → *talet*) and drops single characters: −3% words, −12% different words
 - **Stopword removal** halves the number of words (−46%) but removes only 166 different words: stopwords are few and very frequent
-- **The models' vocabularies** keep 86% of the final words (whole corpus: 10,000 of 84,176 different words); most of the 84,176 are rare. Per period: 1,052,497 / 1,263,414 / 571,556 / 1,011,656 words in vocabularies of 7,302 / 7,981 / 4,926 / 6,876 different words
+- **The models' vocabularies** keep 84–88% of the final words (whole corpus: 15,962 of 84,176 different words, 88% of the words); most of the 84,176 are rare. Per period: 1,052,497 / 1,263,414 / 571,556 / 1,011,656 words in vocabularies of 7,302 / 7,981 / 4,926 / 6,876 different words
 
 ## Data Summary
 
@@ -334,7 +337,7 @@ Body text of all 13,957 motions (`analysis/corpus_statistics.py`, read-only). Wo
 | Motions | 13,957 | All UbU motions, sessions 1985/86–2025/26; 13,953 with body text are modelled |
 | Periods | 4 | 1985/86–1993/94, 1994/95–2005/06, 2006/07–2013/14, 2014/15–2025/26 (2,879–4,029 motions each) |
 | Duplicates | 515 (3.69%) | Mostly resubmissions in later years; kept |
-| Vocabulary | Period models: 4,926–7,981 per period | ≥ 10 and ≤ 50% of the period's motions (Gordon); whole-corpus model: 10,000 (≥ 5 motions, ≤ 50%) |
+| Vocabulary | Period models: 4,926–7,981 per period; whole-corpus model: 15,962 | ≥ 10 and ≤ 50% of the model's motions, no cap (Gordon) |
 | Stopwords | NLTK (114) + 85 supplementary | |
 | Boilerplate phrases | 440 | Explicit phrases, no wildcards |
 | Lemmatizer | Stanza | Swedish Talbanken model; auxiliaries dropped |

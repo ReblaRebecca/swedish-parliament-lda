@@ -160,9 +160,6 @@ def main():
         'periodCounts': [sum(1 for m in metadata if m['period'] == p) for p in PERIOD_KEYS],
     }
 
-    all_parties = Counter(party_as_counted(p) for p in parties.values())
-    total = sum(all_parties.values())
-    data['partyShares'] = [[PARTY_NAMES.get(p, p), round(n / total, 3)] for p, n in all_parties.most_common(8)]
     data['generated'] = date.today().isoformat()
     data['topics'] = NUM_TOPICS
 

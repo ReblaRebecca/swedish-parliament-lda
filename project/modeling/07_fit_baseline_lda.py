@@ -2,7 +2,8 @@
 """
 Fit the whole-corpus (baseline) LDA model with NUM_TOPICS topics (lda_common.py).
 Input: Final preprocessed text (text_no_stopwords, all 4 temporal bins combined).
-Output: LDA model, vectorizer (the global vocabulary, also used by the period models), perplexity score.
+Output: LDA model, vectorizer (the whole-corpus vocabulary, built with the same rule as the period
+models' vocabularies: VECTORIZER_PARAMS in lda_common.py), perplexity score.
 
 The topic count is 4 x PERIOD_TOPICS, so the whole-corpus model has the same total capacity as the
 four period models together (as Gordon et al.); see docs/PIPELINE_DOCUMENTATION.md.
@@ -20,20 +21,16 @@ except ImportError:
     sys.exit(1)
 
 # Shared LDA settings and text loading (also used by the stability test)
-from lda_common import BASELINE_MODEL_DIR, LDA_PARAMS, NUM_TOPICS, fit_lda_model, load_body_texts
+from lda_common import BASELINE_MODEL_DIR, LDA_PARAMS, NUM_TOPICS, VECTORIZER_PARAMS, fit_lda_model, load_body_texts
 
 
 def create_vectorizer_and_corpus(texts):
     """Create CountVectorizer and transform texts."""
     print("Creating document-term matrix...")
 
-    # Create vectorizer
-    vectorizer = CountVectorizer(
-        max_df=0.5,        # Remove words in > 50% of docs
-        min_df=5,          # Remove words in < 5 docs
-        max_features=10000,  # Keep top 10,000 features (vocabulary truncation)
-        stop_words=None,   # Already removed in preprocessing
-    )
+    # Same vocabulary rule as the period models (words in 10 to 50% of the motions, no size cap);
+    # stopwords were removed in preprocessing
+    vectorizer = CountVectorizer(**VECTORIZER_PARAMS)
 
     # Transform texts
     doc_term_matrix = vectorizer.fit_transform(texts)
