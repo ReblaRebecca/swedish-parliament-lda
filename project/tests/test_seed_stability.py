@@ -16,6 +16,7 @@ import re
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import numpy as np
@@ -60,6 +61,12 @@ def write_bin(directory, motions, extra_lines=()):
 class TestLoadBodyTexts(unittest.TestCase):
     """The models are fitted on body text only; motions without body text are skipped."""
 
+    def setUp(self):
+        # Short synthetic texts: the length minimum is tested in TestMinimumLength
+        patcher = mock.patch.object(lda_common, 'MIN_WORDS', 1)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_empty_bodies_skipped(self):
         motions = [
             {'dok_id': 'A', 'text_no_stopwords': 'skola', 'title_processed': 'lärare'},
@@ -86,6 +93,27 @@ class TestLoadBodyTexts(unittest.TestCase):
         self.assertEqual(texts, ['skola lärare'])  # no title added, empty body skipped
         self.assertEqual([m['doc_id'] for m in metadata], ['A'])
         self.assertEqual(malformed, 1)
+
+
+class TestMinimumLength(unittest.TestCase):
+    """Motions with fewer than MIN_WORDS words in the final text are not modelled."""
+
+    def test_short_motions_skipped(self):
+        self.assertEqual(lda_common.MIN_WORDS, 20)
+        motions = [
+            {'dok_id': 'A', 'text_no_stopwords': ' '.join(['skola'] * 20)},
+            {'dok_id': 'B', 'text_no_stopwords': ' '.join(['skola'] * 19)},
+            {'dok_id': 'C', 'text_no_stopwords': '\n'},
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            write_bin(tmp, motions)
+            _, metadata, _ = lda_common.load_body_texts(Path(tmp))
+        self.assertEqual([m['doc_id'] for m in metadata], ['A'])
+
+    def test_is_modelled(self):
+        self.assertTrue(lda_common.is_modelled(' '.join(['elev'] * 25)))
+        self.assertFalse(lda_common.is_modelled('hemställa riksdag regering'))
+        self.assertFalse(lda_common.is_modelled(None))
 
 
 class TestSharedSettings(unittest.TestCase):

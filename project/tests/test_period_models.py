@@ -16,6 +16,7 @@ import re
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import numpy as np
@@ -73,6 +74,12 @@ def write_bins(directory, extra_line_in_first=None):
 
 class TestPeriodLoading(unittest.TestCase):
     """The period models use exactly the motions of the whole-corpus model, split by period."""
+
+    def setUp(self):
+        # Short synthetic texts: the length minimum is tested in TestMinimumLength
+        patcher = mock.patch.object(lda_common, 'MIN_WORDS', 1)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def test_periods_in_order_with_labels(self):
         with tempfile.TemporaryDirectory() as tmp:

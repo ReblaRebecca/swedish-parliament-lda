@@ -4,6 +4,8 @@ Extract motion text from XML files following Bruinsma & Johansson (2024) methodo
 Parses XML structure, filters by organ (UbU), extracts body text between markers.
 Removes document metadata from the text: signatures, headers, the title heading,
 motion numbers and the motion's own author names (body and title).
+Skips placeholder motions with no text of their own (is_placeholder): missing documents,
+unfinished conversions and withdrawn motions.
 Input: XML files, searched recursively (default: ../swedish-parliament-data next to the repository,
        with one folder per period such as mot-1980-1989.xml/; override with [xml_dir] [output_dir])
 Output: JSONL files, one per period (periods.py: four periods of complete electoral terms, sessions
@@ -34,6 +36,12 @@ SPACING_DIACRITICS = {
     'a°': 'å', 'A°': 'Å', 'a¨': 'ä', 'A¨': 'Ä', 'o¨': 'ö', 'O¨': 'Ö',
 }
 SPACING_DIACRITICS_PATTERN = re.compile('|'.join(SPACING_DIACRITICS))
+
+# Placeholder motions: the riksdag's notice that the document is missing ('Dokument saknas') or not yet
+# converted ('[~ konvertering pågår ~]'), or a withdrawn motion ('Motionen utgår', 'Motionen återtagen'),
+# in the text or the title. Only short texts count, since a real motion can mention a withdrawn one.
+PLACEHOLDER_PATTERN = re.compile(r'dokument saknas|konvertering pågår|motionen\s+(?:utgår|återtagen|återtas)', re.IGNORECASE)
+PLACEHOLDER_MAX_WORDS = 30
 
 
 class HTMLToTextParser(HTMLParser):
@@ -229,6 +237,13 @@ def extract_authors(root):
     return authors
 
 
+def is_placeholder(text, title):
+    """True if the motion has no text of its own: a short text with a missing-document, conversion or withdrawal notice."""
+    if len(text.split()) >= PLACEHOLDER_MAX_WORDS:
+        return False
+    return bool(PLACEHOLDER_PATTERN.search(text) or PLACEHOLDER_PATTERN.search(title))
+
+
 def get_temporal_bin(session):
     """Period (file stem) of a parliamentary session ('1985/86' -> 'group1_1985-1994'); None if outside
     1985/86-2025/26 or not a valid session. The date is not used: some motions carry a placeholder date."""
@@ -356,6 +371,10 @@ def main():
         if not bin_name:
             continue
 
+        if is_placeholder(motion['text'], motion['title']):
+            stats[bin_name]['skipped'] += 1
+            continue
+
         # Write to appropriate bin file
         output_files[bin_name].write(json.dumps(motion, ensure_ascii=False) + '\n')
         stats[bin_name]['count'] += 1
@@ -375,10 +394,11 @@ def main():
         total_extracted += count
         output_path = OUTPUT_DIR / f"{bin_name}.jsonl"
         size_mb = output_path.stat().st_size / (1024 * 1024) if output_path.exists() else 0
-        print(f"{bin_name:20s}: {count:5d} motions ({size_mb:6.1f} MB)")
+        print(f"{bin_name:20s}: {count:5d} motions ({size_mb:6.1f} MB); {stats[bin_name]['skipped']} placeholders skipped")
 
     print("-" * 70)
-    print(f"{'Total':20s}: {total_extracted:5d} motions extracted")
+    total_skipped = sum(s['skipped'] for s in stats.values())
+    print(f"{'Total':20s}: {total_extracted:5d} motions extracted; {total_skipped} placeholders skipped")
     print("=" * 70)
 
     print(f"\nOutput files in: {OUTPUT_DIR}")

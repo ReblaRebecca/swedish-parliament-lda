@@ -123,6 +123,27 @@ class TestRemoveTitleHeading(unittest.TestCase):
         self.assertEqual(extract.remove_title_heading('Någon text.', ''), 'Någon text.')
 
 
+class TestPlaceholders(unittest.TestCase):
+    """01: motions with no text of their own are skipped; real motions are kept."""
+
+    def test_placeholder_texts_are_skipped(self):
+        self.assertTrue(extract.is_placeholder('Dokument saknas', 'Ansvaret för skolan'))
+        self.assertTrue(extract.is_placeholder('Motion till riksdagen av (M) [~ konvertering pågår ~]', 'Bygg testreaktorn Electra'))
+        self.assertTrue(extract.is_placeholder(
+            'Observera att dokumentet är inskannat och fel kan förekomma. Motion till riksdagen (fp) Motionen återtagen', 'Kostkunskap'))
+
+    def test_withdrawal_in_title_only(self):
+        text = 'Observera att dokumentet är inskannat och fel kan förekomma. Motion till riksdagen 1986/87 :Ub305 Svenskt Tryck Stockholm 1987'
+        self.assertTrue(extract.is_placeholder(text, 'Motionen utgår'))
+
+    def test_real_motions_are_kept(self):
+        # Short but real: a formal request referring to another motion
+        self.assertFalse(extract.is_placeholder(
+            'Hemställan Med hänvisning till vad som anförts i motion hemställs att riksdagen som sin mening ger regeringen till känna', 'Lärarutbildning'))
+        # Long motion that mentions a withdrawn motion
+        self.assertFalse(extract.is_placeholder('Motionen utgår ur ett större förslag. ' + 'skola ' * 40, 'Studiemedel'))
+
+
 class TestRemoveMetadata(unittest.TestCase):
     """01: motion numbers and the motion's own author names are removed."""
 

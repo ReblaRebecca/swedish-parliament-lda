@@ -77,11 +77,22 @@ def motion_metadata(motion, period):
     }
 
 
+# Motions with fewer words than this in the final text are not modelled: almost all are short formal
+# requests (hemställan) that refer to another motion, too short for a reliable topic mix, and since every
+# motion counts equally in a topic's share they would add noise to the shares.
+MIN_WORDS = 20
+
+
+def is_modelled(text):
+    """True if a final text is long enough to be modelled (at least MIN_WORDS words)."""
+    return len((text or '').split()) >= MIN_WORDS
+
+
 def read_bin_body_texts(bin_file):
     """Load final body text (titles not added) from one temporal-bin file.
 
-    Input field: text_no_stopwords (output of 05_remove_stopwords.py). Texts with no words are skipped
-    (e.g. withdrawn motions titled 'Utgår', whose body is only a line break after preprocessing).
+    Input field: text_no_stopwords (output of 05_remove_stopwords.py). Texts with fewer than MIN_WORDS
+    words are skipped (is_modelled), among them any text with no words left.
     Returns: texts (list), metadata (list, same order), malformed_count (int)
     """
     texts = []
@@ -96,8 +107,7 @@ def read_bin_body_texts(bin_file):
                 malformed_count += 1
                 continue
             text = motion.get('text_no_stopwords', '')
-            # strip(): a text with no words left can still hold line breaks
-            if text.strip():
+            if is_modelled(text):
                 texts.append(text)
                 metadata.append(motion_metadata(motion, period))
     return texts, metadata, malformed_count

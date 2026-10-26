@@ -32,7 +32,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from periods import PERIOD_FILES, PERIODS, period_key  # noqa: E402
 
 sys.path.insert(0, str(PROJECT_ROOT / 'modeling'))
-from lda_common import BASELINE_MODEL_DIR, PERIOD_TOPICS  # noqa: E402
+from lda_common import BASELINE_MODEL_DIR, PERIOD_TOPICS, is_modelled  # noqa: E402
 
 HAS_LETTER = re.compile(r'[^\W\d_]')
 
@@ -130,11 +130,11 @@ def main():
     data_dir = PROJECT_ROOT / 'data'
     rows = step_counts(data_dir)
 
-    # The motions the models use: final text with at least one word (lda_common.read_bin_body_texts)
+    # The motions the models use: final text with at least MIN_WORDS words (lda_common.is_modelled)
     final_texts = {name: [] for name in PERIOD_FILES}
     for name, m in read_stage(data_dir / 'output' / 'stopword_removed'):
         text = m.get('text_no_stopwords') or ''
-        if text.strip():
+        if is_modelled(text):
             final_texts[name].append(text)
     with open(PROJECT_ROOT / 'models' / BASELINE_MODEL_DIR / 'baseline_vectorizer.pkl', 'rb') as f:
         whole_vectorizer = pickle.load(f)
