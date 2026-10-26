@@ -105,7 +105,7 @@ The four periods are defined once, in `periods.py`, and imported by every script
 - **Runtime:** CPU-heavy; hours for the full corpus
 
 ### 3. Boilerplate Removal (`preprocessing/03_remove_boilerplate.py`)
-- **Phrases:** `config/boilerplate_phrases.txt` (440 entries, one explicit word or phrase per line, no wildcards), matched case-insensitively against the **original word forms** saved by step 2, so the list keeps its surface forms (`riksdagen`, `med anledning av`). A word is removed only if a phrase match covers the whole word, apart from trailing punctuation (Stanza keeps the full stop in abbreviations, so the phrase `mot` removes `Mot.`); phrases never match across sentences
+- **Phrases:** `config/boilerplate_phrases.txt` (450 entries, one explicit word or phrase per line, no wildcards), matched case-insensitively against the **original word forms** saved by step 2, so the list keeps its surface forms (`riksdagen`, `med anledning av`). A word is removed only if a phrase match covers the whole word, apart from trailing punctuation (Stanza keeps the full stop in abbreviations, so the phrase `mot` removes `Mot.`); phrases never match across sentences
 - **Categories:** OCR/scanning artifacts, government and parliamentary institutions, parliamentary document/reference terms, procedural language, party names, etc.
 - **Output is lemmas** of the remaining words, one sentence per line
 - **Dropped tokens:** auxiliary verbs (UPOS `AUX`), punctuation and symbols. Stanza lemmatizes the modal *ska/skall/skulle* to `skola`, which would merge with the noun *skola* (school); all auxiliaries are stopwords anyway
@@ -120,7 +120,7 @@ The four periods are defined once, in `periods.py`, and imported by every script
 
 ### 5. Stopword Removal (`preprocessing/05_remove_stopwords.py`)
 - **Base list:** NLTK Swedish stop words (114)
-- **Supplementary (85, hard-coded):** parliamentary abbreviations (ub, dvs, osv, …), auxiliary verbs (ska, skall, blir, …), generic connectors, verbs and adjectives identified from LDA inspection (kommer, enligt, olika, göra, …), and the **lemma forms** of inflected entries (behöva, vilja, kunna, ny, stor, olik, mången, …), since the text is lemmatized. Content abbreviations such as `fn`, `eg`, `ky`, `ib` are deliberately not stopwords (education-policy terms)
+- **Supplementary (86, hard-coded):** parliamentary abbreviations (ub, dvs, osv, …), the scanner misreading `sorn` (for *som*), auxiliary verbs (ska, skall, blir, …), generic connectors, verbs and adjectives identified from LDA inspection (kommer, enligt, olika, göra, …), and the **lemma forms** of inflected entries (behöva, vilja, kunna, ny, stor, olik, mången, …), since the text is lemmatized. Content abbreviations such as `fn`, `eg`, `ky`, `ib` are deliberately not stopwords (education-policy terms)
 - **Output fields:** `text_no_stopwords` (final body text, used by the models) and `title_processed` (final title text)
 
 ### Duplicate count (`analysis/count_duplicates.py`) — for the report, not a pipeline step
@@ -303,7 +303,7 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 
 ## Configuration Files
 
-- **`config/boilerplate_phrases.txt`:** 440 explicit words/phrases, one per line, grouped by category with `#` headers. Matched against original word forms (body and title). An alternative file can be passed as the 3rd argument to `03_remove_boilerplate.py`. After editing, re-run steps 03–05 (no need to re-run Stanza)
+- **`config/boilerplate_phrases.txt`:** 450 explicit words/phrases, one per line, grouped by category with `#` headers. Matched against original word forms (body and title). An alternative file can be passed as the 3rd argument to `03_remove_boilerplate.py`. After editing, re-run steps 03–05 (no need to re-run Stanza)
 - **`config/lemma_corrections.txt`:** corrections for known Stanza lemma errors, one `wrong correct` pair per line with `#` comments, applied in step 03 to body and title, case-insensitively. A wrong lemma with a leading `*` is also corrected at the end of a compound (`*kompet kompetens`: `gymnasiekompet` → `gymnasiekompetens`); mark an entry only after checking its compounds (`anslagen` must not be marked, because of *sammanslagen*). After editing, re-run steps 03–05
 - **Stopwords:** hard-coded in `preprocessing/05_remove_stopwords.py` (NLTK base + supplementary list, including lemma forms)
 
@@ -336,8 +336,8 @@ Body text of all 13,957 motions (`analysis/corpus_statistics.py`, read-only). Wo
 | Periods | 4 | 1985/86–1993/94, 1994/95–2005/06, 2006/07–2013/14, 2014/15–2025/26 (2,879–4,029 motions each) |
 | Duplicates | 515 (3.69%) | Mostly resubmissions in later years; kept |
 | Vocabulary | Period models: 4,926–7,981 per period; whole-corpus model: 15,962 | ≥ 10 and ≤ 50% of the model's motions, no cap (Gordon) |
-| Stopwords | NLTK (114) + 85 supplementary | |
-| Boilerplate phrases | 440 | Explicit phrases, no wildcards |
+| Stopwords | NLTK (114) + 86 supplementary | |
+| Boilerplate phrases | 450 | Explicit phrases, no wildcards |
 | Lemmatizer | Stanza | Swedish Talbanken model; auxiliaries dropped |
 | LDA topics | 8 per period, 32 whole corpus | 8, 11 and 15 per period tested |
 | Title coverage | ~99.5% | Motions with a processed title |
@@ -473,7 +473,7 @@ project/
 
 ## Open Points and Next Steps
 
-0. **Full rerun pending:** extraction now skips 14 placeholder motions (see *Extraction*) and the models skip motions under 20 words (see *Models*), 13,680 motions in all; rerun the whole pipeline (01–05, models, stability, alignment, explorers, documentation numbers; check the topic and chain names) once other findings are collected
+0. **Full rerun pending:** extraction now skips 14 placeholder motions (see *Extraction*) and the models skip motions under 20 words (see *Models*), 13,680 motions in all (a few more may fall under 20 words with the new boilerplate); boilerplate gained 10 entries (*som sin mening*, *stockholm den*, printers' imprints, the scanned header *Saml. nr*/*sami*) and the stopwords `sorn`; rerun the whole pipeline (01–05, models, stability, alignment, explorers, documentation numbers; check the topic and chain names) once other findings are collected
 1. **Place names** (keep, remove or downweight)
 2. **Party analysis:** with the session and author metadata, which parties' motions carry each topic, per period
 3. **Algorithm and framing** (under discussion with the supervisor): the current plan is to keep scikit-learn and present the study as an adaptation of Gordon's workflow rather than a computational replication (MALLET, Gibbs sampling). If so, check convergence of the 50-pass fits (a 200-pass fit and a second seed)

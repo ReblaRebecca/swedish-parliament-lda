@@ -47,6 +47,16 @@ sidhuvuden
 sidfot
 sidfoten
 sidfötter
+# Header of scanned motions: 'Saml. nr', read by the scanner as 'sami'
+saml
+sami
+# Printers' imprints at the end of printed motions
+gotab
+gotab stockholm
+elanders
+svenskt tryck
+svenskt tryck stockholm
+norstedts tryckeri
 
 # ============================================================================
 # 2. Government and Parliamentary Institutions
@@ -157,6 +167,10 @@ procenten
 procenttal
 tillkännager
 tillkännagivande
+# The formal request: 'riksdagen tillkännager för regeringen som sin mening ...'
+som sin mening
+# Place and date of signing: 'Stockholm den 25 januari 1988'
+stockholm den
 
 # ============================================================================
 # 5. Question, Reference, and Opinion Words

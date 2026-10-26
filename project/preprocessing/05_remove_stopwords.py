@@ -59,6 +59,8 @@ def get_swedish_stopwords():
     supplementary_stops.update({'trots', 'hela', 'komma', 'flera', 'första', 'flesta', 'själva', 'heller', 'bland', 'exempel', 'såväl', 'kring', 'även', 'mycket'})
     # Short generic words: 'te' (te sig, appear), 'ut' (out).
     supplementary_stops.update({'te', 'ut'})
+    # Scanner misreading of 'som' in scanned motions
+    supplementary_stops.update({'sorn'})
     # Lemma forms of the inflected stop words above, as produced by Stanza (text is lemmatized in step 2)
     supplementary_stops.update({'behöva', 'vilja', 'kunna', 'visa', 'hålla', 'sätta', 'gå', 'röra', 'ny', 'stor', 'olik', 'hel', 'mången'})
     stop_words.update(supplementary_stops)

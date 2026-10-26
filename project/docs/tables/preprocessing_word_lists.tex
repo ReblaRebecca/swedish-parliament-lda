@@ -8,7 +8,7 @@
                   |>{\raggedleft\arraybackslash}p{0.05\linewidth}
                   |>{\raggedright\arraybackslash}p{0.63\linewidth}|}
 
-\caption{Stopwords (step 05): NLTK's Swedish list and the 85 words added for this corpus (199 stopwords in all). The added words were chosen by inspecting early models, with their lemma forms, since the text is lemmatized. Matched against the lemmatized, lowercased text.}
+\caption{Stopwords (step 05): NLTK's Swedish list and the 86 words added for this corpus (200 stopwords in all). The added words were chosen by inspecting early models, with their lemma forms, since the text is lemmatized. Matched against the lemmatized, lowercased text.}
 \label{tab:stopwords} \\
 \hline
 \textbf{Source} & \textbf{Words} & \textbf{Stopwords} \\
@@ -24,7 +24,7 @@
 
 NLTK Swedish list & 114 & alla, allt, att, av, blev, bli, blir, blivit, de, dem, den, denna, deras, dess, dessa, det, detta, dig, din, dina, ditt, du, där, då, efter, ej, eller, en, er, era, ert, ett, från, för, ha, hade, han, hans, har, henne, hennes, hon, honom, hur, här, i, icke, ingen, inom, inte, jag, ju, kan, kunde, man, med, mellan, men, mig, min, mina, mitt, mot, mycket, ni, nu, när, någon, något, några, och, om, oss, på, samma, sedan, sig, sin, sina, sitta, själv, skulle, som, så, sådan, sådana, sådant, till, under, upp, ut, utan, vad, var, vara, varför, varit, varje, vars, vart, vem, vi, vid, vilka, vilkas, vilken, vilket, vår, våra, vårt, än, är, åt, över \\
 \hline
-Added for this corpus & 85 & all, alls, ar, bara, behöva, behöver, bland, bra, både, ca, del, dels, dock, ds, dvs, enligt, et, etc, exempel, fall, finna, finnas, fler, flera, flesta, frn, första, ge, genom, gjort, gjorts, gå, går, gör, göra, hel, hela, heller, hos, håll, hålla, håller, inför, iq, komma, kommer, kring, kunna, mer, mr, mången, ny, nya, of, olik, olika, osv, qz, resp, rätt, rör, röra, samt, se, ser, själva, ska, skall, stor, stora, sätta, sätts, såväl, ta, te, trots, ub, uö, vilja, vill, visa, visar, visat, viss, även \\
+Added for this corpus & 86 & all, alls, ar, bara, behöva, behöver, bland, bra, både, ca, del, dels, dock, ds, dvs, enligt, et, etc, exempel, fall, finna, finnas, fler, flera, flesta, frn, första, ge, genom, gjort, gjorts, gå, går, gör, göra, hel, hela, heller, hos, håll, hålla, håller, inför, iq, komma, kommer, kring, kunna, mer, mr, mången, ny, nya, of, olik, olika, osv, qz, resp, rätt, rör, röra, samt, se, ser, själva, ska, skall, sorn, stor, stora, sätta, sätts, såväl, ta, te, trots, ub, uö, vilja, vill, visa, visar, visat, viss, även \\
 \hline
 \end{longtable}
 }
@@ -38,7 +38,7 @@ Added for this corpus & 85 & all, alls, ar, bara, behöva, behöver, bland, bra,
                   |>{\raggedleft\arraybackslash}p{0.05\linewidth}
                   |>{\raggedright\arraybackslash}p{0.63\linewidth}|}
 
-\caption{Parliamentary boilerplate (step 03): 440 words and phrases in 18 categories, matched against the original word forms; a word is removed only if a phrase covers the whole word.}
+\caption{Parliamentary boilerplate (step 03): 450 words and phrases in 18 categories, matched against the original word forms; a word is removed only if a phrase covers the whole word.}
 \label{tab:boilerplate} \\
 \hline
 \textbf{Category} & \textbf{Words} & \textbf{Words and phrases} \\
@@ -52,13 +52,13 @@ Added for this corpus & 85 & all, alls, ar, bara, behöva, behöver, bland, bra,
 \endfoot
 \endlastfoot
 
-OCR and Document Scanning Artifacts (these are errors, not content) & 37 & inskanna, inskannad, inskannade, inskannat, inskannar, inskanning, inskanningen, inscanna, inscannad, inscannade, inscannat, inscannar, inscanning, inscanningen, skanna, skannad, skannade, skannat, skannar, skanning, skanningen, scanna, scannad, scannade, scannat, scannar, scanning, scanningen, sidnummer, sidnumret, sidnumren, sidhuvud, sidhuvudet, sidhuvuden, sidfot, sidfoten, sidfötter \\
+OCR and Document Scanning Artifacts (these are errors, not content) & 45 & inskanna, inskannad, inskannade, inskannat, inskannar, inskanning, inskanningen, inscanna, inscannad, inscannade, inscannat, inscannar, inscanning, inscanningen, skanna, skannad, skannade, skannat, skannar, skanning, skanningen, scanna, scannad, scannade, scannat, scannar, scanning, scanningen, sidnummer, sidnumret, sidnumren, sidhuvud, sidhuvudet, sidhuvuden, sidfot, sidfoten, sidfötter, saml, sami, gotab, gotab stockholm, elanders, svenskt tryck, svenskt tryck stockholm, norstedts tryckeri \\
 \hline
 Government and Parliamentary Institutions & 27 & regering, regeringen, regeringens, regeringar, regeringarna, riksdag, riksdagen, riksdagens, riksdagar, riksdagarna, riksmötet, riksdagsåret, proposition, propositionen, propositionens, propositioner, propositionerna, motion, motionen, motionerna, motionär, motionären, motionärer, motionärerna, motion till riksdagen, utskottet, utskottets \\
 \hline
 Parliamentary Document and Reference Terms & 25 & hemställa, hemställan, hemställans, hemställer, hemställde, hemställt, hemställs, betänkande, betänkandet, observera, tabell, dokument, dokumentet, dokumentets, dokumenten, dokumentens, fel, yrkande, yrkandet, yrkanden, begär, begäran, förslaget, förslagen, tillkännagivande \\
 \hline
-Parliamentary Actions and Verbs & 46 & ställer, ställa, ställt, föreslå, föreslår, föreslog, föreslagit, anför, anförs, anföra, anföras, anfördes, anfört, anförda, anförts, anförande, anförandet, beslut, beslutet, beslutets, besluten, beslutens, beslutar, beslutade, hänvisning, hänvisa, hänvisar, hänvisade, hänvisat, hänvisas, hänvisades, anse, anser, ansåg, ansett, anses, ansågs, andel, andelen, andelar, andelarna, procent, procenten, procenttal, tillkännager, tillkännagivande \\
+Parliamentary Actions and Verbs & 48 & ställer, ställa, ställt, föreslå, föreslår, föreslog, föreslagit, anför, anförs, anföra, anföras, anfördes, anfört, anförda, anförts, anförande, anförandet, beslut, beslutet, beslutets, besluten, beslutens, beslutar, beslutade, hänvisning, hänvisa, hänvisar, hänvisade, hänvisat, hänvisas, hänvisades, anse, anser, ansåg, ansett, anses, ansågs, andel, andelen, andelar, andelarna, procent, procenten, procenttal, tillkännager, tillkännagivande, som sin mening, stockholm den \\
 \hline
 Question, Reference, and Opinion Words & 13 & fråga, frågan, vidare, mena, menar, skäl, skälet, skälen, borde, innebär, innebära, innebar, inneburit \\
 \hline
