@@ -123,14 +123,15 @@ The four periods are defined once, in `periods.py`, and imported by every script
 - **Supplementary (86, hard-coded):** parliamentary abbreviations (ub, dvs, osv, …), the scanner misreading `sorn` (for *som*), auxiliary verbs (ska, skall, blir, …), generic connectors, verbs and adjectives identified from LDA inspection (kommer, enligt, olika, göra, …), and the **lemma forms** of inflected entries (behöva, vilja, kunna, ny, stor, olik, mången, …), since the text is lemmatized. Content abbreviations such as `fn`, `eg`, `ky`, `ib` are deliberately not stopwords (education-policy terms)
 - **Output fields:** `text_no_stopwords` (final body text, used by the models) and `title_processed` (final title text)
 
-### Duplicate count (`analysis/count_duplicates.py`) — for the report, not a pipeline step
-- Models use all motions; duplicates are not removed
-- MD5 hash of the whitespace-normalized final text; one hash dictionary across all periods, so duplicates are found across periods. Prints duplicates per period, the total and each duplicate → original `dok_id`; writes no data
+### Duplicates (`analysis/count_duplicates.py` lists them; the models skip them)
+- **The models skip duplicates (not yet applied):** of identical final texts only the first is modelled (`text_key()` and `read_bin_body_texts()` in `lda_common.py`; period files read in order, so a copy in a later period is skipped there too, in the whole-corpus and the period models alike). Reason: identical texts weight their words several times in the topics and count a recurring proposal once per session in the shares, mostly in the last period. The cost, that resubmission itself signals a persistent issue, is reported with the count below
+- `count_duplicates.py` uses the same key: MD5 hash of the whitespace-normalized final text; one hash dictionary across all periods, so duplicates are found across periods. Prints duplicates per period, the total and each duplicate → original `dok_id`; writes no data
 - The count depends on the final text, so re-run it after changing the boilerplate or stopword lists
 - **Current result: 515 duplicates of 13,957 motions (3.69%)**; per period 11 / 31 / 154 / 319
   - Almost all are the **same motion resubmitted in a later session**, e.g. *Forskningsreaktor i Oskarshamn* 2015–2017. Motion numbers and author names are removed at extraction, so a resubmitted motion is identical to its original
   - Most are full-length texts (307 copies over 100 words, 200 of 21–100 words); 8 are near-empty bodies
-  - A resubmitted motion counts once per year it was submitted, which weights recurring proposals in prominence; whether to keep them is open
+  - Kept, a resubmitted motion would count once per year it was submitted, weighting recurring proposals in prominence; hence only the first copy is modelled
+  - Some duplicates are under the 20-word minimum and skipped for that reason already; the exact number skipped as duplicates follows from the rerun
 
 ## Models
 
@@ -141,6 +142,7 @@ Topic counts (`NUM_TOPICS = 32`, `PERIOD_TOPICS = 8`), the model folder name (`B
 - **No convergence check:** with online learning and sklearn's default `evaluate_every=-1`, every fit runs exactly 50 passes. The motions are processed in mini-batches of 128 (about 109 updates per pass) with a step size that decays with every update, so topics stop changing towards the end whether or not they have converged. The iteration count in the reports (always 50) confirms the setting, not convergence
 - **Input:** `text_no_stopwords` (body text only). Motions with no body text left after preprocessing are skipped (4 motions), so the models use 13,953 motions (per period 4,025 / 3,477 / 2,879 / 3,572)
 - **Minimum length (`MIN_WORDS = 20`, `is_modelled()` in `lda_common.py`; not yet applied):** motions with fewer than 20 words in the final text are not modelled. Almost all are short formal requests (*hemställan*) referring to another motion: too short for a reliable topic mix, and since every motion counts equally in a topic's share they would add noise to the shares. Together with the placeholder filter (*Extraction*) this leaves 13,680 motions (per period 3,762 / 3,470 / 2,879 / 3,569; 263 short motions skipped, 256 of them in 1985/86–1993/94). The models, results and numbers in this document are still from the run without both rules
+- **Duplicates (not yet applied):** of identical final texts only the first copy is modelled, in the whole-corpus and the period models alike (see *Duplicates*)
 - **Diagnostic:** training perplexity, reported as a diagnostic only, not evidence of generalization
 
 ### Whole-corpus model (`modeling/07_fit_baseline_lda.py`)
@@ -334,7 +336,7 @@ Body text of all 13,957 motions (`analysis/corpus_statistics.py`, read-only). Wo
 |--------|-------|------|
 | Motions | 13,957 | All UbU motions, sessions 1985/86–2025/26; 13,953 with body text are modelled |
 | Periods | 4 | 1985/86–1993/94, 1994/95–2005/06, 2006/07–2013/14, 2014/15–2025/26 (2,879–4,029 motions each) |
-| Duplicates | 515 (3.69%) | Mostly resubmissions in later years; kept |
+| Duplicates | 515 (3.69%) | Mostly resubmissions in later years; only the first copy modelled (from the next rerun) |
 | Vocabulary | Period models: 4,926–7,981 per period; whole-corpus model: 15,962 | ≥ 10 and ≤ 50% of the model's motions, no cap (Gordon) |
 | Stopwords | NLTK (114) + 86 supplementary | |
 | Boilerplate phrases | 450 | Explicit phrases, no wildcards |
@@ -473,11 +475,11 @@ project/
 
 ## Open Points and Next Steps
 
-0. **Full rerun pending:** extraction now skips 14 placeholder motions (see *Extraction*) and the models skip motions under 20 words (see *Models*), 13,680 motions in all (a few more may fall under 20 words with the new boilerplate); boilerplate gained 10 entries (*som sin mening*, *stockholm den*, printers' imprints, the scanned header *Saml. nr*/*sami*) and the stopwords `sorn`; rerun the whole pipeline (01–05, models, stability, alignment, explorers, documentation numbers; check the topic and chain names) once other findings are collected
+0. **Full rerun pending:** extraction now skips 14 placeholder motions (see *Extraction*) and the models skip motions under 20 words (see *Models*), 13,680 motions in all (a few more may fall under 20 words with the new boilerplate), and later copies of duplicate texts (see *Duplicates*; about 500 fewer); boilerplate gained 10 entries (*som sin mening*, *stockholm den*, printers' imprints, the scanned header *Saml. nr*/*sami*) and the stopwords `sorn`; rerun the whole pipeline (01–05, models, stability, alignment, explorers, documentation numbers; check the topic and chain names) once other findings are collected
 1. **Place names** (keep, remove or downweight)
 2. **Party analysis:** with the session and author metadata, which parties' motions carry each topic, per period
 3. **Algorithm and framing** (under discussion with the supervisor): the current plan is to keep scikit-learn and present the study as an adaptation of Gordon's workflow rather than a computational replication (MALLET, Gibbs sampling). If so, check convergence of the 50-pass fits (a 200-pass fit and a second seed)
 4. **Rubric coding** (coherent, thematic, concentration) of the whole-corpus and period models, and a whole-corpus model with 8 topics as the counterpart of Gordon's k = 15 control
 5. **Prominence analysis** with the whole-corpus model, restricted to stable topics
-6. **Checks:** the residual topics of the whole-corpus model (*mälardalens, sexualitet*; *riksrevision, hbt*: possibly a few motions); duplicates kept or dropped
+6. **Checks:** the residual topics of the whole-corpus model (*mälardalens, sexualitet*; *riksrevision, hbt*: possibly a few motions)
 7. **Report writing**

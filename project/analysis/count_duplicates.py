@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Count duplicate motions on the final preprocessed text (for reporting).
-Not part of the pipeline: models use all motions, duplicates are not removed.
+The models skip the same duplicates (lda_common.read_bin_body_texts keeps the first copy, by text_key);
+this script lists them. Counts all motions, including those under the models' length minimum.
 Re-run after changing boilerplate or stopwords, since the count depends on the final text.
 
 Input: JSON lines with 'text_no_stopwords' field (output of 05_remove_stopwords.py).
@@ -9,19 +10,14 @@ Output: printed counts per temporal bin and a list of duplicate -> original dok_
 """
 
 import json
-import hashlib
 from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from periods import PERIOD_FILES  # noqa: E402
 
-
-def compute_hash(text):
-    """Compute MD5 hash of text for duplicate detection."""
-    if not text:
-        return None
-    return hashlib.md5(text.encode()).hexdigest()
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'modeling'))
+from lda_common import text_key  # noqa: E402
 
 
 def count_temporal_bin(input_file, duplicates, pairs):
@@ -45,12 +41,11 @@ def count_temporal_bin(input_file, duplicates, pairs):
                 continue
             motion_count += 1
 
-            # Normalize whitespace (collapse newlines, multiple spaces) to catch
-            # duplicates that differ only in line wrapping
+            # The models' duplicate key: whitespace collapsed, so texts differing only in line wrapping match
             text = motion.get('text_no_stopwords', '')
-            text_hash = compute_hash(' '.join(text.split()))
-            if not text_hash:
+            if not text.strip():
                 continue
+            text_hash = text_key(text)
 
             dok_id = motion.get('dok_id', 'unknown')
             if text_hash in duplicates:

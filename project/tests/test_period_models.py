@@ -100,6 +100,23 @@ class TestPeriodLoading(unittest.TestCase):
         self.assertEqual(period_malformed, malformed)
         self.assertEqual(malformed, 1)
 
+    def test_duplicates_skipped_alike_in_both_models(self):
+        # A copy in the same period and a copy in a later period (resubmission) are skipped; the first is kept
+        bins = {
+            'group1_1985-1994.jsonl': [{'dok_id': 'A', 'session': '1985/86', 'text_no_stopwords': 'skola  lärare'},
+                                       {'dok_id': 'B', 'session': '1986/87', 'text_no_stopwords': 'skola lärare\n'}],
+            'group2_1994-2006.jsonl': [{'dok_id': 'C', 'session': '1994/95', 'text_no_stopwords': 'skola lärare'},
+                                       {'dok_id': 'D', 'session': '1995/96', 'text_no_stopwords': 'forskning'}],
+            'group3_2006-2014.jsonl': [], 'group4_2014-2026.jsonl': [],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, motions in bins.items():
+                (Path(tmp) / name).write_text(''.join(json.dumps(m) + '\n' for m in motions), encoding='utf-8')
+            periods, _ = lda_common.load_period_body_texts(Path(tmp))
+            _, metadata, _ = lda_common.load_body_texts(Path(tmp))
+        self.assertEqual([m['doc_id'] for m in metadata], ['A', 'D'])
+        self.assertEqual([m['doc_id'] for _, p_meta in periods.values() for m in p_meta], ['A', 'D'])
+
     def test_period_label(self):
         self.assertEqual(lda_common.period_label(Path('x/group2_1994-2006.jsonl')), '1994-2006')
 

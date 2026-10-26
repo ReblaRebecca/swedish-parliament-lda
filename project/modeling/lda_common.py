@@ -12,6 +12,7 @@ The model uses body text only. Titles are kept as a separate field (title_proces
 data for later use; title weighting was tested and dropped (2026-10-16, see docs/PIPELINE_DOCUMENTATION.md).
 """
 
+import hashlib
 import json
 import pickle
 import sys
@@ -88,13 +89,22 @@ def is_modelled(text):
     return len((text or '').split()) >= MIN_WORDS
 
 
-def read_bin_body_texts(bin_file):
+def text_key(text):
+    """Duplicate key of a final text: MD5 of the text with whitespace collapsed."""
+    return hashlib.md5(' '.join((text or '').split()).encode()).hexdigest()
+
+
+def read_bin_body_texts(bin_file, seen=None):
     """Load final body text (titles not added) from one temporal-bin file.
 
     Input field: text_no_stopwords (output of 05_remove_stopwords.py). Texts with fewer than MIN_WORDS
-    words are skipped (is_modelled), among them any text with no words left.
+    words are skipped (is_modelled), among them any text with no words left. Duplicates are skipped:
+    a text identical to one already in seen (text_key; shared across the period files, read in period
+    order) is a later copy, mostly the same motion resubmitted in a later session; the first is kept.
     Returns: texts (list), metadata (list, same order), malformed_count (int)
     """
+    if seen is None:
+        seen = set()
     texts = []
     metadata = []
     malformed_count = 0
@@ -108,6 +118,10 @@ def read_bin_body_texts(bin_file):
                 continue
             text = motion.get('text_no_stopwords', '')
             if is_modelled(text):
+                key = text_key(text)
+                if key in seen:
+                    continue
+                seen.add(key)
                 texts.append(text)
                 metadata.append(motion_metadata(motion, period))
     return texts, metadata, malformed_count
@@ -132,8 +146,9 @@ def load_body_texts(input_dir):
     texts = []
     metadata = []
     malformed_count = 0
+    seen = set()
     for bin_file in sorted(input_dir.glob('group*.jsonl')):
-        bin_texts, bin_metadata, bin_malformed = read_bin_body_texts(bin_file)
+        bin_texts, bin_metadata, bin_malformed = read_bin_body_texts(bin_file, seen)
         texts += bin_texts
         metadata += bin_metadata
         malformed_count += bin_malformed
@@ -147,8 +162,9 @@ def load_period_body_texts(input_dir):
     """
     periods = {}
     malformed_count = 0
+    seen = set()  # shared, so a copy in a later period is skipped as in the whole-corpus model
     for bin_file in sorted(input_dir.glob('group*.jsonl')):
-        texts, metadata, malformed = read_bin_body_texts(bin_file)
+        texts, metadata, malformed = read_bin_body_texts(bin_file, seen)
         periods[period_label(bin_file)] = (texts, metadata)
         malformed_count += malformed
     return periods, malformed_count
