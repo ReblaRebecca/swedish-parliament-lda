@@ -123,15 +123,16 @@ class TestNearDuplicates(unittest.TestCase):
     WORDS = [f'ord{i}' for i in range(40)]
 
     def revised(self, changed):
-        """The 40-word text with its last `changed` words replaced."""
-        return ' '.join(self.WORDS[:40 - changed] + [f'nytt{i}' for i in range(changed)])
+        """The 40-word text with its last `changed` words replaced (new words unique to this revision)."""
+        return ' '.join(self.WORDS[:40 - changed] + [f'nytt{changed}_{i}' for i in range(changed)])
 
     def test_threshold(self):
-        self.assertEqual(lda_common.NEAR_DUPLICATE_JACCARD, 0.8)
+        self.assertEqual(lda_common.NEAR_DUPLICATE_JACCARD, 0.6)
         original = ' '.join(self.WORDS)
-        # 1 word changed: 37 sequences shared of 39 (Jaccard 0.95); 10 changed: 28 of 48 (0.58)
-        texts = [original, self.revised(1), self.revised(10)]
-        self.assertEqual(lda_common.near_duplicates(texts, ['1990/91', '1991/92', '1992/93']), {1})
+        # 1 word changed: 37 sequences shared of 39 (Jaccard 0.95); 6 changed: 32 of 44 (0.73);
+        # 10 changed: 28 of 48 (0.58)
+        texts = [original, self.revised(1), self.revised(6), self.revised(10)]
+        self.assertEqual(lda_common.near_duplicates(texts, ['1990/91', '1991/92', '1992/93', '1993/94']), {1, 2})
 
     def test_earlier_session_is_the_original(self):
         # The copy listed first but submitted later is the one dropped

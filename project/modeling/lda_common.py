@@ -99,7 +99,7 @@ def text_key(text):
 # Near-duplicates: a motion whose final text shares at least this share of its three-word sequences
 # (Jaccard of word 3-gram sets) with an earlier motion is a revised resubmission of it and is not modelled,
 # as exact duplicates. Revisions below the threshold count as new motions.
-NEAR_DUPLICATE_JACCARD = 0.8
+NEAR_DUPLICATE_JACCARD = 0.6
 SHINGLE_WORDS = 3
 
 
@@ -276,3 +276,36 @@ def load_topic_names(path, top_words):
             print(f"Warning: name '{name}' for {' '.join(key)} skipped: its words '{words}' "
                   f"do not match the model ('{top_words.get(key)}')")
     return names
+
+
+# Words shown in the explorers are ranked by relevance (Sievert & Shirley 2014, LDAvis):
+#   relevance(w, k) = λ log P(w | k) + (1 − λ) log(P(w | k) / P(w))
+# λ = 1 is plain probability; lower λ favours words specific to the topic over words frequent
+# everywhere (lärare, elev, högskola). 0.6 is the value Sievert & Shirley found best for interpretation.
+# Only the display uses it: names are matched on the most probable words (most_probable_words).
+RELEVANCE_LAMBDA = 0.6
+
+
+def topic_word_distributions(lda):
+    """P(word | topic) for every topic: the model's components normalized per row."""
+    return lda.components_ / lda.components_.sum(axis=1, keepdims=True)
+
+
+def word_marginal(doc_term_matrix):
+    """P(word) in the corpus: each word's count over all words (over the model's vocabulary)."""
+    counts = np.asarray(doc_term_matrix.sum(axis=0)).ravel().astype(float)
+    return counts / counts.sum()
+
+
+def relevant_words(topic_word, marginal, n, lam=None):
+    """Indices of the n most relevant words of one topic (topic_word: its P(word | topic))."""
+    lam = RELEVANCE_LAMBDA if lam is None else lam
+    with np.errstate(divide='ignore'):
+        relevance = lam * np.log(topic_word) + (1 - lam) * np.log(topic_word / marginal)
+    relevance[marginal == 0] = -np.inf
+    return np.argsort(relevance)[::-1][:n]
+
+
+def most_probable_words(topic_word, vocab, n=3):
+    """The n most probable words of one topic, space-separated: the key of the names files."""
+    return ' '.join(vocab[i] for i in np.argsort(topic_word)[::-1][:n])

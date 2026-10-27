@@ -9,8 +9,10 @@ algorithm on cosine similarity over the words both periods' vocabularies contain
 period to the last. A chain holds if the mean cosine of its links is at least CHAIN_COSINE (Gordon);
 the cosine of every link is shown, and single links below CHAIN_COSINE are marked weak.
 Gordon's permutation test of the alignment is in analysis/18_alignment_null.py.
-Word colour shows persistence: in how many of the chain's periods the word is among the top
-TOP_WORDS words (computed on the page).
+Words: the TOP_WORDS most relevant words of each topic (relevance with λ = RELEVANCE_LAMBDA, Sievert &
+Shirley 2014; P(word) from the period's own motions); size is P(word | topic).
+Word colour shows persistence: in how many of the chain's periods the word is among the words shown
+(computed on the page).
 
 Input:  models/period_lda_<k>/ (15_fit_period_lda.py: models and vectorizers), data/output/stopword_removed/,
         config/period_topic_names_<k>.tsv and config/chain_names_<k>.tsv (names; optional)
@@ -27,7 +29,10 @@ from pathlib import Path
 
 import numpy as np
 
-from lda_common import PERIOD_TOPICS, load_period_body_texts, load_topic_names, period_display
+from lda_common import (
+    PERIOD_TOPICS, RELEVANCE_LAMBDA, load_period_body_texts, load_topic_names, most_probable_words, period_display,
+    relevant_words, topic_word_distributions, word_marginal,
+)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'analysis'))
 from topic_matching import match_and_evaluate  # noqa: E402
@@ -59,15 +64,15 @@ def build_chains(models, vocabs):
     return chains, links
 
 
-def topic_words(lda, k, vocab):
-    topic_word = lda.components_[k] / lda.components_[k].sum()
-    return [[vocab[i], round(float(topic_word[i]), 5)] for i in np.argsort(topic_word)[::-1][:TOP_WORDS]]
+def topic_words(topic_word, marginal, vocab):
+    """The TOP_WORDS most relevant words of one topic, with P(word | topic)."""
+    return [[vocab[i], round(float(topic_word[i]), 5)] for i in relevant_words(topic_word, marginal, TOP_WORDS)]
 
 
 def model_set_data(num_topics, periods, model_dir, names_path=None, chain_names_path=None):
     """Chains, clouds, shares and names for the period models with num_topics topics."""
     labels = list(periods)
-    models, vocabs, shares = [], [], []
+    models, vocabs, shares, topic_word_dists, marginals = [], [], [], [], []
     for period in labels:
         with open(model_dir / f'period_{period}_lda.pkl', 'rb') as f:
             lda = pickle.load(f)
@@ -77,14 +82,17 @@ def model_set_data(num_topics, periods, model_dir, names_path=None, chain_names_
         if lda.n_components != num_topics or lda.components_.shape[1] != len(vocab):
             raise ValueError(f"{model_dir}: model for {period} does not match {num_topics} topics and its vocabulary")
         texts, _ = periods[period]
-        theta = lda.transform(vectorizer.transform(texts))
+        doc_term = vectorizer.transform(texts)
+        theta = lda.transform(doc_term)
         theta = theta / theta.sum(axis=1, keepdims=True)
         models.append(lda)
         vocabs.append(vocab)
         shares.append(theta.mean(axis=0))
+        topic_word_dists.append(topic_word_distributions(lda))
+        marginals.append(word_marginal(doc_term))
 
     chains, links = build_chains(models, vocabs)
-    top3 = {(period, str(t + 1)): ' '.join(w for w, _ in topic_words(models[p], t, vocabs[p])[:3])
+    top3 = {(period, str(t + 1)): most_probable_words(topic_word_dists[p][t], vocabs[p])
             for p, period in enumerate(labels) for t in range(num_topics)}
     names = load_topic_names(names_path, top3) if names_path else {}
     print(f"Topic names: {len(names)} of {len(top3)}")
@@ -96,7 +104,7 @@ def model_set_data(num_topics, periods, model_dir, names_path=None, chain_names_
     for r, chain in enumerate(chains):
         cells = []
         for p, t in enumerate(chain):
-            cells.append({'topic': t + 1, 'words': topic_words(models[p], t, vocabs[p]),
+            cells.append({'topic': t + 1, 'words': topic_words(topic_word_dists[p][t], marginals[p], vocabs[p]),
                           'share': round(float(shares[p][t]), 4),
                           'name': names.get((labels[p], str(t + 1)), '')})
         rows.append({'row': r + 1, 'cells': cells, 'links': links[r], 'name': chain_names.get((str(r + 1),), '')})
@@ -116,6 +124,7 @@ def main():
         'periodCounts': [len(texts) for texts, _ in periods.values()],
         'chainCosine': CHAIN_COSINE,
         'numTopics': PERIOD_TOPICS,
+        'relevanceLambda': RELEVANCE_LAMBDA,
     }
     k = PERIOD_TOPICS
     model_dir = PROJECT_ROOT / 'models' / f'period_lda_{k}'

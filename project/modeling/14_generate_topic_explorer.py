@@ -11,7 +11,9 @@ Input:  models/<BASELINE_MODEL_DIR>/, data/output/stopword_removed/, config/topi
 Output: visualizations/topic_explorer.html (open in a browser; needs internet for the fonts)
 
 Definitions used on the page:
-- Word size: P(word | topic), square-root scaled, top 20 words, on one scale for all clouds (comparable between topics).
+- Words: the 20 most relevant words of the topic (relevance with λ = RELEVANCE_LAMBDA, Sievert & Shirley 2014;
+  see lda_common.py), so that words frequent in every topic do not crowd out the distinctive ones.
+- Word size: P(word | topic), square-root scaled, on one scale for all clouds (comparable between topics).
 - Share: mean topic proportion over the motions (every motion counts equally).
 - Party concentration: share of the topic's top 10 motions (those shown) whose first signatory belongs to
   the most frequent party among them (parliamentary analogue of Gordon's author concentration); shown as
@@ -28,7 +30,10 @@ from pathlib import Path
 
 import numpy as np
 
-from lda_common import BASELINE_MODEL_DIR, NUM_TOPICS, load_baseline_vectorizer, load_body_texts, load_topic_names, period_display
+from lda_common import (
+    BASELINE_MODEL_DIR, NUM_TOPICS, RELEVANCE_LAMBDA, load_baseline_vectorizer, load_body_texts, load_topic_names,
+    most_probable_words, period_display, relevant_words, topic_word_distributions, word_marginal,
+)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from periods import PERIODS, TERM_STARTS, period_key, term_name, term_of_session  # noqa: E402
@@ -117,14 +122,14 @@ def period_index(period):
     return PERIOD_KEYS.index(period)
 
 
-def model_data(lda, vocab, theta, metadata, parties):
-    """Per-topic words, shares and top motions for one model."""
+def model_data(lda, vocab, theta, metadata, parties, marginal):
+    """Per-topic words, shares and top motions for one model (marginal: P(word) in the corpus)."""
     periods = np.array([period_index(m['period']) for m in metadata])
     terms = np.array([term_of_session(m['session']) for m in metadata])
-    topic_word = lda.components_ / lda.components_.sum(axis=1, keepdims=True)
+    topic_word = topic_word_distributions(lda)
     topics = []
     for k in range(lda.n_components):
-        top_word_ids = np.argsort(topic_word[k])[::-1][:TOP_WORDS]
+        top_word_ids = relevant_words(topic_word[k], marginal, TOP_WORDS)
         top_doc_ids = np.argsort(theta[:, k])[::-1][:TOP_MOTIONS]
         motions = [{
             'id': metadata[d]['doc_id'],
@@ -139,6 +144,7 @@ def model_data(lda, vocab, theta, metadata, parties):
         party, count = top_parties.most_common(1)[0]
         topics.append({
             'num': k + 1,
+            'top3': most_probable_words(topic_word[k], vocab),
             'words': [[vocab[i], round(float(topic_word[k, i]), 5)] for i in top_word_ids],
             'share': round(float(theta[:, k].mean()), 5),
             'periods': [round(float(theta[periods == p, k].mean()), 5) for p in range(len(PERIOD_KEYS))],
@@ -172,13 +178,14 @@ def main():
         lda = pickle.load(f)
     texts, metadata, _ = load_body_texts(INPUT_DIR)
     print(f"Inferring topic proportions for {len(texts)} motions...")
-    theta = lda.transform(vectorizer.transform(texts))
+    doc_term = vectorizer.transform(texts)
+    theta = lda.transform(doc_term)
     theta = theta / theta.sum(axis=1, keepdims=True)
     outside = [m['doc_id'] for m in metadata if term_of_session(m['session']) is None]
     if outside:
         raise ValueError(f"{len(outside)} motions without an electoral term, e.g. {outside[:3]}")
-    topic_list = model_data(lda, vocab, theta, metadata, parties)
-    top3 = {(str(t['num']),): ' '.join(w for w, _ in t['words'][:3]) for t in topic_list}
+    topic_list = model_data(lda, vocab, theta, metadata, parties, word_marginal(doc_term))
+    top3 = {(str(t['num']),): t.pop('top3') for t in topic_list}
     names = load_topic_names(PROJECT_ROOT / 'config' / f'topic_names_{NUM_TOPICS}.tsv', top3)
     for t in topic_list:
         t['name'] = names.get((str(t['num']),), '')
@@ -195,6 +202,7 @@ def main():
     data['generated'] = date.today().isoformat()
     data['topics'] = NUM_TOPICS
     data['partyMin'] = PARTY_MIN
+    data['relevanceLambda'] = RELEVANCE_LAMBDA
 
     html = TEMPLATE.read_text(encoding='utf-8')
     assert html.count('__TOPIC_DATA__') == 1, 'template must contain the data placeholder once'

@@ -40,7 +40,7 @@ from topic_matching import match_and_evaluate, permutation_null
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / 'modeling'))
 from lda_common import (  # noqa: E402
-    DEDUP_LEVELS, DEFAULT_SEED, NUM_TOPICS, PERIOD_TOPICS, SHINGLE_WORDS, STABILITY_SEEDS,
+    DEDUP_LEVELS, DEFAULT_SEED, NEAR_DUPLICATE_JACCARD, NUM_TOPICS, PERIOD_TOPICS, SHINGLE_WORDS, STABILITY_SEEDS,
     fit_period_vectorizer, load_body_texts, period_display,
 )
 
@@ -184,7 +184,7 @@ def report(results, periods):
         '',
         'The same models fitted on three selections of the motions (`analysis/dedup_comparison.py`): '
         '*none* (length minimum only), *exact* (identical final texts removed) and *near* (also revised '
-        'resubmissions, Jaccard of three-word sequences ≥ 0.8; the models\' setting). Seeds '
+        f'resubmissions, Jaccard of three-word sequences ≥ {NEAR_DUPLICATE_JACCARD}; the models\' setting). Seeds '
         f'{", ".join(map(str, STABILITY_SEEDS))}; topic diagnostics from the seed-{DEFAULT_SEED} models.',
         '',
         'Duplicates will probably make the models look more stable, since repeated texts are easy to '

@@ -266,6 +266,34 @@ class TestPeriodExplorerChains(unittest.TestCase):
         self.assertLess(links[1][0], period_explorer.CHAIN_COSINE)
 
 
+class TestRelevance(unittest.TestCase):
+    """The explorers show the most relevant words; names still match on the most probable ones."""
+
+    vocab = np.array(['elev', 'läxa', 'betyg', 'sällsynt'])
+    # 'elev' is the most probable word of the topic but just as frequent in the whole corpus;
+    # 'läxa' is less probable but four times as frequent in the topic as in the corpus
+    topic_word = np.array([0.5, 0.4, 0.09, 0.01])
+    marginal = np.array([0.6, 0.1, 0.2, 0.1])
+
+    def test_specific_word_ranks_above_common_one(self):
+        self.assertEqual(list(lda_common.relevant_words(self.topic_word, self.marginal, 2)), [1, 0])
+
+    def test_lambda_one_is_plain_probability(self):
+        self.assertEqual(list(lda_common.relevant_words(self.topic_word, self.marginal, 4, lam=1.0)), [0, 1, 2, 3])
+
+    def test_names_key_uses_probability(self):
+        self.assertEqual(lda_common.most_probable_words(self.topic_word, self.vocab), 'elev läxa betyg')
+
+    def test_marginal_from_counts(self):
+        counts = np.array([[2, 0, 1, 0], [1, 1, 0, 0]])
+        np.testing.assert_allclose(lda_common.word_marginal(counts), [0.6, 0.2, 0.2, 0.0])
+
+    def test_explorer_words_use_relevance(self):
+        words = period_explorer.topic_words(self.topic_word, self.marginal, self.vocab)
+        self.assertEqual(words[0], ['läxa', 0.4])
+        self.assertEqual(len(words), len(self.vocab))   # fewer words than TOP_WORDS: all shown
+
+
 
 if __name__ == '__main__':
     unittest.main()

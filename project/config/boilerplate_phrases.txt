@@ -186,6 +186,13 @@ budgetpropositionen
 budgetpropositionens
 budgetpropositioner
 budgetpropositionerna
+# Budget areas, as in 'Utgiftsområde 16 Utbildning och universitetsforskning' (the number is removed in step 04)
+utgiftsområde
+utgiftsområdet
+utgiftsområden
+utgiftsområdena
+utgiftsområdets
+utgiftsområdesmotion
 
 # ============================================================================
 # 5. Question, Reference, and Opinion Words
