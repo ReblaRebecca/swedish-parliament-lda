@@ -1,36 +1,42 @@
-% Motions per period and words per motion, before and after preprocessing (first table), and the length
-% distribution after preprocessing with percentiles (second table), without the 14 placeholder motions that
-% extraction skips (is_placeholder in extraction/01_extract_from_xml.py).
+% Motions per period, the motions filtered out before modelling, and words per motion before and after preprocessing
+% (first table), and the length distribution after preprocessing with percentiles (second table), over the modelled
+% motions. Filters: placeholders (is_placeholder in extraction/01_extract_from_xml.py), the length minimum and the
+% duplicates (is_modelled and read_bin_body_texts in modeling/lda_common.py).
 % Requires in the preamble:
 %   \usepackage{pdflscape}  % landscape page (rotated in the PDF viewer)
 
 \begin{landscape}
 \begin{table}
 \centering
+\small
+\setlength{\tabcolsep}{4pt}
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{|l|r|r|r|r|r|r|r|}
+\begin{tabular}{|l|r|r|r|r|r|r|r|r|r|}
 \hline
-\textbf{Period} & \textbf{Motions} & \textbf{Filtered out} & \textbf{Kept}
+\textbf{Period} & \textbf{Motions} & \multicolumn{3}{c|}{\textbf{Filtered out}} & \textbf{Modelled}
   & \multicolumn{4}{c|}{\textbf{Words per motion, before / after preprocessing}} \\
-\cline{5-8}
- & & & & \multicolumn{1}{c|}{\textbf{Mean}} & \multicolumn{1}{c|}{\textbf{Median}}
+\cline{3-5} \cline{7-10}
+ & & \multicolumn{1}{c|}{\textbf{Placeholders}} & \multicolumn{1}{c|}{\textbf{Under 20 words}}
+  & \multicolumn{1}{c|}{\textbf{Duplicates}} & & \multicolumn{1}{c|}{\textbf{Mean}} & \multicolumn{1}{c|}{\textbf{Median}}
   & \multicolumn{1}{c|}{\textbf{Min}} & \multicolumn{1}{c|}{\textbf{Max}} \\
 \hline
-1985/86--1993/94 & 4,029 & 11 & 4,018 & 675 / 302 & 416 / 184 & 22 / 2 & 16,803 / 7,851 \\
-1994/95--2005/06 & 3,477 & 2 & 3,475 & 957 / 433 & 434 / 197 & 23 / 4 & 21,305 / 10,380 \\
-2006/07--2013/14 & 2,879 & 0 & 2,879 & 545 / 243 & 325 / 143 & 37 / 20 & 13,580 / 6,346 \\
-2014/15--2025/26 & 3,572 & 1 & 3,571 & 772 / 338 & 366 / 159 & 41 / 12 & 28,968 / 13,495 \\
+1985/86--1993/94 & 4,029 & 11 & 271 & 10 & 3,737 & 720 / 321 & 439 / 194 & 68 / 20 & 16,803 / 7,816 \\
+1994/95--2005/06 & 3,477 & 2 & 5 & 30 & 3,440 & 963 / 433 & 435 / 196 & 54 / 21 & 21,305 / 10,377 \\
+2006/07--2013/14 & 2,879 & 0 & 0 & 154 & 2,725 & 559 / 247 & 330 / 145 & 37 / 20 & 13,580 / 6,306 \\
+2014/15--2025/26 & 3,572 & 1 & 2 & 347 & 3,222 & 822 / 361 & 381 / 165 & 63 / 22 & 28,968 / 13,495 \\
 \hline
-\textbf{All} & \textbf{13,957} & \textbf{14} & \textbf{13,943} & \textbf{743 / 332} & \textbf{383 / 169}
-  & \textbf{22 / 2} & \textbf{28,968 / 13,495} \\
+\textbf{All} & \textbf{13,957} & \textbf{14} & \textbf{278} & \textbf{541} & \textbf{13,124} & \textbf{775 / 345}
+  & \textbf{396 / 174} & \textbf{37 / 20} & \textbf{28,968 / 13,495} \\
 \hline
 \end{tabular}
 \caption{Motions referred to the Committee on Education (UbU), sessions 1985/86--2025/26, per period (electoral
-terms), and the length of their body text. \emph{Filtered out}: placeholder motions with no text of their own: the
-document is missing (6), its conversion was never finished (1) or the motion was withdrawn (7). Words per motion are
-counted over the kept motions, \emph{before} preprocessing (the extracted body text, without title, motion number and
-author names) and \emph{after} it (the final text, lemmatized, without boilerplate and stopwords). A word is a token
-with at least one letter.}
+terms), the motions filtered out before modelling, and the length of the body text of the modelled motions.
+\emph{Placeholders}: motions with no text of their own: the document is missing (6), its conversion was never finished
+(1) or the motion was withdrawn (7). \emph{Under 20 words}: fewer than 20 words after preprocessing, almost all short
+formal requests (\emph{hemställan}) referring to another motion. \emph{Duplicates}: final texts identical to an earlier
+motion, mostly the same motion resubmitted in a later session; the first copy is modelled. Words per motion are counted
+\emph{before} preprocessing (the extracted body text, without title, motion number and author names) and \emph{after}
+it (the final text, lemmatized, without boilerplate and stopwords). A word is a token with at least one letter.}
 \label{tab:motion-lengths}
 \end{table}
 
@@ -42,20 +48,18 @@ with at least one letter.}
 \textbf{Period} & \textbf{Motions} & \textbf{Min} & \textbf{5th pct.} & \textbf{Median} & \textbf{Mean}
   & \textbf{95th pct.} & \textbf{Max} \\
 \hline
-1985/86--1993/94 & 4,018 & 2 & 14 & 184 & 302 & 852 & 7,851 \\
-1994/95--2005/06 & 3,475 & 4 & 65 & 197 & 433 & 1,736 & 10,380 \\
-2006/07--2013/14 & 2,879 & 20 & 62 & 143 & 243 & 703 & 6,346 \\
-2014/15--2025/26 & 3,571 & 12 & 62 & 159 & 338 & 1,191 & 13,495 \\
+1985/86--1993/94 & 3,737 & 20 & 69 & 194 & 321 & 926 & 7,816 \\
+1994/95--2005/06 & 3,440 & 21 & 65 & 196 & 433 & 1,724 & 10,377 \\
+2006/07--2013/14 & 2,725 & 20 & 62 & 145 & 247 & 716 & 6,306 \\
+2014/15--2025/26 & 3,222 & 22 & 64 & 165 & 361 & 1,304 & 13,495 \\
 \hline
-\textbf{All} & \textbf{13,943} & \textbf{2} & \textbf{58} & \textbf{169} & \textbf{332} & \textbf{1,173}
+\textbf{All} & \textbf{13,124} & \textbf{20} & \textbf{65} & \textbf{174} & \textbf{345} & \textbf{1,223}
   & \textbf{13,495} \\
 \hline
 \end{tabular}
-\caption{Length distribution of the motions after preprocessing: words per motion in the final text (lemmatized,
-without boilerplate and stopwords) that the models are built from, over the kept motions of
-Table~\ref{tab:motion-lengths}. The distribution is strongly right-skewed: the mean is about twice the median,
-pulled up by a few long budget motions. The low 5th percentile of the first period comes from short formal requests
-(\emph{hemställan}) that refer to another motion.}
+\caption{Length distribution of the modelled motions after preprocessing: words per motion in the final text
+(lemmatized, without boilerplate and stopwords) that the models are built from (Table~\ref{tab:motion-lengths}). The
+distribution is strongly right-skewed: the mean is about twice the median, pulled up by a few long budget motions.}
 \label{tab:motion-length-distribution}
 \end{table}
 \end{landscape}

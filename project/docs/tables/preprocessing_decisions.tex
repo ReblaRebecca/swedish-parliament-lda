@@ -21,8 +21,8 @@
 \caption{Preprocessing: decisions at each step and the size of the corpus after it, from the raw XML to the input of the
 whole-corpus model. \emph{Words} and \emph{Different words} give the size of the corpus after each step (in the step's
 row), with the change from the step before in brackets. \emph{Words} are Stanza's tokens with at least one letter
-(punctuation and pure numbers are not counted), in the body text of all 13,957 motions; \emph{different words} are
-counted case-insensitively. \emph{Justification}: \emph{Motivated} = chosen for a stated reason; \emph{Default} = a library
+(punctuation and pure numbers are not counted), in the body text of the 13,943 extracted motions (the last row: the
+13,124 modelled motions); \emph{different words} are counted case-insensitively. \emph{Justification}: \emph{Motivated} = chosen for a stated reason; \emph{Default} = a library
 default or inherited setting that has not been tested; \emph{Manual} = a hand-made list or rule; \emph{Open} = still to
 be decided. Gordon (2026) is the reference study.}
 \label{tab:preprocessing} \\
@@ -39,14 +39,14 @@ be decided. Gordon (2026) is the reference study.}
 \endlastfoot
 %
 % ---------------------------------------------------------------- 01
-\steprow{01 Extraction}{10,360,566}{137,918}
+\steprow{01 Extraction}{10,360,449}{137,917}
 \hline
 Data source & Riksdagens öppna data (data.riksdagen.se): nine motion datasets in XML, \texttt{mot-1980-1989} to
   \texttt{mot-2022-2025}, 160,222 files & Open & Unpacked 2026-10-15; the download date is to be confirmed. The datasets
   are updated while a session is running, so the version matters for session 2025/26. & & \\
 \hline
 Corpus & Motions referred to the Committee on Education (UbU, XML field \texttt{organ}), sessions 1985/86--2025/26 &
-  Motivated & 13,957 motions. UbU motions start in January 1986 (motions of autumn 1985 are not tagged with the
+  Motivated & 13,957 motions, 13,943 after the placeholders (below). UbU motions start in January 1986 (motions of autumn 1985 are not tagged with the
   committee). & & \\
 \hline
 Periods & Four periods of complete electoral terms, assigned by parliamentary session (XML field \texttt{rm}) &
@@ -70,22 +70,25 @@ Metadata & Motion numbers (\textit{1989/90:Ub742}) and the motion's own author n
   Stanza, so numbers are not split into odd tokens and names are not lemmatized. Gordon also filters author and title
   tokens. & & \\
 \hline
-Duplicates & 515 identical final texts (3.69\%), mostly the same motion resubmitted in a later session; only the
-  first copy is modelled & Motivated & Kept, a resubmitted motion would weight its words several times in the topics and
+Placeholders & Skipped: texts under 30 words noting a missing document, an unfinished conversion or a withdrawn
+  motion & Motivated & 14 motions (6 missing, 1 unconverted, 7 withdrawn) with no text of their own. & & \\
+\hline
+Duplicates & 551 identical final texts (3.95\%), mostly the same motion resubmitted in a later session; only the
+  first copy is modelled (541 skipped, the rest are under the length minimum) & Motivated & Kept, a resubmitted motion would weight its words several times in the topics and
   count once per session in the shares, mostly in the last period. & & \\
 \hline
 %
 % ---------------------------------------------------------------- 02
-\steprow{02 Lemmatization}{10,360,566 (0\%)}{96,875 ($-30$\%)}
+\steprow{02 Lemmatization}{10,360,449 (0\%)}{96,875 ($-30$\%)}
 \hline
 Lemmatizer & Stanza, Swedish Talbanken model (tokenization, part of speech, lemma), run on the running text &
   Motivated & Swedish inflection splits one word into many forms (\textit{skola, skolan, skolorna}); each word is
   replaced by its lemma, so no words are removed. Every word is saved with its form, lemma and part of speech, so later
-  steps can be re-run without Stanza (about 5 hours). Gordon does not lemmatize (English). & & \\
+  steps can be re-run without Stanza (about 4 hours). Gordon does not lemmatize (English). & & \\
 \hline
 %
 % ---------------------------------------------------------------- 03
-\steprow{03 Boilerplate removal}{8,800,067 ($-15$\%)}{95,956 ($-1$\%)}
+\steprow{03 Boilerplate removal}{8,727,080 ($-16$\%)}{95,950 ($-1$\%)}
 \hline
 Boilerplate & 450 parliamentary words and phrases (institutions, procedure, references, party names), matched on the
   original word forms & Manual & A word is removed only if a phrase covers the whole word. Removes many words but few
@@ -104,7 +107,7 @@ Lemma corrections & A short list of known Stanza errors (\textit{kompet} $\to$ \
 \hline
 %
 % ---------------------------------------------------------------- 04
-\steprow{04 Normalization}{8,494,260 ($-3$\%)}{84,342 ($-12$\%)}
+\steprow{04 Normalization}{8,421,273 ($-3.5$\%)}{84,337 ($-12$\%)}
 \hline
 Normalization & Lowercase; digits removed; punctuation inside tokens replaced by a space; single characters dropped &
   Default & Standard practice. Hyphenated lemmas are split (\textit{it-kompetens} $\to$ \textit{it}, \textit{kompetens};
@@ -113,29 +116,30 @@ Normalization & Lowercase; digits removed; punctuation inside tokens replaced by
 \hline
 %
 % ---------------------------------------------------------------- 05
-\steprow{05 Stopword removal}{4,622,680 ($-46$\%)}{84,176 ($-0.2$\%)}
+\steprow{05 Stopword removal}{4,596,721 ($-45$\%)}{84,170 ($-0.2$\%)}
 \hline
 Stopwords & NLTK Swedish list (114) plus 86 supplementary words, including their lemma forms & Manual & The
   supplementary words were chosen by inspecting early models. Content abbreviations (\textit{fn}, \textit{eg}) are kept.
-  Removes almost half of the words but only 166 different ones: stopwords are few and very frequent. Gordon uses a
+  Removes almost half of the words but only 167 different ones: stopwords are few and very frequent. Gordon uses a
   178-word stoplist. & & \\
 \hline
 Proper names & Kept & Open & Gordon removes them (capitalization heuristic). In the first (44-topic) models, about 8
   topics were organized around places (constituency signal); not yet checked for the current models. & & \\
 \hline
-Empty texts & Motions with no words left are skipped by the models & Motivated & 4 withdrawn motions (titled
-  \textit{Utgår}); the models use 13,953 motions. & & \\
+Minimum length & Motions with fewer than 20 words in the final text are not modelled & Motivated & 278 motions, almost
+  all short formal requests (\textit{hemställan}) referring to another motion, 271 of them in 1985/86--1993/94: too short
+  for a reliable topic mix. With the duplicates, the models use 13,124 motions. & & \\
 \hline
 %
 % ---------------------------------------------------------------- vocabulary
-\steprow{Frequency limits: input to the whole-corpus model}{4,058,083 ($-12$\%)}{15,962 ($-81$\%)}
+\steprow{Frequency limits: input to the whole-corpus model}{3,973,669 ($-14$\%)}{15,763 ($-81$\%)}
 \hline
 Document frequency & Words in $\geq 10$ and $\leq 50\%$ of motions, no cap & Motivated & Gordon's rule (2026,
-  \S3.3), used for the period models and the whole-corpus model: 15,962 different words (4,058,083
-  words, 87.8\% of the words of the final text). His documents are 1,000-word chunks of books; our motions
-  are much shorter (median 169 words after stopword removal), so a word has fewer chances to reach 10 documents. & & \\
+  \S3.3), used for the period models and the whole-corpus model: 15,763 different words (3,973,669
+  words, 87.9\% of the words of the modelled motions' final text). His documents are 1,000-word chunks of books; our motions
+  are much shorter (median 174 words after stopword removal), so a word has fewer chances to reach 10 documents. & & \\
 \hline
-Upper limit & $\leq 50\%$ of motions & Open & Removes 12 words, among them \textit{utbildning} (61\% of motions) and
+Upper limit & $\leq 50\%$ of motions & Open & Removes 12 words, among them \textit{utbildning} (62\% of motions) and
   \textit{skola} (51\%), central content words of an education corpus. \textbf{Question:} drop them (they do not
   distinguish between topics) or keep them? & & \\
 \hline

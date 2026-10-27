@@ -5,35 +5,35 @@
 # Format: topic number, its three most probable words, name (tab-separated). The generator
 # shows a name only if the three words still match the model, so a refitted model with other
 # topics gets no wrong names.
-1	svensk språk land	Språkundervisning och studier utomlands
-2	ung ungdom psykisk	Ungas hälsa och psykiska ohälsa
-3	förskola barn kommun	Förskola och fritidshem
-4	lärare lärarutbildning pedagogisk	Lärare, rektorer och lärarutbildning
-5	samhälle människa undervisning	Värdegrund, religion och demokrati
-6	elev mobbning betyg	Mobbning, ordning och nationella prov
-7	gymnasieskola kurs program	Gymnasieskolans program och behörighet
-8	mat ämne hälsa	Hemkunskap och konsumentkunskap
-9	elev kunskap grundskola	Grundskolans undervisning och kunskapsmål
-10	lund kalmar professur	Restämne: högskoleorter och professurer
-11	ersättning alliansregering merkostnad	Restämne: ersättningar, tillstånd och prövning
-12	svensk undervisning ämne	Svenska och svenska för invandrare (sfi)
-13	kvinna många problem	Jämställdhet och allmän samhällsdebatt
-14	barn förälder familj	Teckenspråk, döva och modersmål
-15	skolinspektion elevhälsa utreda	Restämne: skolinspektion, tillsyn och validering
-16	fysisk idrott aktivitet	Idrott och fysisk aktivitet
-17	forskning svensk eu	Forskning, miljö och naturkunskap
-18	län högskola region	Regional högskoleutbyggnad
-19	högskola anslag plats	Högskoleanslag och utbildningsplatser
-20	hbt undervisning ant	Restämne: hbtq, ANT och andra inslag i undervisningen
-21	it digitalisering utanförskap	Restämne: IT, säkerhetspolitik m.m.
-22	ung företag vinstdrivande	Restämne: företagande, musik och simundervisning
-23	malmö nordisk land	Nordiska språk och nationella minoriteter
-24	vinst stat statlig	Vinst, privat drift och huvudmannaskap
-25	kommun elev fristående	Kommuner och fristående skolor
-26	utgiftsområde vetenskapsråd riksrevision	Restämne: forskningsorgan och genusforskning
-27	forskning högskola universitet	Forskning och universitet
-28	vård hälsa läkare	Vård- och läkarutbildning
-29	utveckling hög land	Näringsliv, samverkan och kompetensförsörjning
-30	elev stöd behov	Särskilt stöd och funktionsnedsättning
-31	student studie hög	Studiemedel och vuxenutbildning
-32	yrkesutbildning lärlingsutbildning företag	Yrkes- och lärlingsutbildning
+1	kommun fristående kommunal	Kommunal och fristående skola: reglering och tillsyn
+2	lärare lärarutbildning pedagogisk	Lärare och lärarutbildning
+3	vuxenutbildning läsa svensk	Svenska för invandrare (sfi) och vuxenutbildning
+4	elev gymnasieskola program	Gymnasieskolan: program, betyg och behörighet
+5	forskning utveckling område	Forskning, teknik och miljö
+6	yrkesutbildning lärlingsutbildning yrke	Yrkes- och lärlingsutbildning
+7	barn behov förälder	Barn i behov av särskilt stöd och funktionsnedsättning
+8	idrott aktivitet fritid	Idrott, friluftsliv och idrottsutbildning
+9	barn förskola barnomsorg	Förskola, barnomsorg och fritidshem
+10	borås malmö bibliotek	Restämne: tandläkarutbildning, bibliotek och design
+11	digitalisering vinst miljard	Restämne: mykologi, digitalisering och vinster
+12	fysisk hälsa psykisk	Fysisk och psykisk hälsa
+13	kommun stockholm region	Högskolor i Stockholmsregionen och lokalisering
+14	samhälle människa svensk	Värdegrund, religion och demokrati
+15	läromedel elev tillgång	Läromedel, skolbibliotek och hjälpmedel
+16	vård läkare sjukvård	Läkar- och vårdutbildning
+17	språk modersmål svensk	Modersmål, hemspråk och minoritetsspråk
+18	högskola behov plats	Regional högskoleutbyggnad och utbildningsplatser
+19	umeå universitet region	Lärosäten i Norrland
+20	tv ant information	Restämne: naturkunskap, ANT och medier
+21	bidrag studie anslag	Studiestöd, studiemedel och folkhögskola
+22	elevhälsa körkort uf	Restämne: körkort, simundervisning och elevhälsa
+23	ämne kunskap elev	Skolämnen, hemkunskap och kost
+24	universitet göteborg lund	Universitet, institut och stiftelser
+25	elev kommun grundskola	Grundskolan, skolval och friskolor
+26	högskola forskning student	Högskola, forskning och forskarutbildning
+27	svensk land internationell	Internationalisering och främmande språk
+28	kvinna undervisning flicka	Jämställdhet, kön och sex och samlevnad
+29	kunskap arbete samhälle	Blandat: skolans uppgift och samhället
+30	hög behov arbetsmarknad	Arbetsmarknad, kompetens och utbildningsbehov
+31	it mälardalens utanförskap	Restämne: genusforskning, IT och regionala högskolor
+32	elev mobbning barn	Mobbning, våld och ordning i skolan

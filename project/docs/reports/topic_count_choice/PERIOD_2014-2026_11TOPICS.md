@@ -5,7 +5,7 @@
 **Matching:** topics are optimally matched across models using the Hungarian algorithm,
 accounting for the fact that topic indices are arbitrary across LDA runs.
 
-**Text:** Body text only, motions of sessions 2014/15–2025/26 (3572)
+**Text:** Body text only, motions of sessions 2014/15–2025/26 (3222)
 
 **Matching criterion:** Cosine similarity over normalized topic-word distributions
 
@@ -21,11 +21,11 @@ the iteration count confirms the setting, not convergence.
 
 | Seed | Training perplexity | Iterations |
 |---|---|---|
-| 42 | 1504.02 | 50 |
-| 123 | 1514.93 | 50 |
-| 456 | 1530.86 | 50 |
-| 789 | 1519.37 | 50 |
-| 999 | 1514.59 | 50 |
+| 42 | 1469.39 | 50 |
+| 123 | 1458.82 | 50 |
+| 456 | 1478.46 | 50 |
+| 789 | 1470.15 | 50 |
+| 999 | 1478.99 | 50 |
 
 ## Stability per Topic (reference model: seed 42)
 
@@ -36,187 +36,187 @@ topics that are found in all models with more confidence than the others.
 
 | Found in | Topics |
 |---|---|
-| 4 of 4 | 4 |
-| 3 of 4 | 2 |
-| 2 of 4 | 2 |
-| 1 of 4 | 1 |
-| 0 of 4 | 2 |
+| 4 of 4 | 3 |
+| 3 of 4 | 3 |
+| 2 of 4 | 3 |
+| 1 of 4 | 2 |
+| 0 of 4 | 0 |
 
 | Topic | Top words | Found | Mean cosine | Min cosine | Mean Jaccard |
 |---|---|---|---|---|---|
-| 1 | barn, förskola, verksamhet, pedagogisk, fritidshem, personal, förälder, omsorg | 4/4 | 0.878 | 0.780 | 0.385 |
-| 2 | svensk, elev, samhälle, kunskap, barn, politisk, människa, ung | 2/4 | 0.591 | 0.244 | 0.256 |
-| 3 | elev, lärare, kommun, svensk, kvalitet, förutsättning, stärka, behov | 4/4 | 0.877 | 0.747 | 0.472 |
-| 4 | elev, barn, lärare, stöd, kunskap, nationell, betyg, undervisning | 4/4 | 0.878 | 0.775 | 0.509 |
-| 5 | elev, företag, arbetsmarknad, ung, gymnasieskola, ungdom, gymnasium, kunskap | 3/4 | 0.757 | 0.672 | 0.375 |
-| 6 | student, studie, person, studiemedel, arbetsmarknad, studera, arbeta, arbete | 3/4 | 0.796 | 0.588 | 0.406 |
-| 7 | forskning, högskola, nivå, universitet, avancerad, grundnivå, forskarnivå, anslag | 4/4 | 0.942 | 0.864 | 0.690 |
-| 8 | friskola, konfessionell, religiös, läkare, svensk, kristen, undervisning, kyrka | 1/4 | 0.438 | 0.223 | 0.164 |
-| 9 | forskning, högskola, hög, lärosäte, universitet, student, land, svensk | 2/4 | 0.732 | 0.466 | 0.448 |
-| 10 | språk, nationell, samisk, svensk, försvar, land, djurförsök, kultur | 0/4 | 0.513 | 0.311 | 0.234 |
-| 11 | barn, förälder, kommun, barnomsorg, hälsa, fysisk, aktivitet, idrott | 0/4 | 0.354 | 0.060 | 0.174 |
+| 1 | barn, ung, samhälle, våld, kvinna, arbete, psykisk, kunskap | 2/4 | 0.721 | 0.595 | 0.245 |
+| 2 | forskning, högskola, hög, lärosäte, universitet, svensk, kvalitet, land | 4/4 | 0.916 | 0.857 | 0.730 |
+| 3 | kommun, friskola, kommunal, skolinspektion, fristående, konfessionell, svensk, verksamhet | 2/4 | 0.701 | 0.467 | 0.350 |
+| 4 | arbetsmarknad, student, behov, studie, hög, jobb, arbete, person | 2/4 | 0.762 | 0.593 | 0.468 |
+| 5 | lärare, svensk, undervisning, nationell, stöd, kunskap, betyg, rektor | 3/4 | 0.829 | 0.590 | 0.498 |
+| 6 | barn, förskola, förälder, språk, kommun, pedagogisk, verksamhet, svensk | 4/4 | 0.875 | 0.784 | 0.457 |
+| 7 | lärare, förutsättning, likvärdig, kvalitet, resurs, behov, land, digital | 3/4 | 0.641 | 0.242 | 0.302 |
+| 8 | hälsa, vård, fysisk, forskning, aktivitet, idrott, sjukvård, läkare | 1/4 | 0.616 | 0.477 | 0.336 |
+| 9 | student, svensk, land, universitet, hög, kunskap, funktionsnedsättning, kostnad | 1/4 | 0.521 | 0.320 | 0.185 |
+| 10 | forskning, nivå, högskola, avancerad, grundnivå, universitet, forskarnivå, anslag | 4/4 | 0.965 | 0.924 | 0.871 |
+| 11 | gymnasieskola, ungdom, kunskap, ung, gymnasium, företag, ämne, program | 3/4 | 0.683 | 0.458 | 0.260 |
 
 ## Pairwise Comparisons
 
 ### Seed 42 vs Seed 123
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.7186
-- Median: 0.8437
-- Min: 0.2442
-- Max: 0.9450
-- Std Dev: 0.2216
+- Mean: 0.7852
+- Median: 0.8428
+- Min: 0.3680
+- Max: 0.9947
+- Std Dev: 0.2071
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.3400
-- Median: 0.3333
-- Min: 0.0526
-- Max: 0.6667
-- Std Dev: 0.1574
+- Mean: 0.5089
+- Median: 0.4815
+- Min: 0.0811
+- Max: 1.0000
+- Std Dev: 0.2885
 
 ### Seed 42 vs Seed 456
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.7026
-- Median: 0.8114
-- Min: 0.2287
-- Max: 0.9740
-- Std Dev: 0.2556
+- Mean: 0.7296
+- Median: 0.7884
+- Min: 0.2421
+- Max: 0.9962
+- Std Dev: 0.2061
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.3722
+- Mean: 0.4489
 - Median: 0.3793
-- Min: 0.0526
-- Max: 0.7391
-- Std Dev: 0.2200
+- Min: 0.1111
+- Max: 1.0000
+- Std Dev: 0.2489
 
 ### Seed 42 vs Seed 789
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.6679
-- Median: 0.7473
-- Min: 0.0605
-- Max: 0.9725
-- Std Dev: 0.2636
+- Mean: 0.7435
+- Median: 0.8035
+- Min: 0.4672
+- Max: 0.9528
+- Std Dev: 0.1666
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.3780
-- Median: 0.3793
-- Min: 0.0000
-- Max: 1.0000
-- Std Dev: 0.2479
+- Mean: 0.3706
+- Median: 0.2903
+- Min: 0.1111
+- Max: 0.7391
+- Std Dev: 0.2066
 
 ### Seed 42 vs Seed 999
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.7315
-- Median: 0.8426
-- Min: 0.0941
-- Max: 0.9856
-- Std Dev: 0.2618
+- Mean: 0.7346
+- Median: 0.7444
+- Min: 0.3196
+- Max: 0.9408
+- Std Dev: 0.1800
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.4058
+- Mean: 0.3815
 - Median: 0.3793
-- Min: 0.0256
-- Max: 1.0000
-- Std Dev: 0.2709
+- Min: 0.0000
+- Max: 0.8182
+- Std Dev: 0.2087
 
 ### Seed 123 vs Seed 456
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.7363
-- Median: 0.7424
-- Min: 0.3381
-- Max: 0.9707
-- Std Dev: 0.1946
+- Mean: 0.7039
+- Median: 0.7130
+- Min: 0.3353
+- Max: 0.9926
+- Std Dev: 0.1920
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.3867
-- Median: 0.3333
-- Min: 0.1429
-- Max: 0.7391
-- Std Dev: 0.2072
+- Mean: 0.3982
+- Median: 0.2500
+- Min: 0.0811
+- Max: 1.0000
+- Std Dev: 0.2875
 
 ### Seed 123 vs Seed 789
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.6026
-- Median: 0.7488
-- Min: 0.1027
-- Max: 0.8850
-- Std Dev: 0.2563
+- Mean: 0.7260
+- Median: 0.8367
+- Min: 0.4680
+- Max: 0.9453
+- Std Dev: 0.1775
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.2401
-- Median: 0.2121
-- Min: 0.0000
-- Max: 0.4286
-- Std Dev: 0.1307
+- Mean: 0.3592
+- Median: 0.3333
+- Min: 0.0811
+- Max: 0.7391
+- Std Dev: 0.2173
 
 ### Seed 123 vs Seed 999
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.6606
-- Median: 0.5941
-- Min: 0.4124
-- Max: 0.9146
-- Std Dev: 0.1655
+- Mean: 0.6908
+- Median: 0.6996
+- Min: 0.2305
+- Max: 0.9343
+- Std Dev: 0.2198
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.3235
+- Mean: 0.3479
 - Median: 0.3333
-- Min: 0.2121
-- Max: 0.4815
-- Std Dev: 0.0900
+- Min: 0.0256
+- Max: 0.8182
+- Std Dev: 0.2204
 
 ### Seed 456 vs Seed 789
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.6035
-- Median: 0.7229
-- Min: 0.0435
-- Max: 0.8987
-- Std Dev: 0.2913
+- Mean: 0.6832
+- Median: 0.6708
+- Min: 0.0997
+- Max: 0.9710
+- Std Dev: 0.2607
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.2619
-- Median: 0.2500
-- Min: 0.0256
-- Max: 0.6000
-- Std Dev: 0.1713
+- Mean: 0.3557
+- Median: 0.3333
+- Min: 0.0526
+- Max: 0.6667
+- Std Dev: 0.2053
 
 ### Seed 456 vs Seed 999
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.5807
-- Median: 0.6437
-- Min: 0.0861
-- Max: 0.8980
-- Std Dev: 0.2656
+- Mean: 0.6197
+- Median: 0.5330
+- Min: 0.3194
+- Max: 0.9311
+- Std Dev: 0.2165
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.2653
+- Mean: 0.3262
 - Median: 0.2500
-- Min: 0.0526
-- Max: 0.6000
-- Std Dev: 0.1576
+- Min: 0.0811
+- Max: 0.8182
+- Std Dev: 0.2329
 
 ### Seed 789 vs Seed 999
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.6476
-- Median: 0.7740
-- Min: 0.1584
-- Max: 0.9943
-- Std Dev: 0.2813
+- Mean: 0.6637
+- Median: 0.7793
+- Min: 0.0996
+- Max: 0.9629
+- Std Dev: 0.2875
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.3602
-- Median: 0.3333
-- Min: 0.0256
-- Max: 1.0000
-- Std Dev: 0.2577
+- Mean: 0.3277
+- Median: 0.3793
+- Min: 0.0000
+- Max: 0.6000
+- Std Dev: 0.1926
 
 ## Overall Summary Statistics
 
@@ -230,15 +230,15 @@ deviation understates the real uncertainty. For spread across runs, compare the 
 means above.
 
 ### Cosine Similarity (across all matches)
-- Mean: 0.6652
-- Median: 0.7448
-- Min: 0.0435
-- Max: 0.9943
-- Std Dev: 0.2543
+- Mean: 0.7080
+- Median: 0.7698
+- Min: 0.0996
+- Max: 0.9962
+- Std Dev: 0.2189
 
 ### Jaccard Similarity (across all matches)
-- Mean: 0.3334
+- Mean: 0.3825
 - Median: 0.3333
 - Min: 0.0000
 - Max: 1.0000
-- Std Dev: 0.2068
+- Std Dev: 0.2393

@@ -185,9 +185,14 @@ def load_baseline_vectorizer(vectorizer_path):
         return pickle.load(f)
 
 
+def new_lda_model(num_topics=NUM_TOPICS, random_state=DEFAULT_SEED, **overrides):
+    """An unfitted LDA model with the shared settings; overrides only for checks of the settings themselves."""
+    return LatentDirichletAllocation(n_components=num_topics, random_state=random_state, **{**LDA_PARAMS, **overrides})
+
+
 def fit_lda_model(doc_term_matrix, num_topics=NUM_TOPICS, random_state=DEFAULT_SEED):
     """Fit an LDA model with the shared settings."""
-    lda = LatentDirichletAllocation(n_components=num_topics, random_state=random_state, **LDA_PARAMS)
+    lda = new_lda_model(num_topics, random_state)
     lda.fit(doc_term_matrix)
     return lda
 
