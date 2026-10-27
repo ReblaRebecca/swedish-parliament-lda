@@ -22,7 +22,7 @@
 whole-corpus model. \emph{Words} and \emph{Different words} give the size of the corpus after each step (in the step's
 row), with the change from the step before in brackets. \emph{Words} are Stanza's tokens with at least one letter
 (punctuation and pure numbers are not counted), in the body text of the 13,943 extracted motions (the last row: the
-13,124 modelled motions); \emph{different words} are counted case-insensitively. \emph{Justification}: \emph{Motivated} = chosen for a stated reason; \emph{Default} = a library
+13,007 modelled motions); \emph{different words} are counted case-insensitively. \emph{Justification}: \emph{Motivated} = chosen for a stated reason; \emph{Default} = a library
 default or inherited setting that has not been tested; \emph{Manual} = a hand-made list or rule; \emph{Open} = still to
 be decided. Gordon (2026) is the reference study.}
 \label{tab:preprocessing} \\
@@ -73,8 +73,8 @@ Metadata & Motion numbers (\textit{1989/90:Ub742}) and the motion's own author n
 Placeholders & Skipped: texts under 30 words noting a missing document, an unfinished conversion or a withdrawn
   motion & Motivated & 14 motions (6 missing, 1 unconverted, 7 withdrawn) with no text of their own. & & \\
 \hline
-Duplicates & 551 identical final texts (3.95\%), mostly the same motion resubmitted in a later session; only the
-  first copy is modelled (541 skipped, the rest are under the length minimum) & Motivated & Kept, a resubmitted motion would weight its words several times in the topics and
+Duplicates & 653 identical final texts (4.68\%), mostly the same motion resubmitted in a later session; only the
+  first copy is modelled (642 skipped, the rest are under the length minimum) & Motivated & Kept, a resubmitted motion would weight its words several times in the topics and
   count once per session in the shares, mostly in the last period. & & \\
 \hline
 %
@@ -88,7 +88,7 @@ Lemmatizer & Stanza, Swedish Talbanken model (tokenization, part of speech, lemm
 \hline
 %
 % ---------------------------------------------------------------- 03
-\steprow{03 Boilerplate removal}{8,727,080 ($-16$\%)}{95,950 ($-1$\%)}
+\steprow{03 Boilerplate removal}{8,690,151 ($-16$\%)}{95,948 ($-1$\%)}
 \hline
 Boilerplate & 460 parliamentary words and phrases (institutions, procedure, references, party names), matched on the
   original word forms & Manual & A word is removed only if a phrase covers the whole word. Removes many words but few
@@ -107,7 +107,7 @@ Lemma corrections & A short list of known Stanza errors (\textit{kompet} $\to$ \
 \hline
 %
 % ---------------------------------------------------------------- 04
-\steprow{04 Normalization}{8,421,273 ($-3.5$\%)}{84,337 ($-12$\%)}
+\steprow{04 Normalization}{8,384,344 ($-3.5$\%)}{84,336 ($-12$\%)}
 \hline
 Normalization & Lowercase; digits removed; punctuation inside tokens replaced by a space; single characters dropped &
   Default & Standard practice. Hyphenated lemmas are split (\textit{it-kompetens} $\to$ \textit{it}, \textit{kompetens};
@@ -116,35 +116,35 @@ Normalization & Lowercase; digits removed; punctuation inside tokens replaced by
 \hline
 %
 % ---------------------------------------------------------------- 05
-\steprow{05 Stopword removal}{4,596,721 ($-45$\%)}{84,170 ($-0.2$\%)}
+\steprow{05 Stopword removal}{4,206,231 ($-50$\%)}{84,126 ($-0.2$\%)}
 \hline
 Stopwords & NLTK Swedish list (114) plus 129 supplementary words, including their lemma forms & Manual & The
   supplementary words were chosen by inspecting early models. Content abbreviations (\textit{fn}, \textit{eg}) are kept.
-  Removes almost half of the words but only 167 different ones: stopwords are few and very frequent. Gordon uses a
+  Removes half of the words but only 210 different ones: stopwords are few and very frequent. Gordon uses a
   178-word stoplist. & & \\
 \hline
 Proper names & Kept & Open & Gordon removes them (capitalization heuristic). In the first (44-topic) models, about 8
   topics were organized around places (constituency signal); not yet checked for the current models. & & \\
 \hline
-Minimum length & Motions with fewer than 20 words in the final text are not modelled & Motivated & 278 motions, almost
-  all short formal requests (\textit{hemställan}) referring to another motion, 271 of them in 1985/86--1993/94: too short
-  for a reliable topic mix. With the duplicates, the models use 13,124 motions. & & \\
+Minimum length & Motions with fewer than 20 words in the final text are not modelled & Motivated & 294 motions, almost
+  all short formal requests (\textit{hemställan}) referring to another motion, 277 of them in 1985/86--1993/94: too short
+  for a reliable topic mix. With the duplicates, the models use 13,007 motions. & & \\
 \hline
 %
 % ---------------------------------------------------------------- vocabulary
-\steprow{Frequency limits: input to the whole-corpus model}{3,973,669 ($-14$\%)}{15,763 ($-81$\%)}
+\steprow{Frequency limits: input to the whole-corpus model}{3,799,681 ($-10$\%)}{15,676 ($-81$\%)}
 \hline
 Document frequency & Words in $\geq 10$ and $\leq 50\%$ of motions, no cap & Motivated & Gordon's rule (2026,
-  \S3.3), used for the period models and the whole-corpus model: 15,763 different words (3,973,669
-  words, 87.9\% of the words of the modelled motions' final text). His documents are 1,000-word chunks of books; our motions
-  are much shorter (median 174 words after stopword removal), so a word has fewer chances to reach 10 documents. & & \\
+  \S3.3), used for the period models and the whole-corpus model: 15,676 different words (3,799,681
+  words, 92.0\% of the words of the modelled motions' final text). His documents are 1,000-word chunks of books; our motions
+  are much shorter (median 159 words after stopword removal), so a word has fewer chances to reach 10 documents. & & \\
 \hline
-Upper limit & $\leq 50\%$ of motions & Open & Removes 12 words, among them \textit{utbildning} (62\% of motions) and
-  \textit{skola} (51\%), central content words of an education corpus. \textbf{Question:} drop them (they do not
+Upper limit & $\leq 50\%$ of motions & Open & Removes 2 words, \textit{utbildning} (63\% of motions) and \textit{skola} (51\%), central content words of an
+  education corpus (the other frequent words are now stopwords or boilerplate). \textbf{Question:} drop them (they do not
   distinguish between topics) or keep them? & & \\
 \hline
 \hline
-\multicolumn{4}{|l|}{\textbf{From extracted text to the model's input}} & \textbf{$-61$\%} & \textbf{$-88$\%} \\
+\multicolumn{4}{|l|}{\textbf{From extracted text to the model's input}} & \textbf{$-63$\%} & \textbf{$-89$\%} \\
 \hline
 \end{longtable}
 }

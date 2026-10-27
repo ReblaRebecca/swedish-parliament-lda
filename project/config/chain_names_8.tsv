@@ -5,11 +5,11 @@
 # Format: chain number, the chain's topic numbers in the four periods, name (tab-separated).
 # The generator shows a name only if the chain still consists of these topics, so a refitted
 # model or a changed matching gets no wrong names.
-1	1 2 1 1	Barns och ungas hälsa, trygghet och rättigheter
-2	2 3 6 5	Lärare, jämställdhet och likabehandling
-3	3 4 2 6	Forskning, ungdomar och kunskap
-4	4 6 4 8	Hälsa, vård och medicinsk forskning
-5	5 1 7 4	Studiestöd, vuxenutbildning och arbetsmarknad
-6	6 5 3 3	Gymnasieskola och fristående skolor
-7	7 8 8 7	Kommunal skola, förskola och lärare
-8	8 7 5 2	Högskolornas utbyggnad, forskning och anslag
+1	1 4 3 1	Kommunal skola, förskola och friskolor
+2	2 1 5 5	Forskning, vård och entreprenörskap
+3	3 8 6 6	Högskolornas utbyggnad, forskning och innovation
+4	4 7 7 7	Studenter och studiestöd
+5	5 5 8 2	Barns och ungas hälsa, trygghet och värderingar
+6	6 2 4 3	Blandat: medicin, funktionshinder och språk
+7	7 3 1 4	Vuxenutbildning, yrkesutbildning och arbetsmarknad
+8	8 6 2 8	Undervisning, betyg och lärare

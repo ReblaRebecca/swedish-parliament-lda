@@ -35,19 +35,19 @@
 % ---------------------------------------------------------------- input
 \steprow{1 Input to the models}
 \hline
-Documents & 13,124 motions: the 13,943 extracted motions without 278 motions under 20 words and 541 later copies of
+Documents & 13,007 motions: the 13,943 extracted motions without 294 motions under 20 words and 642 later copies of
   duplicate texts & Motivated & The same motions in every model: the whole-corpus model and the four period models
-  together. Median 174 words per motion after preprocessing (mean 345). & 14,973 chunks of about 1,000 words from 238 books. \\
+  together. Median 159 words per motion after preprocessing (mean 317). & 14,973 chunks of about 1,000 words from 238 books. \\
 \hline
 Representation & Word counts per motion (bag of words); word order is ignored & Default & The standard input of LDA. &
   The same. \\
 \hline
-Vocabulary, whole-corpus model & Words in $\geq 10$ and $\leq 50\%$ of motions, no cap: 15,763 words, 87.9\% of the
+Vocabulary, whole-corpus model & Words in $\geq 10$ and $\leq 50\%$ of motions, no cap: 15,676 words, 92.0\% of the
   words of the final text & Motivated & The same rule as the period models, so the two designs differ only in the time split
   and the number of topics. & Words in $\geq 10$ and $\leq 50\%$ of documents, no cap. \\
 \hline
 Vocabulary, period models & Own vocabulary per period: words in $\geq 10$ and $\leq 50\%$ of the period's motions, no
-  cap: 7,270 / 7,956 / 4,819 / 6,672 words & Gordon & Each period model is built on its own most relevant words.
+  cap: 7,231 / 7,916 / 4,769 / 6,550 words & Gordon & Each period model is built on its own most relevant words.
   Gordon's documents are much longer than our motions. \textbf{Question:} is a minimum of 10 documents, calibrated on
   1,000-word chunks, reasonable for short motions? & The same rule, applied within each bin. \\
 \hline
@@ -63,7 +63,7 @@ Implementation & scikit-learn \texttt{LatentDirichletAllocation}, online variati
   Chosen for practicality. The study is framed as an adaptation of Gordon's workflow, not a computational replication;
   to be confirmed with the supervisor. & MALLET, Gibbs sampling. \\
 \hline
-Iterations & 50 passes over the data & Motivated & Checked against 200 passes for every model: at 50 passes the
+Iterations & 50 passes over the data & Motivated & Checked against 200 passes for every model (previous run, 13,124 motions): at 50 passes the
   topics match the 200-pass topics with mean cosine 0.995--0.999 and perplexity falls by only 0.1--0.2\% after 50
   passes, so more passes would not change the topics. & 1,000 Gibbs iterations. \\
 \hline
@@ -84,11 +84,11 @@ Shared settings & All models and stability tests take their settings from one mo
 % ---------------------------------------------------------------- models
 \steprow{3 Models}
 \hline
-Period models & One model per period, each with its own vocabulary: 3,737 / 3,440 / 2,725 / 3,222 motions & Gordon &
+Period models & One model per period, each with its own vocabulary: 3,729 / 3,433 / 2,704 / 3,141 motions & Gordon &
   The main analysis: topics are traced across adjacent periods. Periods of complete electoral terms, assigned by
   session. & One model per bin; four bins of 2,143--5,254 chunks. \\
 \hline
-Whole-corpus model & One model of all 13,124 motions & Gordon & The point of comparison: one set of topics for all
+Whole-corpus model & One model of all 13,007 motions & Gordon & The point of comparison: one set of topics for all
   sessions. Also used for prominence over time, if that analysis is kept. & Full-corpus models with 15 and 60 topics
   as controls. \\
 \hline
@@ -100,7 +100,7 @@ Counts tested & 8, 11 and 15 topics per period & Motivated & A small range withi
   including Gordon's 15. & 15 per bin, chosen for interpretability and coverage; no range reported. \\
 \hline
 Selection rule & The highest count at which at least half of the topics are stable (section 5) in every period & Motivated &
-  8 topics: 20 of 32 stable (62\%); 11: 25 of 44 (57\%); 15: 29 of 60 (48\%). 11 topics fail the rule in period 1
+  Previous run (13,124 motions):   8 topics: 20 of 32 stable (62\%); 11: 25 of 44 (57\%); 15: 29 of 60 (48\%). 11 topics fail the rule in period 1
   (45\%), 15 in period 1 (27\%). The number of stable topics per period is about the same at every count (4--9), so
   more topics mainly add seed-dependent ones, and the mean cosine is highest at 8 in every period. The margin is small:
   period 1 is exactly at half. & Not chosen by stability. \\
@@ -125,7 +125,7 @@ Matching & Topics of two seeds matched one-to-one (Hungarian algorithm) on cosin
 Stable topic & Found again (matched cosine $\geq 0.70$) in at least 3 of the 4 other seeds' models & Default & A
   judgement call, stated as such; the threshold has not been varied. & No threshold. \\
 \hline
-Results & Whole-corpus model: 12 of 32 topics stable, mean Jaccard 0.248. Period models: 20 of 32 stable & -- & The
+Results & Previous run (13,124 motions). Whole-corpus model: 12 of 32 topics stable, mean Jaccard 0.248. Period models: 20 of 32 stable & -- & The
   period models are more stable than the whole-corpus model with the same vocabulary rule; part of the difference is the
   number of topics per model (at 15 per period, 48\% stable). Unstable
   topics are flagged before interpretation. & Whole-corpus runs unstable: mean Jaccard 0.26--0.31. \\
