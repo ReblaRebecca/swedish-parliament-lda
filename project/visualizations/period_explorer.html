@@ -294,18 +294,10 @@
 
   // Static text from the data
   const total = DATA.periodCounts.reduce((a, b) => a + b, 0);
-  const topN = DATA.rows[0].cells[0].words.length;
   const bins = DATA.periods.map((p, i) => `<li><span>${p}</span><span>${DATA.periodCounts[i].toLocaleString('en')} motions</span></li>`).join('');
   document.getElementById('lede').innerHTML =
     `<div><p><strong>Period models:</strong> the body text of <strong>${total.toLocaleString('en')} motions</strong> is divided into ` +
-    `${DATA.periods.length} periods by electoral term.</p><ul>${bins}</ul></div>` +
-    `<p>New topics are created separately for each period, <strong>${DATA.numTopics} topics per period</strong>, each period with its own vocabulary. ` +
-    `Each word cloud shows the ${topN} words most strongly associated with that topic during that particular period.</p>` +
-    `<p>The percentage above each word cloud shows the topic’s average proportion across all motions in that period. ` +
-    `It is not the percentage of motions about the topic, since every motion can contain several topics; ` +
-    `the ${DATA.numTopics} topics of a period add up to 100%.</p>` +
-    `<p>Similar topics are then connected across periods, one row per chain, making it possible to see how their vocabulary ` +
-    `and meaning may have changed over time.</p>`;
+    `${DATA.periods.length} periods by electoral term.</p><ul>${bins}</ul></div>`;
   // Measure words only once the display font has loaded, so the layout matches what is drawn
   const fontsReady = document.fonts && document.fonts.load
     ? Promise.all([document.fonts.load('500 20px "Bricolage Grotesque"'), document.fonts.load('700 20px "Bricolage Grotesque"')]).catch(() => {})

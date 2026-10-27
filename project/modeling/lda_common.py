@@ -315,8 +315,8 @@ def most_probable_words(topic_word, vocab, n=3):
     return ' '.join(vocab[i] for i in np.argsort(topic_word)[::-1][:n])
 
 
-# Seed stability in the explorers: a topic is shown as high (found again in every other seed's model),
-# medium (in all but one) or low. Read from the per-topic CSVs of the stability tests (09, 16); their
+# Seed stability in the explorers: a topic is shown as stable (found again in at least all but one of the
+# other seeds' models) or not stable, with the count. Read from the per-topic CSVs of the stability tests (09, 16); their
 # reference model is fitted with the reported seed, so its topics are the reported model's, which is
 # checked on each topic's most probable words.
 STABILITY_CHECK_WORDS = 8   # the words written to the CSV (TABLE_WORDS in analysis/seed_stability.py)

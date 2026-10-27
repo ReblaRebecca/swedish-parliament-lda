@@ -289,7 +289,16 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 | Topics | 15 per period, 60 whole corpus | 8 per period, 32 whole corpus | Chosen by seed stability (8, 11 and 15 tested) |
 | Seed stability | Whole-corpus runs only | Every model | Extension |
 
-**Not yet comparable:** the rubric coding (coherent, thematic, concentration) of all models, and a whole-corpus model with 8 topics (the counterpart of Gordon's k = 15 control).
+**Not yet comparable:** the rubric coding (coherent, thematic, concentration; *Rubric coding* below) until the sheet is coded, and a whole-corpus model with 8 topics (the counterpart of Gordon's k = 15 control).
+
+### Rubric coding (`analysis/rubric_coding_sheet.py`, `analysis/rubric_summary.py`)
+Gordon's (2026, 3.3) evaluation of topic quality, applied to all 64 topics (whole-corpus model 32, period models 4 × 8).
+
+- **Coding sheet (`rubric_coding_sheet.py`):** writes `docs/rubric/RUBRIC_CODING_SHEET.xlsx` (in git, since it holds the coding; not overwritten without `--force`), one row per topic: model, period, topic number, the **20 most probable words** (by probability, not the relevance ranking of the explorers: what the model learned), the **top 5 motions** (session, party of the first signatory, id, title), the **party concentration** and the most frequent party, and empty columns *Coherent*, *Thematic* (yes/no dropdowns) and *Notes*. A second sheet holds the instructions. Topic names and seed stability are left out, so they do not steer the judgement
+- **Coding, as Gordon:** by a single annotator in one pass, before choosing chains for close reading. *Coherent* (yes/no): the top words form a recognizable semantic field; judged first, as a rough filter. *Thematic* (yes/no, coherent topics only): the field is recurring subject matter (settings, entities, situations, conceptual domains), not a register, procedure or paratext (in motions: budget language, parliamentary formulas); recurrence judged within the model (for a period model, within the period). Gordon judged from the top words and the top 5 texts; the sheet gives titles and ids, so a motion can be opened where the title is not enough
+- **Party concentration** (computed; Gordon's author concentration): the share of the top 5 motions whose first signatory belongs to the most frequent party among them, 0.2–1.0; parties counted as in the topic explorer (FP and L one party), a motion without a party counts for none. Before coding: mean 0.58 for the whole-corpus model, 0.61 for the period models (0.55–0.78 per period); Gordon's mean author concentration 0.68–0.81. Party is part of the politics studied, not a confound (*Relation to Gordon's author signal*), so the value is reported, not reduced
+- **Summary (`rubric_summary.py [sheet]`):** reads the coded sheet, checks the coding (answers yes or no; *Thematic* set exactly for the coherent topics) and writes `docs/reports/RUBRIC_SUMMARY.md`: per model (whole corpus, each period, the period models together) the shares of coherent topics, of thematic topics (of all coded topics, as Gordon's Table 2, and of the coherent ones) and the mean party concentration, next to Gordon's values (coherent 80–85%; thematic 47% whole corpus k = 15, 62% k = 60, 60–65% binned). Uncoded rows are counted and left out
+- **Limitation:** no inter-annotator agreement, as in Gordon
 
 ## Visualizations
 
@@ -310,7 +319,7 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 - **Rows are chains.** The page has no explanation block; this section describes what it shows. Each period model has its own topics, so topic numbers do not correspond across periods. Topics of adjacent periods are matched one-to-one (Hungarian algorithm on cosine over the words both periods' vocabularies contain) and each row follows the matches from a topic of the first period to the last The chains have Swedish names from `config/chain_names_8.tsv`, shown only if the chain still consists of the same four topics
 - **Chain heading:** the chain's name (no chain number) and the mean of its three links (*Average similarity*; Gordon's criterion: the chain holds if it is at least 0.50); no continuity label, weakest link or link summary, since the weak links are visible in the row. The similarity has two decimals, or three where two would round across 0.50
 - **Weak links (additional information):** a single link below 0.50 breaks the row: the accent bar over the clouds stops, a dashed gold rule separates the cells and the cell reads *Alignment uncertain*. A chain can hold on the mean and still have one weak link
-- **Per cloud:** the period, the topic's name (its number in the period model only in the tooltip), its share in percent (mean θ over the period's motions; explained in the introduction). Seed stability as a chip, as in the topic explorer (stable / not stable with the count, from `results/period_stability/PERIOD_<period>_8TOPICS_PER_TOPIC.csv` of 16; shown only for the model the test was run on). The cosine of each link is not shown: a link is either strong or weak (below 0.50), and a weak one is marked in the row
+- **Per cloud:** the period, the topic's name (its number in the period model only in the tooltip), its share in percent (mean θ over the period's motions; the 8 shares of a period add up to 100%). The introduction gives only the periods and their motion counts. Seed stability as a chip, as in the topic explorer (stable / not stable with the count, from `results/period_stability/PERIOD_<period>_8TOPICS_PER_TOPIC.csv` of 16; shown only for the model the test was run on). The cosine of each link is not shown: a link is either strong or weak (below 0.50), and a weak one is marked in the row
 - **Word colour = persistence within the chain:** in how many of the chain's four periods the word is among the 20 words shown: dark blue all four, medium blue three, light blue two, grey one. With 8 topics, 7% of the words shown are in all four periods and 54% in only one (with the 20 most probable words: 10% and 44%; relevance favours period-specific words). Bold marks the three most relevant words of each cloud
 - **Word size:** square root of P(word | topic), on **one scale per chain**, so sizes can be compared across a chain's periods but not between chains; if a word does not fit, the chain's four clouds shrink together. The tooltip gives the exact probability
 - **Order:** strongest chain first (mean link, high to low, ties by the weakest link); no sorting or search controls
@@ -434,6 +443,10 @@ python analysis/18_alignment_null.py          # permutation test; seconds
 
 # Deduplication comparison: no / exact / near duplicates removed (about 1.5 hours; independent of 07 and 15)
 python analysis/dedup_comparison.py
+
+# Rubric coding (after 07 and 15): write the sheet, code it by hand, then summarize
+python analysis/rubric_coding_sheet.py        # docs/rubric/RUBRIC_CODING_SHEET.xlsx; --force to overwrite
+python analysis/rubric_summary.py             # docs/reports/RUBRIC_SUMMARY.md
 ```
 
 `01_extract_from_xml.py` accepts `[xml_dir] [output_dir]`; preprocessing scripts 02–05 and `07_fit_baseline_lda.py` accept `[input_dir] [output_dir]` to override the defaults.
@@ -465,6 +478,7 @@ python analysis/check_pipeline_output.py
   - **Planted topics:** on a synthetic corpus with three clearly separated topics, the full procedure finds cosine > 0.99 for every matched topic, so it can detect stability when it is there
   - **Report:** on a synthetic 5-seed, 44-topic setup, 10 pairs and 440 matched pairs; per-pair and pooled statistics equal those computed directly; the per-seed table and the notes on convergence and pooled statistics are present
 - **`tests/test_corpus_statistics.py`** — the corpus size per step on two hand-worked motions: what counts as a word (no punctuation or pure numbers), different words counted case-insensitively, lemmatization keeping the number of words while merging forms (*skolan*, *skolorna* → *skola*), one lemma counted per word form even when the lemma has no letter (*6:e* → *6:*), the counts after boilerplate, normalization and stopwords, and the words inside the models' vocabularies
+- **`tests/test_rubric.py`** — the rubric: party concentration from 0.2 (five parties) to 1.0, motions without a party counting for none; coding checks (yes/no only, case and spaces ignored; *Thematic* only and always for coherent topics); shares (thematic of all coded topics and of the coherent ones; uncoded rows left out) and grouping by model and period; a written sheet read back unchanged
 - **`analysis/check_pipeline_output.py`** — for each stage that has been run: all four period files present, no malformed lines, required fields present, no `dok_id` twice, the same motions as extraction; every motion in the period of its session; no soft hyphens or broken diacritics after extraction; Stanza output well-formed; final text lowercase letters only with no digits, punctuation, single-character words or stopwords. Warns about empty texts and frequent known extraction fragments. Exit code 1 if any check fails. Optional argument: `[data_dir]`
 
 ## File Organization
@@ -499,12 +513,15 @@ project/
 │   ├── dedup_comparison.py               (models with no / exact / near duplicates removed, compared)
 │   ├── convergence_check.py              (50-pass fits against 200 passes)
 │   ├── corpus_statistics.py              (words and different words per step, for the report)
+│   ├── rubric_coding_sheet.py            (Gordon's rubric: the coding sheet)
+│   └── rubric_summary.py                 (Gordon's rubric: shares from the coded sheet)
 ├── tests/
 │   ├── test_preprocessing.py
 │   ├── test_topic_matching.py
 │   ├── test_seed_stability.py
 │   ├── test_period_models.py
-│   └── test_corpus_statistics.py
+│   ├── test_corpus_statistics.py
+│   └── test_rubric.py
 ├── config/
 │   ├── boilerplate_phrases.txt
 │   ├── lemma_corrections.txt
@@ -513,6 +530,7 @@ project/
 │   └── chain_names_8.tsv
 ├── docs/                                  (in git)
 │   ├── PIPELINE_DOCUMENTATION.md          (this file: the current pipeline)
+│   ├── rubric/                            (the rubric coding sheet, coded by hand)
 │   └── reports/                           (seed-stability reports of 09 and 16; period_stability/ per period; topic_count_choice/ the 8/11/15 test)
 ├── visualizations/                        (in git, published on GitHub Pages: index.html, topic_explorer.html, period_explorer.html)
 ├── results/                               (not in git: generated CSV tables)
@@ -532,11 +550,7 @@ project/
 
 1. **Final full run** from step 03 (2026-10-27, about 3 hours): the 0.6 near-duplicate threshold, the boilerplate *med anledning av* and *utgiftsområde* and the 25 lemma corrections for split words (*skolverket*/*skolverk* etc.); all models, seed tests (09, 16), convergence check, topic-count test (8 / 11 / 15), 15-topic alignment, and the deduplication comparison with four levels (none / exact / 0.8 / 0.6). **Done**
 2. **After the run:** new topic and chain names; every number in this document updated; the stability chips appear in the explorers. **Done**; to be committed, after review, as the final version the report refers to
-3. **Rubric coding, as Gordon (2026, §3.3):** every topic of the whole-corpus model (32) and the period models (4 × 8) coded by hand on
-   - **coherence** (yes/no): the top words form a recognizable semantic field;
-   - **thematic content** (yes/no, coherent topics only): the field is recurring subject matter, not a register, procedure or paratext;
-   - **party concentration** (computed; Gordon's author concentration): share of the topic's top 5 motions whose first signatory belongs to the most frequent party among them (0.2–1.0).
-   A script writes a **coding sheet** (one row per topic: model, period, number, name, the 20 most probable words, the titles of the top 5 motions, party concentration, empty columns for coherent and thematic). Coded by Rebecca as single annotator in one pass, before choosing chains for close reading (Gordon's procedure); the topic names are not part of the judgement. A second script reads the coded sheet and computes the shares (coherent, thematic, mean party concentration) per model, to compare with Gordon's Table 2 (coherence 80–85%; thematic 47% full corpus k = 15, 60–65% binned, 62% full corpus k = 60). No inter-annotator agreement: a limitation, as in Gordon
+3. **Rubric coding, as Gordon (2026, §3.3):** scripts and sheet ready (*Rubric coding*); next: Rebecca codes `docs/rubric/RUBRIC_CODING_SHEET.xlsx` (coherent, thematic) as single annotator in one pass, before choosing chains for close reading; then `rubric_summary.py` for the comparison with Gordon's Table 2
 4. **Readability of the explorers** (display only, no effect on results)
 5. **Report writing**
 
