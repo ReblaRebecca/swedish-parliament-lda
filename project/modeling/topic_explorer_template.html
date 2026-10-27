@@ -121,7 +121,7 @@
 <div class="page">
   <header class="masthead">
     <p class="eyebrow">Riksdagen · Utbildningsutskottet (UbU) · Motions, sessions 1985/86–2025/26</p>
-    <h1>Topics in education motions</h1>
+    <h1>Topics in parliamentary motions on education 1985–2026</h1>
     <div class="lede" id="lede"></div>
   </header>
 
@@ -309,9 +309,7 @@
 
   // Static text from the data
   document.getElementById('lede').innerHTML =
-    `<p><strong>Full-corpus model:</strong> gives an overall picture of the main themes during the entire 40-year period, ` +
-    `with <strong>${DATA.topics} topics</strong> created from the body text of all <strong>${DATA.motions.toLocaleString('en')} motions</strong>.</p>` +
-    `<p>Each word cloud shows the ${DATA.topicList[0].words.length} words most strongly associated with that topic.</p>`;
+    `<p><strong>${DATA.motions.toLocaleString('en')} motions</strong></p>`;
 
   // Measure words only once the display font has loaded, so the layout matches what is drawn
   const fontsReady = document.fonts && document.fonts.load
