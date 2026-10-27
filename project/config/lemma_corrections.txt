@@ -21,3 +21,4 @@ spelregl        spelregel       # spelregler
 barnsköta       barnskötare     # barnskötarna
 *bibliotekarium bibliotekarie   # bibliotekarier; compounds: skol-, folkbibliotekarier
 stärk           stärka          # stärkt
+universitetskanslersämbetsämbetsämbetsämbetsämbets universitetskanslersämbete   # Universitetskanslersämbetet, -ets (195 words; Stanza repeats the stem)

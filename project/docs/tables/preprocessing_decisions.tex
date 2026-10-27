@@ -22,7 +22,7 @@
 whole-corpus model. \emph{Words} and \emph{Different words} give the size of the corpus after each step (in the step's
 row), with the change from the step before in brackets. \emph{Words} are Stanza's tokens with at least one letter
 (punctuation and pure numbers are not counted), in the body text of the 13,943 extracted motions (the last row: the
-13,007 modelled motions); \emph{different words} are counted case-insensitively. \emph{Justification}: \emph{Motivated} = chosen for a stated reason; \emph{Default} = a library
+11,628 modelled motions); \emph{different words} are counted case-insensitively. \emph{Justification}: \emph{Motivated} = chosen for a stated reason; \emph{Default} = a library
 default or inherited setting that has not been tested; \emph{Manual} = a hand-made list or rule; \emph{Open} = still to
 be decided. Gordon (2026) is the reference study.}
 \label{tab:preprocessing} \\
@@ -128,18 +128,27 @@ Proper names & Kept & Open & Gordon removes them (capitalization heuristic). In 
 \hline
 Minimum length & Motions with fewer than 20 words in the final text are not modelled & Motivated & 294 motions, almost
   all short formal requests (\textit{hemställan}) referring to another motion, 277 of them in 1985/86--1993/94: too short
-  for a reliable topic mix. With the duplicates, the models use 13,007 motions. & & \\
+  for a reliable topic mix. & & \\
+\hline
+Duplicates & Only the first of identical final texts is modelled (642 later copies) & Motivated & Mostly the
+  same motion resubmitted in a later session; a copy adds no new text but would count a recurring proposal once per
+  session in the topic shares. & & \\
+\hline
+Near-duplicates & Motions sharing $\geq 80\%$ of their three-word sequences (Jaccard) with an earlier motion are not
+  modelled (1,379) & Motivated & Revised resubmissions, 98\% by the same party; series of them held up topics of their own.
+  The last period loses 31\% of its motions to exact and near copies, the first 3\%. 0.8 keeps only clear copies.
+  Compared with no and exact deduplication in a separate run. The models use 11,628 motions. & & \\
 \hline
 %
 % ---------------------------------------------------------------- vocabulary
-\steprow{Frequency limits: input to the whole-corpus model}{3,799,681 ($-10$\%)}{15,676 ($-81$\%)}
+\steprow{Frequency limits: input to the whole-corpus model}{3,508,963 ($-17$\%)}{14,772 ($-82$\%)}
 \hline
 Document frequency & Words in $\geq 10$ and $\leq 50\%$ of motions, no cap & Motivated & Gordon's rule (2026,
-  \S3.3), used for the period models and the whole-corpus model: 15,676 different words (3,799,681
-  words, 92.0\% of the words of the modelled motions' final text). His documents are 1,000-word chunks of books; our motions
-  are much shorter (median 159 words after stopword removal), so a word has fewer chances to reach 10 documents. & & \\
+  \S3.3), used for the period models and the whole-corpus model: 14,772 different words (3,508,963
+  words, 91.8\% of the words of the modelled motions' final text). His documents are 1,000-word chunks of books; our motions
+  are much shorter (median 160 words after stopword removal), so a word has fewer chances to reach 10 documents. & & \\
 \hline
-Upper limit & $\leq 50\%$ of motions & Open & Removes 2 words, \textit{utbildning} (63\% of motions) and \textit{skola} (51\%), central content words of an
+Upper limit & $\leq 50\%$ of motions & Open & Removes 2 words, \textit{utbildning} (63\% of motions) and \textit{skola} (just over 50\%), central content words of an
   education corpus (the other frequent words are now stopwords or boilerplate). \textbf{Question:} drop them (they do not
   distinguish between topics) or keep them? & & \\
 \hline

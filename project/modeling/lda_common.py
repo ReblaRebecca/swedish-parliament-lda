@@ -135,13 +135,14 @@ def near_duplicates(texts, sessions, threshold=None, chunk=400):
     return copies
 
 
-def read_bin_body_texts(bin_file, seen=None):
+def read_bin_body_texts(bin_file, seen=None, skip_duplicates=True):
     """Load final body text (titles not added) from one temporal-bin file.
 
     Input field: text_no_stopwords (output of 05_remove_stopwords.py). Texts with fewer than MIN_WORDS
     words are skipped (is_modelled), among them any text with no words left. Duplicates are skipped:
     a text identical to one already in seen (text_key; shared across the period files, read in period
     order) is a later copy, mostly the same motion resubmitted in a later session; the first is kept.
+    skip_duplicates=False keeps them (for the deduplication comparison).
     Returns: texts (list), metadata (list, same order), malformed_count (int)
     """
     if seen is None:
@@ -160,7 +161,7 @@ def read_bin_body_texts(bin_file, seen=None):
             text = motion.get('text_no_stopwords', '')
             if is_modelled(text):
                 key = text_key(text)
-                if key in seen:
+                if skip_duplicates and key in seen:
                     continue
                 seen.add(key)
                 texts.append(text)
@@ -178,33 +179,44 @@ def period_display(period):
     return DISPLAY_NAMES.get(period, period)
 
 
-def load_body_texts(input_dir):
+# Duplicate filters, from none to the models' setting: 'none' (length minimum only), 'exact' (also identical
+# texts), 'near' (also near-duplicates; the default, used by every model). The other two are for the
+# deduplication comparison (analysis/dedup_comparison.py).
+DEDUP_LEVELS = ('none', 'exact', 'near')
+
+
+def load_body_texts(input_dir, dedup='near'):
     """Load final body text from all temporal bins combined, for the whole-corpus model.
 
     Selection: read_bin_body_texts (length minimum, exact duplicates), then near-duplicates of an earlier
     motion are dropped (near_duplicates). The period models use the same motions (load_period_body_texts).
+    dedup: one of DEDUP_LEVELS; anything but the default only for the deduplication comparison.
     Returns: texts (list), metadata (list, same order), malformed_count (int)
     """
+    if dedup not in DEDUP_LEVELS:
+        raise ValueError(f"dedup must be one of {DEDUP_LEVELS}, not {dedup!r}")
     texts = []
     metadata = []
     malformed_count = 0
     seen = set()
     for bin_file in sorted(input_dir.glob('group*.jsonl')):
-        bin_texts, bin_metadata, bin_malformed = read_bin_body_texts(bin_file, seen)
+        bin_texts, bin_metadata, bin_malformed = read_bin_body_texts(bin_file, seen, skip_duplicates=dedup != 'none')
         texts += bin_texts
         metadata += bin_metadata
         malformed_count += bin_malformed
+    if dedup != 'near':
+        return texts, metadata, malformed_count
     copies = near_duplicates(texts, [m['session'] for m in metadata])
     keep = [i for i in range(len(texts)) if i not in copies]
     return [texts[i] for i in keep], [metadata[i] for i in keep], malformed_count
 
 
-def load_period_body_texts(input_dir):
+def load_period_body_texts(input_dir, dedup='near'):
     """Load final body text per period, for the period models: the motions of load_body_texts, split by period.
 
     Returns: {period label: (texts, metadata)} in period order, and the total malformed count.
     """
-    texts, metadata, malformed_count = load_body_texts(input_dir)
+    texts, metadata, malformed_count = load_body_texts(input_dir, dedup)
     periods = {period_label(bin_file): ([], []) for bin_file in sorted(input_dir.glob('group*.jsonl'))}
     for text, meta in zip(texts, metadata):
         periods[meta['period']][0].append(text)

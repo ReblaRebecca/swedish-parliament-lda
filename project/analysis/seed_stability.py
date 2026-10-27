@@ -34,11 +34,12 @@ FOUND_COSINE = 0.70
 TABLE_WORDS = 8
 
 
-def run_seed_stability(doc_term_matrix, vocab, seeds, num_topics):
+def run_seed_stability(doc_term_matrix, vocab, seeds, num_topics, keep_models=False):
     """Fit one model per seed and match every pair of seeds.
 
     Returns:
-        seed_info: {seed: {'perplexity': float, 'n_iter': int, 'top_words': [[word, ...] per topic]}}
+        seed_info: {seed: {'perplexity': float, 'n_iter': int, 'top_words': [[word, ...] per topic]}},
+            with 'model' (the fitted model) if keep_models
         pairwise_results: {(seed1, seed2): {'matches', 'summary', 'similarity_matrix'}}
     """
     print(f"\nFitting {len(seeds)} LDA models with different seeds...")
@@ -53,6 +54,8 @@ def run_seed_stability(doc_term_matrix, vocab, seeds, num_topics):
             'n_iter': int(lda.n_iter_),
             'top_words': [[vocab[i] for i in np.argsort(row)[::-1][:TABLE_WORDS]] for row in lda.components_],
         }
+        if keep_models:
+            seed_info[seed]['model'] = lda
         print(f"     Perplexity: {seed_info[seed]['perplexity']:.2f}, Iterations: {lda.n_iter_}")
 
     seed_pairs = list(combinations(seeds, 2))

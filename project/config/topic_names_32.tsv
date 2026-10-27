@@ -5,35 +5,35 @@
 # Format: topic number, its three most probable words, name (tab-separated). The generator
 # shows a name only if the three words still match the model, so a refitted model with other
 # topics gets no wrong names.
-1	skolverket skolverk förskoleklass	Restämne: Skolverket, skolavslutning och älvdalska
-2	studie vuxenutbildning arbetsmarknad	Studiestöd och vuxenutbildning
-3	förslag krav system	Blandat: tillsyn, betyg och styrning
-4	hälsa fysisk idrott	Idrott, hälsa och kost
-5	elev grundskola kunskap	Grundskolans undervisning, läxor och klasstorlek
-6	nyanländ digitalisering akademin	Restämne: simundervisning och hbtq
-7	svensk språk svenska	Svenska, modersmål och minoritetsspråk
-8	lärare lärarutbildning pedagogisk	Lärare, rektorer och lärarutbildning
-9	kvinna flicka jämställdhet	Jämställdhet och kön i utbildningen
-10	rättighet mänsklig fn	Restämne: mänskliga rättigheter och internationella linjer
-11	mobbning barn våld	Mobbning, våld och trygghet
-12	student högskola hög	Studenter, studentinflytande och högskolestudier
-13	problem ung samhälle	Blandat: ungdom, samhällsproblem och arbetsmiljö
-14	region hög län	Regional utveckling och högskola
-15	teologisk lokal fritid	Restämne: lokaler och lokalisering
-16	utveckling kunskap utveckla	Blandat: utveckling, kompetens och samarbete
-17	anslag linje förslag	Högskoleanslag och utbildningslinjer
-18	kommun elev fristående	Kommunal skola och friskolor
-19	företag lärlingsutbildning näringsliv	Lärlingsutbildning och företag
-20	konstnärlig musik kultur	Konstnärlig utbildning och musik
-21	skolinspektion it validering	Restämne: IT och programmering
-22	universitet stockholm göteborg	Universitet, institutioner och botaniska trädgårdar
-23	miljö forskning hållbar	Miljö och naturkunskap
-24	barn behov stöd	Särskilt stöd, funktionsnedsättning och särskola
-25	högskola teknisk avancerad	Mindre och medelstora högskolor
-26	privat offentlig mitthögskolan	Restämne: kooperativt företagande
-27	vård läkare sjukvård	Läkar- och vårdutbildning
-28	barn förskola förälder	Förskola och barnomsorg
-29	gymnasieskola elev yrkesutbildning	Gymnasieskola, yrkesutbildning och behörighet
-30	forskning universitet högskola	Forskning och forskningsanslag
-31	malmö kalmar dyslexi	Restämne: detaljhandel, tandvård och dyslexi
-32	ämne undervisning kunskap	Religion, värdegrund och läroplan
+1	sexuell it sexualitet	Restämne: sex och samlevnad, IT och naturkunskap
+2	förslag kommun verksamhet	Anslag, resurser och statsbidrag
+3	kunskap mat elev	Hemkunskap, kost och privatekonomi
+4	kränkning djur rekommendation	Restämne: djurförsök och kränkningar
+5	högskola universitet forskning	Högskolans forskningsresurser och forskarutbildning
+6	simundervisning tfhs simkunnighet	Restämne: simundervisning och trafikflyg
+7	lärare lärarutbildning kompetens	Lärare, lärarutbildning och lärarbrist
+8	arbetsmarknad vuxenutbildning behov	Vuxenutbildning, yrkesutbildning och arbetsmarknad
+9	lärlingsutbildning lärling akademin	Restämne: lärlingar och hantverksutbildning
+10	universitet göteborg umeå	Universitet, institutioner och läkarutbildning
+11	barn förälder ungdom	Barn i behov av stöd, föräldrar och funktionsnedsättning
+12	gymnasieskola ämne program	Gymnasieskolans program, kurser och språk
+13	samhälle människa undervisning	Religion, värdegrund och läroplan
+14	skolverket skolverk förskoleklass	Restämne: Skolverket, ANT och utvärdering
+15	kvinna mobbning flicka	Mobbning, våld och jämställdhet
+16	hälsa vård läkare	Medicin, vård och hälsa
+17	stockholm örebro institutet	Högskolor i Stockholm och Mälardalen
+18	högskola län region	Regional högskola, teknik och näringsliv
+19	forskning forskare svensk	Forskningspolitik och internationell forskning
+20	läsa betyg prov	Läsa och skriva, dyslexi och modersmål
+21	lag ersättning lagstiftning	Restämne: lagstiftning, ersättning och botaniska trädgårdar
+22	fysisk idrott aktivitet	Idrott, fysisk aktivitet och estetiska ämnen
+23	förskola kommun barn	Förskola, barnomsorg och friskolor
+24	svensk språk undervisning	Svenska för invandrare och nyanlända
+25	kultur jobba bild	Restämne: bild, kultur och medier
+26	land kunskap svensk	Blandat: samhälle, politik och utveckling
+27	elev särskola specialskola	Särskola, specialskola och hjälpmedel
+28	falun turism borlänge	Restämne: Dalarna och apotekarutbildning
+29	avancerad satsning särskild	Restämne: specialpedagogik och NPF
+30	elev lärare grundskola	Grundskolans undervisning, mål och betyg
+31	skolinspektion elevhälsa riksrevision	Restämne: hbt-frågor och Riksrevisionen
+32	student hög studie	Studiestöd och studiemedel
