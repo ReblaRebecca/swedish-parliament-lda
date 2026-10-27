@@ -61,6 +61,21 @@ def get_swedish_stopwords():
     supplementary_stops.update({'te', 'ut'})
     # Scanner misreading of 'som' in scanned motions
     supplementary_stops.update({'sorn'})
+    # Generic words in more than half of the motions (removed until now only by the vectorizer's max_df)
+    supplementary_stops.update({'få', 'också', 'därför', 'annan', 'många', 'viktig', 'möjlighet'})
+    # Generic words in 30-50% of the motions: no topic content ('god' as 'bra'; 'grund' from 'på grund av')
+    supplementary_stops.update({'lite', 'ske', 'egen', 'god', 'grund'})
+    # Generic language of political argument ('öka ...', 'skapa förutsättningar'), in the top words of most topics
+    supplementary_stops.update({'öka', 'ökad', 'skapa', 'kräva', 'förutsättning'})
+    # Function words (adverbs, conjunctions, prepositions, quantifiers) in 10-30% of the motions
+    supplementary_stops.update({'därmed', 'således', 'alltså', 'emellertid', 'medan', 'däremot', 'liksom', 'just',
+                                'enbart', 'främst', 'respektive', 'ur', 'tyvärr', 'exempelvis', 'oavsett', 'utöver',
+                                'avseende', 'följande', 'samtlig', 'båda'})
+    # Lemmas of abbreviations and symbols: Stanza lemmatizes 'ca' to 'circa' and '%' to 'procent'
+    # ('procent' is boilerplate, but the phrase list cannot match a bare symbol)
+    supplementary_stops.update({'circa', 'procent'})
+    # The language of the motion's request ('regeringen bör överväga ...')
+    supplementary_stops.update({'föreslå', 'överväga', 'konstatera', 'angelägen'})
     # Lemma forms of the inflected stop words above, as produced by Stanza (text is lemmatized in step 2)
     supplementary_stops.update({'behöva', 'vilja', 'kunna', 'visa', 'hålla', 'sätta', 'gå', 'röra', 'ny', 'stor', 'olik', 'hel', 'mången'})
     stop_words.update(supplementary_stops)

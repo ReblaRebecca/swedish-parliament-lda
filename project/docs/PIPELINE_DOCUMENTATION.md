@@ -108,7 +108,7 @@ The four periods are defined once, in `periods.py`, and imported by every script
 - **Runtime:** CPU-heavy; about 3¾ hours for the full corpus
 
 ### 3. Boilerplate Removal (`preprocessing/03_remove_boilerplate.py`)
-- **Phrases:** `config/boilerplate_phrases.txt` (450 entries, one explicit word or phrase per line, no wildcards), matched case-insensitively against the **original word forms** saved by step 2, so the list keeps its surface forms (`riksdagen`, `med anledning av`). A word is removed only if a phrase match covers the whole word, apart from trailing punctuation (Stanza keeps the full stop in abbreviations, so the phrase `mot` removes `Mot.`); phrases never match across sentences
+- **Phrases:** `config/boilerplate_phrases.txt` (460 entries, one explicit word or phrase per line, no wildcards), matched case-insensitively against the **original word forms** saved by step 2, so the list keeps its surface forms (`riksdagen`, `med anledning av`). A word is removed only if a phrase match covers the whole word, apart from trailing punctuation (Stanza keeps the full stop in abbreviations, so the phrase `mot` removes `Mot.`); phrases never match across sentences
 - **Categories:** OCR/scanning artifacts, government and parliamentary institutions, parliamentary document/reference terms, procedural language, party names, etc.
 - **Output is lemmas** of the remaining words, one sentence per line
 - **Dropped tokens:** auxiliary verbs (UPOS `AUX`), punctuation and symbols. Stanza lemmatizes the modal *ska/skall/skulle* to `skola`, which would merge with the noun *skola* (school); all auxiliaries are stopwords anyway
@@ -123,7 +123,7 @@ The four periods are defined once, in `periods.py`, and imported by every script
 
 ### 5. Stopword Removal (`preprocessing/05_remove_stopwords.py`)
 - **Base list:** NLTK Swedish stop words (114)
-- **Supplementary (86, hard-coded):** parliamentary abbreviations (ub, dvs, osv, …), the scanner misreading `sorn` (for *som*), auxiliary verbs (ska, skall, blir, …), generic connectors, verbs and adjectives identified from LDA inspection (kommer, enligt, olika, göra, …), and the **lemma forms** of inflected entries (behöva, vilja, kunna, ny, stor, olik, mången, …), since the text is lemmatized. Content abbreviations such as `fn`, `eg`, `ky`, `ib` are deliberately not stopwords (education-policy terms)
+- **Supplementary (129, hard-coded):** parliamentary abbreviations (ub, dvs, osv, …), the scanner misreading `sorn` (for *som*), generic words in more than 30% of the motions (få, också, därför, annan, många, viktig, möjlighet, lite, ske, egen, god, grund) the generic language of political argument (öka, ökad, skapa, kräva, förutsättning) and of the motion's request (föreslå, överväga, konstatera, angelägen), function words in 10–30% of the motions (därmed, således, alltså, emellertid, …), the lemmas `circa` (of *ca*) and `procent` (of *%*, which the boilerplate list cannot match), auxiliary verbs (ska, skall, blir, …), generic connectors, verbs and adjectives identified from LDA inspection (kommer, enligt, olika, göra, …), and the **lemma forms** of inflected entries (behöva, vilja, kunna, ny, stor, olik, mången, …), since the text is lemmatized. Content abbreviations such as `fn`, `eg`, `ky`, `ib` are deliberately not stopwords (education-policy terms)
 - **Output fields:** `text_no_stopwords` (final body text, used by the models) and `title_processed` (final title text)
 
 ### Duplicates (`analysis/count_duplicates.py` lists them; the models skip them)
@@ -309,7 +309,7 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 
 ## Configuration Files
 
-- **`config/boilerplate_phrases.txt`:** 450 explicit words/phrases, one per line, grouped by category with `#` headers. Matched against original word forms (body and title). An alternative file can be passed as the 3rd argument to `03_remove_boilerplate.py`. After editing, re-run steps 03–05 (no need to re-run Stanza)
+- **`config/boilerplate_phrases.txt`:** 460 explicit words/phrases, one per line, grouped by category with `#` headers. Matched against original word forms (body and title). An alternative file can be passed as the 3rd argument to `03_remove_boilerplate.py`. After editing, re-run steps 03–05 (no need to re-run Stanza)
 - **`config/lemma_corrections.txt`:** corrections for known Stanza lemma errors, one `wrong correct` pair per line with `#` comments, applied in step 03 to body and title, case-insensitively. A wrong lemma with a leading `*` is also corrected at the end of a compound (`*kompet kompetens`: `gymnasiekompet` → `gymnasiekompetens`); mark an entry only after checking its compounds (`anslagen` must not be marked, because of *sammanslagen*). After editing, re-run steps 03–05
 - **Stopwords:** hard-coded in `preprocessing/05_remove_stopwords.py` (NLTK base + supplementary list, including lemma forms)
 
@@ -343,8 +343,8 @@ Body text of all 13,943 extracted motions (`analysis/corpus_statistics.py`, read
 | Periods | 4 | 1985/86–1993/94, 1994/95–2005/06, 2006/07–2013/14, 2014/15–2025/26 (2,725–3,737 modelled motions each) |
 | Duplicates | 551 (3.95%) | Mostly resubmissions in later years; only the first copy modelled |
 | Vocabulary | Period models: 4,819–7,956 per period; whole-corpus model: 15,763 | ≥ 10 and ≤ 50% of the model's motions, no cap (Gordon) |
-| Stopwords | NLTK (114) + 86 supplementary | |
-| Boilerplate phrases | 450 | Explicit phrases, no wildcards |
+| Stopwords | NLTK (114) + 129 supplementary | |
+| Boilerplate phrases | 460 | Explicit phrases, no wildcards |
 | Lemmatizer | Stanza | Swedish Talbanken model; auxiliaries dropped |
 | LDA topics | 8 per period, 32 whole corpus | 8, 11 and 15 per period tested |
 | Title coverage | ~99.5% | Motions with a processed title |
@@ -482,6 +482,7 @@ project/
 
 ## Open Points and Next Steps
 
+0. **Rerun pending (steps 03–05 and the models, not Stanza):** added after the last full rerun, not yet applied to the data, models and numbers in this document: the boilerplate headings of the motion template (*förslag till riksdagsbeslut*, *riksdagsbeslut(et)*, *motivering(en)*) and the forms of *budgetproposition*; and 43 stopwords: *få, också, därför, annan, många, viktig, möjlighet* (in 51–77% of the motions; already removed from the whole-corpus model by the 50% limit, but in a period where they stay under 50% they remained in that period's model), *lite, ske, egen, god, grund* (generic words in 31–37%) and *öka, ökad, skapa, kräva, förutsättning* (generic language of political argument, 31–42%, in the top words of most topics). From the words in 10–30% of the motions: 20 function words (*därmed, således, alltså, emellertid, medan, däremot, liksom, just, enbart, främst, respektive, ur, tyvärr, exempelvis, oavsett, utöver, avseende, följande, samtlig, båda*), the request language *föreslå, överväga, konstatera, angelägen*, and the lemmas *circa* and *procent* (left over from *ca* and *%*). Criterion: closed-class function words, parliamentary procedure and generic political argument; generic verbs and adjectives (*leda, stå, ligga, säga, svår*) and *utreda/utredning* (often a specific inquiry) are kept. Words in 30–50% of the motions that carry content are kept (*behov*, *hög* as in *högre utbildning*, *land*, *svensk*, *utveckling*, *verksamhet*, *område*, *samhälle*, *arbete*, *kunskap*, *krav* and the education words). Check the topic and chain names after the rerun
 1. **Place names** (keep, remove or downweight)
 2. **Party analysis:** with the session and author metadata, which parties' motions carry each topic, per period
 3. **Algorithm and framing** (under discussion with the supervisor): the current plan is to keep scikit-learn and present the study as an adaptation of Gordon's workflow rather than a computational replication (MALLET, Gibbs sampling). The 50-pass fits are checked against 200 passes (*Convergence check*): more passes would not change the topics

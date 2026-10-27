@@ -90,7 +90,7 @@ Lemmatizer & Stanza, Swedish Talbanken model (tokenization, part of speech, lemm
 % ---------------------------------------------------------------- 03
 \steprow{03 Boilerplate removal}{8,727,080 ($-16$\%)}{95,950 ($-1$\%)}
 \hline
-Boilerplate & 450 parliamentary words and phrases (institutions, procedure, references, party names), matched on the
+Boilerplate & 460 parliamentary words and phrases (institutions, procedure, references, party names), matched on the
   original word forms & Manual & A word is removed only if a phrase covers the whole word. Removes many words but few
   different ones: a small set of frequent phrases (\texttt{config/boilerplate\_phrases.txt}). & & \\
 \hline
@@ -118,7 +118,7 @@ Normalization & Lowercase; digits removed; punctuation inside tokens replaced by
 % ---------------------------------------------------------------- 05
 \steprow{05 Stopword removal}{4,596,721 ($-45$\%)}{84,170 ($-0.2$\%)}
 \hline
-Stopwords & NLTK Swedish list (114) plus 86 supplementary words, including their lemma forms & Manual & The
+Stopwords & NLTK Swedish list (114) plus 129 supplementary words, including their lemma forms & Manual & The
   supplementary words were chosen by inspecting early models. Content abbreviations (\textit{fn}, \textit{eg}) are kept.
   Removes almost half of the words but only 167 different ones: stopwords are few and very frequent. Gordon uses a
   178-word stoplist. & & \\

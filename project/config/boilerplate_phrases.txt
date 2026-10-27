@@ -171,6 +171,18 @@ tillkännagivande
 som sin mening
 # Place and date of signing: 'Stockholm den 25 januari 1988'
 stockholm den
+# Headings of the motion template: 'Förslag till riksdagsbeslut', 'Motivering'
+förslag till riksdagsbeslut
+riksdagsbeslut
+riksdagsbeslutet
+motivering
+motiveringen
+# The government's budget bill, referred to in budget motions
+budgetproposition
+budgetpropositionen
+budgetpropositionens
+budgetpropositioner
+budgetpropositionerna
 
 # ============================================================================
 # 5. Question, Reference, and Opinion Words
