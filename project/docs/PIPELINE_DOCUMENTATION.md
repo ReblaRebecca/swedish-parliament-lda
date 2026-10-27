@@ -115,6 +115,7 @@ The four periods are defined once, in `periods.py`, and imported by every script
 - **Dropped tokens:** auxiliary verbs (UPOS `AUX`), punctuation and symbols. Stanza lemmatizes the modal *ska/skall/skulle* to `skola`, which would merge with the noun *skola* (school); all auxiliaries are stopwords anyway
 - **Dropped abbreviation lemmas:** words whose lemma contains an underscore. Stanza expands abbreviations into multi-word lemmas (`t.ex.` → `till_exempel`, `bl.a.` → `bland_annat`, `s.k.` → `så_kallad`, `m.fl.` → `med_flera`), sometimes garbled (`få_cetera`). Every dropped word is counted in `data/output/boilerplate_removed/underscore_lemmas.json` (lemma → count and word forms) for manual review
 - **Lemma corrections:** known Stanza lemma errors are corrected from `config/lemma_corrections.txt` (`kompet` → `kompetens`, `lärosät` → `lärosäte`, `anslagen` → `anslag`, …). Stanza guesses lemmas for words it has not seen in training, and some guesses are truncated or repeat a stem (*Universitetskanslersämbetet* → `universitetskanslersämbetsämbets…`, corrected to `universitetskanslersämbete`); the list corrects the errors found by inspecting the models, it does not replace the lemmatizer
+- **Speed:** a phrase's regex is run only if its text occurs in the lowercased motion at all (`pattern_literal()`); most of the 467 phrases occur in few motions. Same output as running every regex (checked on 1,600 motions), about 3× faster (some 2½ minutes for the corpus)
 - **Output fields:** `text_no_boilerplate`, `title_no_boilerplate`
 
 ### 4. Normalization (`preprocessing/04_normalize_text.py`)
@@ -380,6 +381,18 @@ venv/bin/pip install -r requirements.txt
 source venv/bin/activate   # in each new terminal before running scripts
 ```
 
+**Fast rebuild (`run_explorers.sh`):** after a change to the preprocessing, refits both models and regenerates both explorers and the alignment test, skipping the seed tests, convergence check, topic-count test and deduplication comparison (a full run takes about 4½ hours; those belong in it once the preprocessing is settled). The start point depends on what changed; the whole-corpus and period models are fitted in parallel; stops at the first failing step; runs under `caffeinate`:
+
+```bash
+cd project
+./run_explorers.sh 03          # boilerplate list or lemma corrections changed (~8 min)
+./run_explorers.sh 05          # stopwords changed (~5 min)
+./run_explorers.sh models      # data unchanged (~4 min)
+./run_explorers.sh explorers   # only names or page design changed (~1 min)
+```
+
+A refit gives new topics, so names match only where the generators report it ("Topic names: 32 of 32"); the documentation's numbers stay those of the last full run.
+
 NLTK stopwords are read from (and downloaded to) `SU/nltk_data/`, next to the repo. Stanza's Swedish model (~190 MB) is read from (and downloaded to on first run) `SU/stanza_resources/`.
 
 ```bash
@@ -450,6 +463,7 @@ python analysis/check_pipeline_output.py
 ```
 project/
 ├── periods.py                            (the four periods, by session)
+├── run_explorers.sh                      (fast rebuild: preprocessing, models, explorers)
 ├── extraction/
 │   └── 01_extract_from_xml.py
 ├── preprocessing/
@@ -503,7 +517,7 @@ project/
 
 ## Open Points and Next Steps
 
-0. **Rerun pending:** the near-duplicate threshold is now 0.6 (was 0.8) and *med anledning av* and *utgiftsområde* are boilerplate; none of this is applied yet. All results, names, explorers and the deduplication comparison in this document are from the 0.8 run (11,628 motions)
+0. **Full rerun pending:** the near-duplicate threshold 0.6 (was 0.8) and the boilerplate *med anledning av* and *utgiftsområde* are applied by a fast rebuild (`run_explorers.sh 03`): data, models, names, explorers and the alignment report are from it (10,695 motions; alignment 0.58 / 0.65 / 0.64, z 3.8 / 4.2 / 4.4; 7 of 8 chains hold, 3 with all links strong). The seed tests, convergence check, topic-count test, deduplication comparison and the other numbers in this document are still from the 0.8 run (11,628 motions)
 1. **Place names** (keep, remove or downweight)
 2. **Party analysis:** with the session and author metadata, which parties' motions carry each topic, per period
 3. **Algorithm and framing** (under discussion with the supervisor): the current plan is to keep scikit-learn and present the study as an adaptation of Gordon's workflow rather than a computational replication (MALLET, Gibbs sampling). The 50-pass fits are checked against 200 passes (*Convergence check*): more passes would not change the topics

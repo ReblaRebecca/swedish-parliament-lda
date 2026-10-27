@@ -107,6 +107,23 @@ def correct_lemma(lemma, corrections):
     return lemma
 
 
+_LITERALS = {}
+
+
+def pattern_literal(pattern):
+    """The lowercased fixed text a phrase pattern must contain (before any wildcard), or '' if none.
+
+    Used only as a fast pre-check: a pattern whose literal is not in the lowercased text cannot match.
+    """
+    if pattern not in _LITERALS:
+        body = pattern.pattern
+        body = body[2:] if body.startswith(r'\b') else body
+        body = body.split(r'\w*', 1)[0]
+        body = body[:-2] if body.endswith(r'\b') else body
+        _LITERALS[pattern] = re.sub(r'\\(.)', r'\1', body).lower()
+    return _LITERALS[pattern]
+
+
 def remove_boilerplate(sentences, boilerplate_patterns, underscore_counts=None, lemma_corrections=None):
     """Remove boilerplate phrases (matched on word forms) and return the remaining lemmas.
 
@@ -137,7 +154,12 @@ def remove_boilerplate(sentences, boilerplate_patterns, underscore_counts=None, 
     text = ''.join(parts)
 
     removed = [False] * len(words)
+    lowered = text.lower()
     for pattern in boilerplate_patterns:
+        # Skip the regex when the phrase's literal text does not occur at all (most phrases, most motions)
+        literal = pattern_literal(pattern)
+        if literal and literal not in lowered:
+            continue
         for match in pattern.finditer(text):
             i = bisect.bisect_left(starts, match.start())
             while i < len(words) and starts[i] < match.end():

@@ -8,6 +8,7 @@ Run from project/:
 """
 
 import importlib.util
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -252,6 +253,16 @@ class TestRemoveBoilerplate(unittest.TestCase):
             ('.', '.', 'PUNCT'),
         )
         self.assertEqual(boilerplate.remove_boilerplate([sentence], self.patterns), 'skola behöva lärare')
+
+    def test_literal_precheck(self):
+        # The pre-check uses the phrase's fixed text, lowercased; a wildcard keeps the part before it
+        self.assertEqual([boilerplate.pattern_literal(p) for p in self.patterns],
+                         ['med anledning av', 'riksdagen', 'av motionen'])
+        wildcard = re.compile(r'\b' + re.escape('hemställ*').replace(r'\*', r'\w*') + r'\b')
+        self.assertEqual(boilerplate.pattern_literal(wildcard), 'hemställ')
+        # Upper-case text still matches: the check is on the lowercased text
+        sentence = tokens(('RIKSDAGEN', 'riksdag', 'NOUN'), ('skola', 'skola', 'NOUN'))
+        self.assertEqual(boilerplate.remove_boilerplate([sentence], self.patterns), 'skola')
 
     def test_phrase_matched_on_word_form_not_lemma(self):
         # 'riksdagens' is a different word form from the phrase 'riksdagen', even though the lemma is 'riksdag'
