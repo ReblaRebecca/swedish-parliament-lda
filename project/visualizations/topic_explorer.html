@@ -296,9 +296,11 @@
     return art;
   }
 
-  // Largest overall share first
+  // Most stable first (found again in most other seeds' models), then largest overall share;
+  // by share alone if the stability test was not run on this model
   function render() {
-    const topics = DATA.topicList.slice().sort((a, b) => b.share - a.share);
+    const found = t => t.stability ? t.stability.found : 0;
+    const topics = DATA.topicList.slice().sort((a, b) => found(b) - found(a) || b.share - a.share);
     grid.replaceChildren(...topics.map(t => card(t, 'model')));
   }
 
