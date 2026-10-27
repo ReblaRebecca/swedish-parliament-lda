@@ -18,8 +18,10 @@ import pickle
 import sys
 from pathlib import Path
 
+import numpy as np
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from periods import DISPLAY_NAMES, period_key  # noqa: E402
+from periods import DISPLAY_NAMES, period_key, session_start_year  # noqa: E402
 
 try:
     from sklearn.decomposition import LatentDirichletAllocation
@@ -94,6 +96,45 @@ def text_key(text):
     return hashlib.md5(' '.join((text or '').split()).encode()).hexdigest()
 
 
+# Near-duplicates: a motion whose final text shares at least this share of its three-word sequences
+# (Jaccard of word 3-gram sets) with an earlier motion is a revised resubmission of it and is not modelled,
+# as exact duplicates. Revisions below the threshold count as new motions.
+NEAR_DUPLICATE_JACCARD = 0.8
+SHINGLE_WORDS = 3
+
+
+def near_duplicates(texts, sessions, threshold=None, chunk=400):
+    """Indices of texts that are near-copies of an earlier text.
+
+    A text is a near-copy if the Jaccard similarity of its set of SHINGLE_WORDS-word sequences with the
+    set of any earlier text is at least threshold (default NEAR_DUPLICATE_JACCARD). Earlier means an
+    earlier session, or the same session and earlier in the list. Compared with every earlier text, so
+    each revision in a series of resubmissions is caught by its predecessor.
+    """
+    threshold = NEAR_DUPLICATE_JACCARD if threshold is None else threshold
+    n = len(texts)
+    if n < 2:
+        return set()
+    try:
+        shingles = CountVectorizer(ngram_range=(SHINGLE_WORDS, SHINGLE_WORDS), binary=True,
+                                   token_pattern=r'\S+').fit_transform(texts).astype(np.float32).tocsr()
+    except ValueError:  # no text has SHINGLE_WORDS words
+        return set()
+    sizes = np.asarray(shingles.sum(axis=1)).ravel()
+    years = np.array([session_start_year(s) or 0 for s in sessions])
+    rank = np.empty(n, dtype=int)
+    rank[np.lexsort((np.arange(n), years))] = np.arange(n)
+    copies = set()
+    for start in range(0, n, chunk):
+        rows = np.arange(start, min(start + chunk, n))
+        shared = (shingles[rows] @ shingles.T).toarray()
+        union = sizes[rows, None] + sizes[None, :] - shared
+        jaccard = np.divide(shared, union, out=np.zeros_like(shared), where=union > 0)
+        jaccard[rank[None, :] >= rank[rows, None]] = 0  # only earlier texts count as originals
+        copies.update(int(r) for r in rows[jaccard.max(axis=1) >= threshold])
+    return copies
+
+
 def read_bin_body_texts(bin_file, seen=None):
     """Load final body text (titles not added) from one temporal-bin file.
 
@@ -140,7 +181,8 @@ def period_display(period):
 def load_body_texts(input_dir):
     """Load final body text from all temporal bins combined, for the whole-corpus model.
 
-    Same selection rule as the period models (read_bin_body_texts), so both use the same motions.
+    Selection: read_bin_body_texts (length minimum, exact duplicates), then near-duplicates of an earlier
+    motion are dropped (near_duplicates). The period models use the same motions (load_period_body_texts).
     Returns: texts (list), metadata (list, same order), malformed_count (int)
     """
     texts = []
@@ -152,21 +194,21 @@ def load_body_texts(input_dir):
         texts += bin_texts
         metadata += bin_metadata
         malformed_count += bin_malformed
-    return texts, metadata, malformed_count
+    copies = near_duplicates(texts, [m['session'] for m in metadata])
+    keep = [i for i in range(len(texts)) if i not in copies]
+    return [texts[i] for i in keep], [metadata[i] for i in keep], malformed_count
 
 
 def load_period_body_texts(input_dir):
-    """Load final body text per period, for the period models.
+    """Load final body text per period, for the period models: the motions of load_body_texts, split by period.
 
     Returns: {period label: (texts, metadata)} in period order, and the total malformed count.
     """
-    periods = {}
-    malformed_count = 0
-    seen = set()  # shared, so a copy in a later period is skipped as in the whole-corpus model
-    for bin_file in sorted(input_dir.glob('group*.jsonl')):
-        texts, metadata, malformed = read_bin_body_texts(bin_file, seen)
-        periods[period_label(bin_file)] = (texts, metadata)
-        malformed_count += malformed
+    texts, metadata, malformed_count = load_body_texts(input_dir)
+    periods = {period_label(bin_file): ([], []) for bin_file in sorted(input_dir.glob('group*.jsonl'))}
+    for text, meta in zip(texts, metadata):
+        periods[meta['period']][0].append(text)
+        periods[meta['period']][1].append(meta)
     return periods, malformed_count
 
 

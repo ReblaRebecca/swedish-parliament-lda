@@ -116,6 +116,46 @@ class TestMinimumLength(unittest.TestCase):
         self.assertFalse(lda_common.is_modelled(None))
 
 
+class TestNearDuplicates(unittest.TestCase):
+    """A revised resubmission (three-word sequences overlapping at least NEAR_DUPLICATE_JACCARD with an
+    earlier motion) is not modelled; a motion revised more than that is."""
+
+    WORDS = [f'ord{i}' for i in range(40)]
+
+    def revised(self, changed):
+        """The 40-word text with its last `changed` words replaced."""
+        return ' '.join(self.WORDS[:40 - changed] + [f'nytt{i}' for i in range(changed)])
+
+    def test_threshold(self):
+        self.assertEqual(lda_common.NEAR_DUPLICATE_JACCARD, 0.8)
+        original = ' '.join(self.WORDS)
+        # 1 word changed: 37 sequences shared of 39 (Jaccard 0.95); 10 changed: 28 of 48 (0.58)
+        texts = [original, self.revised(1), self.revised(10)]
+        self.assertEqual(lda_common.near_duplicates(texts, ['1990/91', '1991/92', '1992/93']), {1})
+
+    def test_earlier_session_is_the_original(self):
+        # The copy listed first but submitted later is the one dropped
+        texts = [self.revised(1), ' '.join(self.WORDS)]
+        self.assertEqual(lda_common.near_duplicates(texts, ['1995/96', '1990/91']), {0})
+
+    def test_unrelated_texts_kept(self):
+        texts = [' '.join(self.WORDS), ' '.join(f'annat{i}' for i in range(40))]
+        self.assertEqual(lda_common.near_duplicates(texts, ['1990/91', '1991/92']), set())
+
+    def test_loaders_skip_near_copies_in_both_models(self):
+        motions = [
+            {'dok_id': 'A', 'session': '1990/91', 'text_no_stopwords': ' '.join(self.WORDS)},
+            {'dok_id': 'B', 'session': '1991/92', 'text_no_stopwords': self.revised(1)},
+            {'dok_id': 'C', 'session': '1992/93', 'text_no_stopwords': self.revised(10)},
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            write_bin(tmp, motions)
+            _, metadata, _ = lda_common.load_body_texts(Path(tmp))
+            periods, _ = lda_common.load_period_body_texts(Path(tmp))
+        self.assertEqual([m['doc_id'] for m in metadata], ['A', 'C'])
+        self.assertEqual([m['doc_id'] for m in periods['1985-1994'][1]], ['A', 'C'])
+
+
 class TestSharedSettings(unittest.TestCase):
     """The models and the stability tests use the same code, so they cannot drift apart."""
 

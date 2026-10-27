@@ -137,6 +137,13 @@ The four periods are defined once, in `periods.py`, and imported by every script
   - Kept, a resubmitted motion would count once per year it was submitted, weighting recurring proposals in prominence; hence only the first copy is modelled
   - The 11 short ones are under the 20-word minimum and skipped for that reason already, so the models skip 642 motions as duplicates (per period 12 / 32 / 171 / 427). Most are in the last two periods: 12% of the motions of 2014/15–2025/26 are copies of an earlier text
 
+### Near-duplicates (`near_duplicates()` in `lda_common.py`; counted by `count_duplicates.py`; not yet applied)
+- **Rule:** a motion is not modelled if its final text shares at least 80% of its three-word sequences (Jaccard similarity of the sets of word 3-grams, `NEAR_DUPLICATE_JACCARD = 0.8`) with an earlier motion (earlier session; within a session, earlier in the data). Applied after the length minimum and exact duplicates, over all periods at once; the period models use the same motions
+- **Why:** many motions are the same proposal resubmitted year after year with small edits (a new year, a reworded sentence), so they are not exact duplicates. Such series can hold up topics of their own (the top motions of a topic are one author's series, e.g. *Naturkunskap i skolan* 1988–2001) and count a recurring proposal once per session in the shares. As with exact duplicates, a near-copy adds no new text; a motion revised more than that is kept as a new motion
+- **Threshold:** checked on the current data (13,007 motions after the length minimum and exact duplicates), the share of motions with at least this similarity to an earlier one: 0.9 → 739 (5.7%), **0.8 → 1,379 (10.6%)**, 0.7 → 1,892, 0.5 → 2,715 (20.9%), 0.3 → 3,545 (27.3%). Random pairs: from 0.6 up almost always the same motion with small edits; 0.4–0.6 mostly the same motion rewritten more (including parties' yearly budget motions, which reuse about half their text); 0.3–0.4 mixed. 98% of the pairs at 0.8 have a first signatory of the same party. 0.8 keeps only clear copies; a lower threshold would treat substantially rewritten motions, arguably new political acts, as copies
+- **Result:** 1,379 motions skipped (per period 116 / 209 / 390 / 664), leaving 11,628 (3,613 / 3,224 / 2,314 / 2,477). Resubmission grows over time: the last period loses 31% of its motions to exact and near copies together (1,091 of 3,571), the first 3%. This is itself a finding about the genre; the shares count distinct texts, not submissions
+- **Runtime:** about 12 seconds per loading of the corpus
+
 ## Models
 
 ### Shared settings (`modeling/lda_common.py`)
@@ -148,6 +155,7 @@ Topic counts (`NUM_TOPICS = 32`, `PERIOD_TOPICS = 8`), the model folder name (`B
 - **Input:** `text_no_stopwords` (body text only) of the 13,943 extracted motions, without motions under 20 words and later copies of duplicates: **13,007 motions** (per period 3,729 / 3,433 / 2,704 / 3,141)
 - **Minimum length (`MIN_WORDS = 20`, `is_modelled()` in `lda_common.py`):** motions with fewer than 20 words in the final text are not modelled. Almost all are short formal requests (*hemställan*) referring to another motion: too short for a reliable topic mix, and since every motion counts equally in a topic's share they would add noise to the shares. 294 motions skipped (per period 277 / 10 / 4 / 3), almost all in 1985/86–1993/94
 - **Duplicates:** of identical final texts only the first copy is modelled, in the whole-corpus and the period models alike: 642 motions skipped (see *Duplicates*)
+- **Near-duplicates (not yet applied):** revised resubmissions (≥ 80% of three-word sequences shared with an earlier motion) are skipped as well: 1,379 motions, leaving 11,628 (see *Near-duplicates*)
 - **Diagnostic:** training perplexity, reported as a diagnostic only, not evidence of generalization
 
 ### Whole-corpus model (`modeling/07_fit_baseline_lda.py`)
@@ -485,7 +493,8 @@ project/
 
 ## Open Points and Next Steps
 
-0. **Seed tests pending:** the stopwords and boilerplate added last (template headings, *budgetproposition*, 43 generic and function words; see *Stopword Removal*) are applied to the data, models, explorers, alignment and corpus statistics; the seed-stability tests (09, 16), the topic-count test (16 with `8 11 15`), the 15-topic alignment and the convergence check are from the previous run and will be redone after the final preprocessing changes. Of the words in more than half of the motions only *utbildning* (63%) and *skola* (51%) are left
+0. **Rerun pending (models only, from 07; preprocessing unchanged):** the near-duplicate filter (*Near-duplicates*) is in the code but not yet applied to the models, explorers and numbers in this document (13,007 motions; 11,628 after the rerun); check the topic and chain names after it.
+   **Seed tests pending:** the stopwords and boilerplate added last (template headings, *budgetproposition*, 43 generic and function words; see *Stopword Removal*) are applied to the data, models, explorers, alignment and corpus statistics; the seed-stability tests (09, 16), the topic-count test (16 with `8 11 15`), the 15-topic alignment and the convergence check are from the previous run and will be redone after the final preprocessing changes. Of the words in more than half of the motions only *utbildning* (63%) and *skola* (51%) are left
 1. **Place names** (keep, remove or downweight)
 2. **Party analysis:** with the session and author metadata, which parties' motions carry each topic, per period
 3. **Algorithm and framing** (under discussion with the supervisor): the current plan is to keep scikit-learn and present the study as an adaptation of Gordon's workflow rather than a computational replication (MALLET, Gibbs sampling). The 50-pass fits are checked against 200 passes (*Convergence check*): more passes would not change the topics

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-Count duplicate motions on the final preprocessed text (for reporting).
+Count duplicate and near-duplicate motions on the final preprocessed text (for reporting).
 The models skip the same duplicates (lda_common.read_bin_body_texts keeps the first copy, by text_key);
 this script lists them. Counts all motions, including those under the models' length minimum.
+Near-duplicates (lda_common.near_duplicates: revised resubmissions, also skipped by the models) are counted
+among the motions left after the length minimum and exact duplicates, per period.
 Re-run after changing boilerplate or stopwords, since the count depends on the final text.
 
 Input: JSON lines with 'text_no_stopwords' field (output of 05_remove_stopwords.py).
@@ -17,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from periods import PERIOD_FILES  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'modeling'))
-from lda_common import text_key  # noqa: E402
+from lda_common import NEAR_DUPLICATE_JACCARD, near_duplicates, read_bin_body_texts, text_key  # noqa: E402
 
 
 def count_temporal_bin(input_file, duplicates, pairs):
@@ -100,6 +102,22 @@ def main():
     print("=" * 60)
     for dup, original in pairs:
         print(f"{dup} duplicates {original}")
+
+    # Near-duplicates among the motions left after the length minimum and exact duplicates (the models' rule)
+    texts, metadata, seen = [], [], set()
+    for filename in bins:
+        if (INPUT_DIR / filename).exists():
+            bin_texts, bin_metadata, _ = read_bin_body_texts(INPUT_DIR / filename, seen)
+            texts += bin_texts
+            metadata += bin_metadata
+    copies = near_duplicates(texts, [m['session'] for m in metadata])
+    print("=" * 60)
+    print(f"Near-duplicates (Jaccard of three-word sequences >= {NEAR_DUPLICATE_JACCARD} with an earlier motion), "
+          f"among {len(texts)} motions after the length minimum and exact duplicates: {len(copies)}")
+    for filename in bins:
+        period = Path(filename).stem.split('_', 1)[-1]
+        print(f"  {filename}: {sum(1 for i in copies if metadata[i]['period'] == period)}")
+    print("=" * 60)
 
 
 if __name__ == '__main__':
