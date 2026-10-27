@@ -266,6 +266,37 @@ class TestPeriodExplorerChains(unittest.TestCase):
         self.assertLess(links[1][0], period_explorer.CHAIN_COSINE)
 
 
+class TestSeedStabilityChip(unittest.TestCase):
+    """The explorers show seed stability only from a CSV made on the same model."""
+
+    vocab = np.array([f'w{i}' for i in range(10)])
+    topic_word = np.array([np.linspace(1, 0.1, 10), np.linspace(0.1, 1, 10)])
+
+    def write(self, tmp, rows):
+        path = Path(tmp) / 'stability.csv'
+        lines = ['topic,found,compared,mean_cosine,min_cosine,mean_jaccard,top_words']
+        lines += [f'{k + 1},{found},4,0.9,0.8,0.5,{words}' for k, (found, words) in enumerate(rows)]
+        path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+        return path
+
+    def test_same_model_read(self):
+        top = [lda_common.most_probable_words(t, self.vocab, lda_common.STABILITY_CHECK_WORDS) for t in self.topic_word]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.write(tmp, [(4, top[0]), (2, top[1])])
+            self.assertEqual(lda_common.load_seed_stability(path, self.topic_word, self.vocab),
+                             {0: {'found': 4, 'of': 4}, 1: {'found': 2, 'of': 4}})
+
+    def test_other_model_or_missing_ignored(self):
+        top = [lda_common.most_probable_words(t, self.vocab, lda_common.STABILITY_CHECK_WORDS) for t in self.topic_word]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.write(tmp, [(4, top[1]), (2, top[0])])   # topics in another order: another model
+            self.assertIsNone(lda_common.load_seed_stability(path, self.topic_word, self.vocab))
+            self.assertIsNone(lda_common.load_seed_stability(Path(tmp) / 'missing.csv', self.topic_word, self.vocab))
+
+    def test_check_words_match_the_csv(self):
+        self.assertEqual(lda_common.STABILITY_CHECK_WORDS, seed_stability.TABLE_WORDS)
+
+
 class TestRelevance(unittest.TestCase):
     """The explorers show the most relevant words; names still match on the most probable ones."""
 

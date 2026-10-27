@@ -22,3 +22,29 @@ barnsköta       barnskötare     # barnskötarna
 *bibliotekarium bibliotekarie   # bibliotekarier; compounds: skol-, folkbibliotekarier
 stärk           stärka          # stärkt
 universitetskanslersämbetsämbetsämbetsämbetsämbets universitetskanslersämbete   # Universitetskanslersämbetet, -ets (195 words; Stanza repeats the stem)
+# Definite or plural forms left as the lemma, and truncated lemmas, where the base form also occurs
+# (checked against the final text: both forms frequent; '*' only where every compound is the same word)
+*verket         verk            # Skolverket, Högskoleverket, regelverket, nätverket (skolverket 4,854 against skolverk 1,563)
+lärosäten       lärosäte        # lärosätena (2,108)
+*institutet     institut        # institutet, Skolforskningsinstitutet, Folkhälsoinstitutet
+*akademin       akademi         # akademin
+*ekonomin       ekonomi         # ekonomin, nationalekonomin
+mitthögskolan   mitthögskola    # Mitthögskolan
+ekeskolan       ekeskola        # Ekeskolan
+*huvudma        huvudman        # huvudman, huvudmän; compounds: skol-, sjukvårds-, utbildningshuvudman (2,422 + 301)
+*fakult         fakultet        # fakultet, fakulteterna; compounds: universitets-, skogsfakultet
+*timpla         timplan         # timplan
+*trende         trend           # trenden, trender
+*kvalit         kvalitet        # kvalitén
+*linj           linje           # compounds: grundskollärar-, förskollärar-, vårdlinje
+*departemen     departement     # Utbildningsdepartementets, Arbetsmarknadsdepartementet
+välfärde        välfärd         # välfärden
+kärnämn         kärnämne        # kärnämnen, kärnämnet
+funktionshindrade funktionshindrad  # funktionshindrade (noun use)
+studerandes     studerande      # studerandes
+forskar         forskare        # forskaren, forskarens
+tank            tanke           # tanken
+möt             möte            # möten
+sammanhålle     sammanhållen    # sammanhållna
+giv             given           # givna
+låne            lån             # lånen

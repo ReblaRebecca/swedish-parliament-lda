@@ -109,6 +109,11 @@
   .break-note { flex-basis: 100%; font-family: var(--font-body); font-size: 0.75rem; color: var(--gold); }
   .cell-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-family: var(--font-data); font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .cell-head .period { color: var(--ink); font-weight: 500; letter-spacing: 0.04em; }
+  .chip {
+    font-family: var(--font-data); font-size: 0.75rem; font-weight: 500;
+    padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--ink);
+  }
+  .chip.unstable { background: var(--gold-soft); box-shadow: inset 0 0 0 1px var(--gold); }
   .cell-name { font-family: var(--font-display); font-weight: 600; font-size: 0.9375rem; line-height: 1.25; color: var(--ink); }
 
   .cloud { width: 100%; height: auto; display: block; }
@@ -233,6 +238,14 @@
     const share = span('', pct(cell.share));
     share.title = `${pct(cell.share)} of the period's motion content (all the period's topics add up to 100%); topic ${cell.topic} of this period's model`;
     head.append(span('period', DATA.periods[p]), share);
+    if (cell.stability) {
+      // High: found again in every other seed's model; medium: all but one; low (gold): fewer
+      const { found, of } = cell.stability;
+      const level = found === of ? 'high' : (found === of - 1 ? 'medium' : 'low');
+      const chip = span('chip' + (level === 'low' ? ' unstable' : ''), `stability ${level} (${found}/${of})`);
+      chip.title = `Found again in ${found} of ${of} models of this period fitted with other random seeds`;
+      head.appendChild(chip);
+    }
     const strong = c => c !== undefined && c >= DATA.chainCosine;
     if (strong(row.links[p - 1]) || strong(row.links[p])) div.classList.add('joined');
     // A weak link to the previous period breaks the row; link values themselves are not shown

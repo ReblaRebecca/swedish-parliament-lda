@@ -12,6 +12,7 @@ The model uses body text only. Titles are kept as a separate field (title_proces
 data for later use; title weighting was tested and dropped (2026-10-16, see docs/PIPELINE_DOCUMENTATION.md).
 """
 
+import csv
 import hashlib
 import json
 import pickle
@@ -309,3 +310,27 @@ def relevant_words(topic_word, marginal, n, lam=None):
 def most_probable_words(topic_word, vocab, n=3):
     """The n most probable words of one topic, space-separated: the key of the names files."""
     return ' '.join(vocab[i] for i in np.argsort(topic_word)[::-1][:n])
+
+
+# Seed stability in the explorers: a topic is shown as high (found again in every other seed's model),
+# medium (in all but one) or low. Read from the per-topic CSVs of the stability tests (09, 16); their
+# reference model is fitted with the reported seed, so its topics are the reported model's, which is
+# checked on each topic's most probable words.
+STABILITY_CHECK_WORDS = 8   # the words written to the CSV (TABLE_WORDS in analysis/seed_stability.py)
+
+
+def load_seed_stability(csv_path, topic_word, vocab):
+    """{topic index: {'found', 'of'}} from a per-topic stability CSV, or None if it is missing or
+    describes another model (topic count or most probable words differ, e.g. after a refit)."""
+    if not csv_path.exists():
+        return None
+    with open(csv_path, encoding='utf-8') as f:
+        rows = list(csv.DictReader(f))
+    if len(rows) != len(topic_word):
+        return None
+    stability = {}
+    for k, row in enumerate(rows):
+        if row['top_words'] != most_probable_words(topic_word[k], vocab, STABILITY_CHECK_WORDS):
+            return None
+        stability[k] = {'found': int(row['found']), 'of': int(row['compared'])}
+    return stability

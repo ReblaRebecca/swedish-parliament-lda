@@ -2,12 +2,13 @@
 """
 Generate the topic explorer: one self-contained HTML page with a word cloud per topic of the
 whole-corpus model (body text only), each topic's share overall and per period, its
-highest-loading motions, and the party concentration among them.
+highest-loading motions, and its seed stability.
 
 Reads the fitted model directly (not the CSV export), so the page always shows the model
 in models/.
 
-Input:  models/<BASELINE_MODEL_DIR>/, data/output/stopword_removed/, config/topic_names_<k>.tsv
+Input:  models/<BASELINE_MODEL_DIR>/, data/output/stopword_removed/, config/topic_names_<k>.tsv,
+        results/BASELINE_STABILITY_<k>TOPICS_PER_TOPIC.csv (optional)
 Output: visualizations/topic_explorer.html (open in a browser; needs internet for the fonts)
 
 Definitions used on the page:
@@ -15,24 +16,21 @@ Definitions used on the page:
   see lda_common.py), so that words frequent in every topic do not crowd out the distinctive ones.
 - Word size: P(word | topic), square-root scaled, on one scale for all clouds (comparable between topics).
 - Share: mean topic proportion over the motions (every motion counts equally).
-- Party concentration: share of the topic's top 10 motions (those shown) whose first signatory belongs to
-  the most frequent party among them (parliamentary analogue of Gordon's author concentration); shown as
-  a chip in the party's colour only if at least PARTY_MIN of the 10 share the party.
-  Renamed parties count as one party (FP = L, KDS = KD, VPK = V; see PARTIES).
+- Stability: in how many of the other seeds' models the topic is found again (09_test_lda_stability.py,
+  results/BASELINE_STABILITY_<k>TOPICS_PER_TOPIC.csv); shown only if that test was run on this model.
+- Each top motion is shown with the party of its first signatory at the time.
 """
 
 import json
 import pickle
 import sys
-from collections import Counter
-from datetime import date
 from pathlib import Path
 
 import numpy as np
 
 from lda_common import (
-    BASELINE_MODEL_DIR, NUM_TOPICS, RELEVANCE_LAMBDA, load_baseline_vectorizer, load_body_texts, load_topic_names,
-    most_probable_words, period_display, relevant_words, topic_word_distributions, word_marginal,
+    BASELINE_MODEL_DIR, NUM_TOPICS, RELEVANCE_LAMBDA, load_baseline_vectorizer, load_body_texts, load_seed_stability,
+    load_topic_names, most_probable_words, period_display, relevant_words, topic_word_distributions, word_marginal,
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -42,13 +40,11 @@ from periods import PERIODS, TERM_STARTS, period_key, term_name, term_of_session
 PERIOD_KEYS = [period_key(stem) for stem, _, _ in PERIODS]
 TOP_WORDS = 20
 TOP_MOTIONS = 10
-CONCENTRATION_TOP = TOP_MOTIONS
-# The party chip is shown only if at least this many of the top motions share the first signatory's party
-PARTY_MIN = 6
 
 # Party code in the data -> (party it is counted as, name at the time). Folkpartiet became Liberalerna
 # (2015), Kristen demokratisk samling became Kristdemokraterna (1996) and Vänsterpartiet kommunisterna
-# became Vänsterpartiet (1990): the same parties, so the party concentration counts them together.
+# became Vänsterpartiet (1990): the same parties, counted together (party_as_counted; used by
+# analysis/dedup_comparison.py). The page shows each motion's party under its name at the time.
 PARTIES = {
     'S': ('S', 'Socialdemokraterna'),
     'M': ('M', 'Moderaterna'),
@@ -63,34 +59,6 @@ PARTIES = {
     'SD': ('SD', 'Sverigedemokraterna'),
     'NYD': ('NYD', 'Ny demokrati'),
 }
-# Name of each party as counted, with its earlier names
-PARTY_NAMES = {
-    'S': 'Socialdemokraterna',
-    'M': 'Moderaterna',
-    'C': 'Centerpartiet',
-    'L': 'Liberalerna/Folkpartiet',
-    'KD': 'Kristdemokraterna/KDS',
-    'V': 'Vänsterpartiet/VPK',
-    'MP': 'Miljöpartiet',
-    'SD': 'Sverigedemokraterna',
-    'NYD': 'Ny demokrati',
-    '?': 'party not given',
-}
-# Chip colours per party as counted: (background, text). Party colours as the parties use them;
-# dark text on the light colours (M, MP, SD, NYD) for contrast. V darker than S to tell them apart.
-PARTY_COLOURS = {
-    'S': ('#E8112D', '#ffffff'),
-    'M': ('#52BDEC', '#0b1f33'),
-    'C': ('#009933', '#ffffff'),
-    'L': ('#006AB3', '#ffffff'),
-    'KD': ('#000077', '#ffffff'),
-    'V': ('#AF1E2D', '#ffffff'),
-    'MP': ('#83CF39', '#14260a'),
-    'SD': ('#DDDD00', '#262600'),
-    'NYD': ('#F2D200', '#262600'),
-}
-DEFAULT_COLOURS = ('#8a8f98', '#ffffff')
-
 
 def party_as_counted(code):
     """Party a code is counted as ('?' if not given); codes not in PARTIES count as themselves."""
@@ -122,8 +90,9 @@ def period_index(period):
     return PERIOD_KEYS.index(period)
 
 
-def model_data(lda, vocab, theta, metadata, parties, marginal):
-    """Per-topic words, shares and top motions for one model (marginal: P(word) in the corpus)."""
+def model_data(lda, vocab, theta, metadata, parties, marginal, stability=None):
+    """Per-topic words, shares, top motions and seed stability (or None) for one model
+    (marginal: P(word) in the corpus)."""
     periods = np.array([period_index(m['period']) for m in metadata])
     terms = np.array([term_of_session(m['session']) for m in metadata])
     topic_word = topic_word_distributions(lda)
@@ -140,8 +109,6 @@ def model_data(lda, vocab, theta, metadata, parties, marginal):
             'partyName': party_name(parties.get(metadata[d]['doc_id'], '')),
             'theta': round(float(theta[d, k]), 3),
         } for d in top_doc_ids]
-        top_parties = Counter(party_as_counted(m['party']) for m in motions[:CONCENTRATION_TOP])
-        party, count = top_parties.most_common(1)[0]
         topics.append({
             'num': k + 1,
             'top3': most_probable_words(topic_word[k], vocab),
@@ -150,11 +117,7 @@ def model_data(lda, vocab, theta, metadata, parties, marginal):
             'periods': [round(float(theta[periods == p, k].mean()), 5) for p in range(len(PERIOD_KEYS))],
             'terms': [round(float(theta[terms == s, k].mean()), 5) for s in TERM_STARTS],
             'motions': motions,
-            'party': party,
-            'partyName': PARTY_NAMES.get(party, party),
-            'partyCount': count,
-            'partyOf': len(motions[:CONCENTRATION_TOP]),
-            'partyColours': PARTY_COLOURS.get(party, DEFAULT_COLOURS),
+            'stability': stability[k] if stability else None,
         })
     return topics
 
@@ -184,7 +147,10 @@ def main():
     outside = [m['doc_id'] for m in metadata if term_of_session(m['session']) is None]
     if outside:
         raise ValueError(f"{len(outside)} motions without an electoral term, e.g. {outside[:3]}")
-    topic_list = model_data(lda, vocab, theta, metadata, parties, word_marginal(doc_term))
+    stability = load_seed_stability(PROJECT_ROOT / 'results' / f'BASELINE_STABILITY_{NUM_TOPICS}TOPICS_PER_TOPIC.csv',
+                                    topic_word_distributions(lda), vocab)
+    print("Seed stability: " + ("shown" if stability else "not shown (missing or for another model; run 09_test_lda_stability.py)"))
+    topic_list = model_data(lda, vocab, theta, metadata, parties, word_marginal(doc_term), stability)
     top3 = {(str(t['num']),): t.pop('top3') for t in topic_list}
     names = load_topic_names(PROJECT_ROOT / 'config' / f'topic_names_{NUM_TOPICS}.tsv', top3)
     for t in topic_list:
@@ -199,9 +165,7 @@ def main():
         'termCounts': [sum(1 for m in metadata if term_of_session(m['session']) == s) for s in TERM_STARTS],
     }
 
-    data['generated'] = date.today().isoformat()
     data['topics'] = NUM_TOPICS
-    data['partyMin'] = PARTY_MIN
     data['relevanceLambda'] = RELEVANCE_LAMBDA
 
     html = TEMPLATE.read_text(encoding='utf-8')

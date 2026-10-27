@@ -51,7 +51,7 @@ CHAIN_COSINE = period_explorer.CHAIN_COSINE
 TOP_MOTIONS = 10
 SERIES_JACCARD = 0.3   # texts this similar count as one series (revisions of the same motion)
 SERIES_MIN = 5         # a topic is series-dominated if its top motions hold a series this long
-PARTY_MIN = topic_explorer.PARTY_MIN
+PARTY_MIN = 6   # a topic is a one-party topic if at least this many of its top motions share the first signatory's party
 SMALL_SHARE = 0.01
 CHANGED_TOPICS = 5
 

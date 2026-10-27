@@ -15,7 +15,9 @@ Word colour shows persistence: in how many of the chain's periods the word is am
 (computed on the page).
 
 Input:  models/period_lda_<k>/ (15_fit_period_lda.py: models and vectorizers), data/output/stopword_removed/,
-        config/period_topic_names_<k>.tsv and config/chain_names_<k>.tsv (names; optional)
+        config/period_topic_names_<k>.tsv and config/chain_names_<k>.tsv (names; optional),
+        results/period_stability/PERIOD_<period>_<k>TOPICS_PER_TOPIC.csv (16_seed_stability_periods.py; optional;
+        shown only for the model it was run on)
         (k = PERIOD_TOPICS)
 Output: visualizations/period_explorer.html (open in a browser; needs internet for the fonts)
 
@@ -30,7 +32,8 @@ from pathlib import Path
 import numpy as np
 
 from lda_common import (
-    PERIOD_TOPICS, RELEVANCE_LAMBDA, load_period_body_texts, load_topic_names, most_probable_words, period_display,
+    PERIOD_TOPICS, RELEVANCE_LAMBDA, load_period_body_texts, load_seed_stability, load_topic_names, most_probable_words,
+    period_display,
     relevant_words, topic_word_distributions, word_marginal,
 )
 
@@ -69,10 +72,10 @@ def topic_words(topic_word, marginal, vocab):
     return [[vocab[i], round(float(topic_word[i]), 5)] for i in relevant_words(topic_word, marginal, TOP_WORDS)]
 
 
-def model_set_data(num_topics, periods, model_dir, names_path=None, chain_names_path=None):
-    """Chains, clouds, shares and names for the period models with num_topics topics."""
+def model_set_data(num_topics, periods, model_dir, names_path=None, chain_names_path=None, stability_dir=None):
+    """Chains, clouds, shares, names and seed stability for the period models with num_topics topics."""
     labels = list(periods)
-    models, vocabs, shares, topic_word_dists, marginals = [], [], [], [], []
+    models, vocabs, shares, topic_word_dists, marginals, stabilities = [], [], [], [], [], []
     for period in labels:
         with open(model_dir / f'period_{period}_lda.pkl', 'rb') as f:
             lda = pickle.load(f)
@@ -90,6 +93,8 @@ def model_set_data(num_topics, periods, model_dir, names_path=None, chain_names_
         shares.append(theta.mean(axis=0))
         topic_word_dists.append(topic_word_distributions(lda))
         marginals.append(word_marginal(doc_term))
+        stabilities.append(load_seed_stability(stability_dir / f'PERIOD_{period}_{num_topics}TOPICS_PER_TOPIC.csv',
+                                               topic_word_dists[-1], vocab) if stability_dir else None)
 
     chains, links = build_chains(models, vocabs)
     top3 = {(period, str(t + 1)): most_probable_words(topic_word_dists[p][t], vocabs[p])
@@ -106,8 +111,12 @@ def model_set_data(num_topics, periods, model_dir, names_path=None, chain_names_
         for p, t in enumerate(chain):
             cells.append({'topic': t + 1, 'words': topic_words(topic_word_dists[p][t], marginals[p], vocabs[p]),
                           'share': round(float(shares[p][t]), 4),
-                          'name': names.get((labels[p], str(t + 1)), '')})
+                          'name': names.get((labels[p], str(t + 1)), ''),
+                          'stability': stabilities[p][t] if stabilities[p] else None})
         rows.append({'row': r + 1, 'cells': cells, 'links': links[r], 'name': chain_names.get((str(r + 1),), '')})
+    available = sum(s is not None for s in stabilities)
+    print(f"Seed stability: shown for {available} of {len(labels)} periods"
+          + ("" if available == len(labels) else " (missing or for another model; run 16_seed_stability_periods.py)"))
     return {'rows': rows}
 
 
@@ -134,7 +143,8 @@ def main():
     print(f"{k} topics: inferring topic shares and matching adjacent periods...")
     data.update(model_set_data(k, periods, model_dir,
                               PROJECT_ROOT / 'config' / f'period_topic_names_{k}.tsv',
-                              PROJECT_ROOT / 'config' / f'chain_names_{k}.tsv'))
+                              PROJECT_ROOT / 'config' / f'chain_names_{k}.tsv',
+                              PROJECT_ROOT / 'results' / 'period_stability'))
 
     html = TEMPLATE.read_text(encoding='utf-8')
     assert html.count('__PERIOD_DATA__') == 1, 'template must contain the data placeholder once'
