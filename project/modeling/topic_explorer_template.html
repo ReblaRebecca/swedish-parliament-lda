@@ -210,7 +210,8 @@
   }
 
   function termChart(topic) {
-    const cw = 480, ch = 112, top = 18, bottom = 20, left = 4;
+    // Term labels at 45°, ending under their bar; the margins leave room for them
+    const cw = 480, ch = 134, top = 18, bottom = 42, left = 18;
     const max = Math.max(...topic.terms) || 1;
     const slot = (cw - left * 2) / topic.terms.length;
     const barW = slot * 0.62;
@@ -228,7 +229,8 @@
       const val = svgEl('text', { class: 'val', x: (x + barW / 2).toFixed(1), y: (top + plotH - h - 5).toFixed(1), 'text-anchor': 'middle' });
       val.textContent = pct(v);
       svg.appendChild(val);
-      const lab = svgEl('text', { class: 'lab', x: (x + barW / 2).toFixed(1), y: ch - 5, 'text-anchor': 'middle' });
+      const lx = (x + barW / 2).toFixed(1), ly = (top + plotH + 12).toFixed(1);
+      const lab = svgEl('text', { class: 'lab', x: lx, y: ly, 'text-anchor': 'end', transform: `rotate(-45 ${lx} ${ly})` });
       lab.textContent = DATA.terms[i];
       svg.appendChild(lab);
     });
@@ -236,12 +238,13 @@
     return svg;
   }
 
-  // Seed stability: high = found again in every other seed's model, medium = all but one, low (gold) = fewer
+  // Seed stability: stable = found again in all or all but one of the other seeds' models
+  // (3 or 4 of 4, the rule of the stability reports); not stable (gold) = fewer
   function stabilityChip({ found, of }) {
-    const level = found === of ? 'high' : (found === of - 1 ? 'medium' : 'low');
+    const stable = found >= of - 1;
     const chip = document.createElement('span');
-    chip.className = 'chip' + (level === 'low' ? ' unstable' : '');
-    chip.textContent = `stability ${level} (${found}/${of})`;
+    chip.className = 'chip' + (stable ? '' : ' unstable');
+    chip.textContent = `${stable ? 'stable' : 'not stable'} (${found}/${of})`;
     chip.title = `Found again in ${found} of ${of} models fitted with other random seeds`;
     return chip;
   }

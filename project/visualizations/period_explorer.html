@@ -239,10 +239,10 @@
     share.title = `${pct(cell.share)} of the period's motion content (all the period's topics add up to 100%); topic ${cell.topic} of this period's model`;
     head.append(span('period', DATA.periods[p]), share);
     if (cell.stability) {
-      // High: found again in every other seed's model; medium: all but one; low (gold): fewer
+      // Stable: found again in all or all but one of the other seeds' models (3 or 4 of 4); not stable (gold): fewer
       const { found, of } = cell.stability;
-      const level = found === of ? 'high' : (found === of - 1 ? 'medium' : 'low');
-      const chip = span('chip' + (level === 'low' ? ' unstable' : ''), `stability ${level} (${found}/${of})`);
+      const stable = found >= of - 1;
+      const chip = span('chip' + (stable ? '' : ' unstable'), `${stable ? 'stable' : 'not stable'} (${found}/${of})`);
       chip.title = `Found again in ${found} of ${of} models of this period fitted with other random seeds`;
       head.appendChild(chip);
     }
