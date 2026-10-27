@@ -177,6 +177,9 @@ riksdagsbeslut
 riksdagsbeslutet
 motivering
 motiveringen
+# Opening of motions on a government bill: 'med anledning av prop. 1989/90:90' (the '.' and the number are
+# removed by the trailing-punctuation rule and step 04)
+med anledning av prop
 # The government's budget bill, referred to in budget motions
 budgetproposition
 budgetpropositionen

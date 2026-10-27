@@ -50,7 +50,6 @@ data/output/normalized/               fields: text_normalized, title_normalized
 data/output/stopword_removed/         fields: text_no_stopwords, title_processed   ← final text used by all models
     ↓
     └── modeling/07_fit_baseline_lda.py        → models/baseline_lda_32/ (whole-corpus model + its vectorizer)
-            ├── modeling/08_display_lda_topics.py       → results/32_TOPICS_FINAL.csv
             ├── modeling/14_generate_topic_explorer.py  → visualizations/topic_explorer.html
             └── analysis/09_test_lda_stability.py       → docs/reports/BASELINE_STABILITY_32TOPICS.md
     └── modeling/15_fit_period_lda.py [k]       → models/period_lda_<k>/ (one model and vocabulary per period), results/period_<k>_topics.csv
@@ -109,7 +108,7 @@ The four periods are defined once, in `periods.py`, and imported by every script
 - **Runtime:** CPU-heavy; about 3¾ hours for the full corpus
 
 ### 3. Boilerplate Removal (`preprocessing/03_remove_boilerplate.py`)
-- **Phrases:** `config/boilerplate_phrases.txt` (460 entries, one explicit word or phrase per line, no wildcards), matched case-insensitively against the **original word forms** saved by step 2, so the list keeps its surface forms (`riksdagen`, `med anledning av`). A word is removed only if a phrase match covers the whole word, apart from trailing punctuation (Stanza keeps the full stop in abbreviations, so the phrase `mot` removes `Mot.`); phrases never match across sentences
+- **Phrases:** `config/boilerplate_phrases.txt` (461 entries, one explicit word or phrase per line, no wildcards), matched case-insensitively against the **original word forms** saved by step 2, so the list keeps its surface forms (`riksdagen`, `med anledning av`). A word is removed only if a phrase match covers the whole word, apart from trailing punctuation (Stanza keeps the full stop in abbreviations, so the phrase `mot` removes `Mot.`); phrases never match across sentences
 - **Categories:** OCR/scanning artifacts, government and parliamentary institutions, parliamentary document/reference terms, procedural language, party names, etc.
 - **Output is lemmas** of the remaining words, one sentence per line
 - **Dropped tokens:** auxiliary verbs (UPOS `AUX`), punctuation and symbols. Stanza lemmatizes the modal *ska/skall/skulle* to `skola`, which would merge with the noun *skola* (school); all auxiliaries are stopwords anyway
@@ -285,14 +284,13 @@ Report: `docs/reports/PERIOD_SEED_STABILITY_SUMMARY.md`.
 
 | Script | Reads | Writes |
 |---|---|---|
-| `modeling/08_display_lda_topics.py [model_dir]` | `models/baseline_lda_32/` | `results/32_TOPICS_FINAL.csv` (top 20 words per topic, as P(word \| topic)) |
 | `modeling/14_generate_topic_explorer.py` | `models/baseline_lda_32/`, `data/output/stopword_removed/`, `config/topic_names_32.tsv`, template `modeling/topic_explorer_template.html` | `visualizations/topic_explorer.html` |
 | `modeling/17_generate_period_explorer.py` | `models/period_lda_8/` (models and vectorizers), `data/output/stopword_removed/`, the per-topic CSVs of 16, `config/period_topic_names_8.tsv`, `config/chain_names_8.tsv`, template `modeling/period_explorer_template.html` | `visualizations/period_explorer.html` |
 
 Both pages are self-contained HTML (open in a browser; internet needed only for the fonts). They are published with `visualizations/index.html` (a landing page linking both) on GitHub Pages by `.github/workflows/pages.yml`, which runs when anything in `project/visualizations/` changes on `main` (one-time setup: Settings → Pages → Source: GitHub Actions; Pages needs a public repository on a free GitHub plan). Word weights are shown as P(word | topic). Topics have Swedish names, an interpretation of each topic's top words and top motions: `config/topic_names_32.tsv` for the whole-corpus model (*Restämne* marks residual topics: unrelated words held together by a few motions) and `config/period_topic_names_8.tsv` for the period models, one name per period topic (*Blandat* marks broad topics without one clear theme). A name is shown only if the topic's three most probable words still match the file (`load_topic_names()` in `lda_common.py`), so a refitted model gets no wrong names. Named topics and chains are shown without their numbers.
 
 ### Topic explorer (whole-corpus model)
-- **Per topic, two columns:** the word cloud (top 20 words, as in the period explorer, the topic tables and the seed-stability comparison) with the chart of its average share in each of the 11 electoral terms (1985–88 … 2022–26; `TERM_STARTS`, `term_of_session()` in `periods.py`; the tooltip gives the number of motions in the term) under it on the left; the top 10 motions (session, party, id, θ) on the right; stacked on narrow screens. The heading gives the overall share; the party concentration among these 10 motions is shown next to “Top motions” only if 6 or more share the first signatory's party (`PARTY_MIN`), as a chip in the party's colour (`PARTY_COLOURS`; V darker than S to tell them apart); renamed parties count as one: FP = L, KDS = KD, VPK = V. With the current model 9 of the 32 topics have a chip. Parties are shown by name: the chip under today's name, each motion under the name at the time
+- **Per topic, two columns:** the word cloud (top 20 words, as in the period explorer and the seed-stability comparison) with the chart of its average share in each of the 11 electoral terms (1985–88 … 2022–26; `TERM_STARTS`, `term_of_session()` in `periods.py`; the tooltip gives the number of motions in the term) under it on the left; the top 10 motions (session, party, id, θ) on the right; stacked on narrow screens. The heading gives the overall share; the party concentration among these 10 motions is shown next to “Top motions” only if 6 or more share the first signatory's party (`PARTY_MIN`), as a chip in the party's colour (`PARTY_COLOURS`; V darker than S to tell them apart); renamed parties count as one: FP = L, KDS = KD, VPK = V. With the current model 9 of the 32 topics have a chip. Parties are shown by name: the chip under today's name, each motion under the name at the time
 - **Word size:** square root of P(word | topic), on **one scale for all clouds**, so sizes can be compared between topics; if a word does not fit, all clouds shrink together. A topic spread over many words has a smaller, sparser cloud. The tooltip gives the exact probability
 - **Order:** largest overall share first (topic numbers are arbitrary); no sorting or search controls and no explanation block on the page; this section describes what it shows
 
@@ -311,7 +309,7 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
 
 - **Stopwords vs. boilerplate.** Stopwords are general Swedish words, applied to the lemmatized, normalized text; boilerplate is parliamentary and domain-specific language (institutions, procedure, references), matched on the original word forms. Keeping them apart lets the stopword list be reused for other Swedish texts
 - **Stanza lemmatization.** Swedish inflection splits one word into many forms (*skola, skolan, skolor, skolornas*), which fragments topics. Stanza is a general, context-aware lemmatizer run once on full sentences, with a small table of corrections for known errors. Known trade-offs: comparatives are reduced to the positive (*högre utbildning* → `hög utbildning`), rare compounds can get wrong lemmas (*arbetsvillkor* → `arbetsvillka`), and modal *ska* gets the lemma `skola` (handled by dropping auxiliaries). spaCy's `sv_core_news_sm` and a hand-made lookup table of education terms were tried and rejected
-- **Body text only.** Appending the title 3× or 5× to the body gave only a small stability gain (mean matched cosine 0.539 against 0.525 at 44 topics, overlapping ranges), too small to justify an extra modelling choice. Titles are kept in the data
+- **Body text only.** Appending the title 3× or 5× to the body gave only a small stability gain in an early test (earlier data, 44 topics), too small to justify an extra modelling choice. Titles are kept in the data
 - **Topic count: 8 per period, 32 for the whole corpus.** 8 is the only tested count (8, 11, 15) at which at least half of the topics are stable in every period, and it has the highest mean cosine in every period; since the number of robust themes is about the same at every count, 8 loses little substance and avoids many chance topics. 11 topics fail the rule in the first period (36%), 15 in every period (47%). The test (16 with `8 11 15`; reports in `docs/reports/topic_count_choice/`):
 
   | Period | 8 topics: mean cosine / stable | 11 topics | 15 topics |
@@ -323,14 +321,14 @@ Both pages are self-contained HTML (open in a browser; internet needed only for 
   | **All periods** | **22 of 32 (69%)** | **24 of 44 (55%)** | **28 of 60 (47%)** |
 
   The number of robust themes per period is about 4–7 at every count (8 → 15 adds 28 topics but only 6 stable ones), and the mean cosine falls with the topic count in every period. The test uses the per-period vocabularies, as the reported models. The 11- and 15-topic models are not kept; they can be refitted with `15_fit_period_lda.py <k>`. The whole-corpus model has the same total capacity as the four period models, as in Gordon (60 = 4 × 15)
-- **Periods by electoral term, assigned by session** (see *Periods*): whole terms per period, as equal in size as the terms allow. Compared (on the data before the placeholder, length and duplicate filters) with four calendar-year bins of roughly equal size (1986–1993, 1994–2004, 2005–2014, 2015–2025, assigned by date), the period models at 8 topics are slightly more stable (21 against 19 of 32 topics stable) and the alignment stronger (all 8 chains pass Gordon's criterion, against 5). The differences are small
-- **Vocabulary per period, compared over shared words** (Gordon's method; see *Period models* and *Topic matching*). Compared (on the data before the filters) with one global vocabulary for all periods, stability is the same at 8 topics (21 of 32 topics stable) and the alignment stronger (matched mean cosine 0.67, 0.78, 0.76 against 0.65, 0.69, 0.67; all 8 chains hold in both), as expected when words outside the shared vocabulary do not count
+- **Periods by electoral term, assigned by session** (see *Periods*): whole terms per period, as equal in size as the terms allow. In an early test (earlier data) four calendar-year bins of roughly equal size gave slightly less stable models and a weaker alignment; the differences were small
+- **Vocabulary per period, compared over shared words** (Gordon's method; see *Period models* and *Topic matching*). In an early test (earlier data) one global vocabulary for all periods gave the same stability and a weaker alignment, as expected when words outside the shared vocabulary do not count
 - **Whole-corpus vocabulary by the same rule:** words in at least 10 and at most 50% of all motions, no cap (14,772 words), as the period models, so that the two designs differ only in the time split and the topic count
 - **Chain criterion:** Gordon's mean of the three links ≥ 0.50, so results are comparable with his; single weak links are shown as additional information
 
 ## Configuration Files
 
-- **`config/boilerplate_phrases.txt`:** 460 explicit words/phrases, one per line, grouped by category with `#` headers. Matched against original word forms (body and title). An alternative file can be passed as the 3rd argument to `03_remove_boilerplate.py`. After editing, re-run steps 03–05 (no need to re-run Stanza)
+- **`config/boilerplate_phrases.txt`:** 461 explicit words/phrases, one per line, grouped by category with `#` headers. Matched against original word forms (body and title). An alternative file can be passed as the 3rd argument to `03_remove_boilerplate.py`. After editing, re-run steps 03–05 (no need to re-run Stanza)
 - **`config/lemma_corrections.txt`:** corrections for known Stanza lemma errors, one `wrong correct` pair per line with `#` comments, applied in step 03 to body and title, case-insensitively. A wrong lemma with a leading `*` is also corrected at the end of a compound (`*kompet kompetens`: `gymnasiekompet` → `gymnasiekompetens`); mark an entry only after checking its compounds (`anslagen` must not be marked, because of *sammanslagen*). After editing, re-run steps 03–05
 - **Stopwords:** hard-coded in `preprocessing/05_remove_stopwords.py` (NLTK base + supplementary list, including lemma forms)
 
@@ -366,7 +364,7 @@ Body text of all 13,943 extracted motions (`analysis/corpus_statistics.py`, read
 | Near-duplicates | 1,379 | ≥ 80% of three-word sequences shared with an earlier motion; mostly revised resubmissions |
 | Vocabulary | Period models: 4,368–7,665 per period; whole-corpus model: 14,772 | ≥ 10 and ≤ 50% of the model's motions, no cap (Gordon) |
 | Stopwords | NLTK (114) + 129 supplementary | |
-| Boilerplate phrases | 460 | Explicit phrases, no wildcards |
+| Boilerplate phrases | 461 | Explicit phrases, no wildcards |
 | Lemmatizer | Stanza | Swedish Talbanken model; auxiliaries dropped |
 | LDA topics | 8 per period, 32 whole corpus | 8, 11 and 15 per period tested |
 | Title coverage | ~99.5% | Motions with a processed title |
@@ -398,11 +396,9 @@ python analysis/check_pipeline_output.py      # sanity checks on the output (rea
 python analysis/count_duplicates.py           # for the report
 python analysis/convergence_check.py          # 50 vs 200 passes; about 25 minutes
 python analysis/corpus_statistics.py          # words per step, for the report (a few minutes; after 15)
-python analysis/word_lists_latex.py           # stopword and boilerplate lists as LaTeX tables (docs/tables/)
 
 # Whole-corpus model
 python modeling/07_fit_baseline_lda.py        # about 3 minutes
-python modeling/08_display_lda_topics.py
 python modeling/14_generate_topic_explorer.py
 python analysis/09_test_lda_stability.py      # 5 seeds; under an hour
 
@@ -462,7 +458,6 @@ project/
 ├── modeling/
 │   ├── lda_common.py                     (shared settings, text loading)
 │   ├── 07_fit_baseline_lda.py            (whole-corpus model + its vectorizer)
-│   ├── 08_display_lda_topics.py
 │   ├── 14_generate_topic_explorer.py
 │   ├── 15_fit_period_lda.py              (one model per period)
 │   ├── 17_generate_period_explorer.py
@@ -479,7 +474,6 @@ project/
 │   ├── dedup_comparison.py               (models with no / exact / near duplicates removed, compared)
 │   ├── convergence_check.py              (50-pass fits against 200 passes)
 │   ├── corpus_statistics.py              (words and different words per step, for the report)
-│   └── word_lists_latex.py               (stopword and boilerplate lists as LaTeX tables)
 ├── tests/
 │   ├── test_preprocessing.py
 │   ├── test_topic_matching.py
@@ -494,7 +488,6 @@ project/
 │   └── chain_names_8.tsv
 ├── docs/                                  (in git)
 │   ├── PIPELINE_DOCUMENTATION.md          (this file: the current pipeline)
-│   ├── tables/                            (LaTeX tables for the report: preprocessing decisions with corpus size per step and the word lists; model-training decisions compared with Gordon; compile preprocessing_preview.tex or training_preview.tex)
 │   └── reports/                           (seed-stability reports of 09 and 16; period_stability/ per period; topic_count_choice/ the 8/11/15 test)
 ├── visualizations/                        (in git, published on GitHub Pages: index.html, topic_explorer.html, period_explorer.html)
 ├── results/                               (not in git: generated CSV tables)
