@@ -14,7 +14,8 @@ Definitions used on the page:
 - Word size: P(word | topic), square-root scaled, top 20 words, on one scale for all clouds (comparable between topics).
 - Share: mean topic proportion over the motions (every motion counts equally).
 - Party concentration: share of the topic's top 10 motions (those shown) whose first signatory belongs to
-  the most frequent party among them (parliamentary analogue of Gordon's author concentration).
+  the most frequent party among them (parliamentary analogue of Gordon's author concentration); shown as
+  a chip in the party's colour only if at least PARTY_MIN of the 10 share the party.
   Renamed parties count as one party (FP = L, KDS = KD, VPK = V; see PARTIES).
 """
 
@@ -30,13 +31,15 @@ import numpy as np
 from lda_common import BASELINE_MODEL_DIR, NUM_TOPICS, load_baseline_vectorizer, load_body_texts, load_topic_names, period_display
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from periods import PERIODS, period_key  # noqa: E402
+from periods import PERIODS, TERM_STARTS, period_key, term_name, term_of_session  # noqa: E402
 
 # Period keys in order ('1985-1994', ...); a motion's period is the file it is stored in
 PERIOD_KEYS = [period_key(stem) for stem, _, _ in PERIODS]
 TOP_WORDS = 20
 TOP_MOTIONS = 10
 CONCENTRATION_TOP = TOP_MOTIONS
+# The party chip is shown only if at least this many of the top motions share the first signatory's party
+PARTY_MIN = 6
 
 # Party code in the data -> (party it is counted as, name at the time). Folkpartiet became Liberalerna
 # (2015), Kristen demokratisk samling became Kristdemokraterna (1996) and Vänsterpartiet kommunisterna
@@ -68,6 +71,20 @@ PARTY_NAMES = {
     'NYD': 'Ny demokrati',
     '?': 'party not given',
 }
+# Chip colours per party as counted: (background, text). Party colours as the parties use them;
+# dark text on the light colours (M, MP, SD, NYD) for contrast. V darker than S to tell them apart.
+PARTY_COLOURS = {
+    'S': ('#E8112D', '#ffffff'),
+    'M': ('#52BDEC', '#0b1f33'),
+    'C': ('#009933', '#ffffff'),
+    'L': ('#006AB3', '#ffffff'),
+    'KD': ('#000077', '#ffffff'),
+    'V': ('#AF1E2D', '#ffffff'),
+    'MP': ('#83CF39', '#14260a'),
+    'SD': ('#DDDD00', '#262600'),
+    'NYD': ('#F2D200', '#262600'),
+}
+DEFAULT_COLOURS = ('#8a8f98', '#ffffff')
 
 
 def party_as_counted(code):
@@ -103,6 +120,7 @@ def period_index(period):
 def model_data(lda, vocab, theta, metadata, parties):
     """Per-topic words, shares and top motions for one model."""
     periods = np.array([period_index(m['period']) for m in metadata])
+    terms = np.array([term_of_session(m['session']) for m in metadata])
     topic_word = lda.components_ / lda.components_.sum(axis=1, keepdims=True)
     topics = []
     for k in range(lda.n_components):
@@ -124,11 +142,13 @@ def model_data(lda, vocab, theta, metadata, parties):
             'words': [[vocab[i], round(float(topic_word[k, i]), 5)] for i in top_word_ids],
             'share': round(float(theta[:, k].mean()), 5),
             'periods': [round(float(theta[periods == p, k].mean()), 5) for p in range(len(PERIOD_KEYS))],
+            'terms': [round(float(theta[terms == s, k].mean()), 5) for s in TERM_STARTS],
             'motions': motions,
             'party': party,
             'partyName': PARTY_NAMES.get(party, party),
             'partyCount': count,
             'partyOf': len(motions[:CONCENTRATION_TOP]),
+            'partyColours': PARTY_COLOURS.get(party, DEFAULT_COLOURS),
         })
     return topics
 
@@ -154,6 +174,9 @@ def main():
     print(f"Inferring topic proportions for {len(texts)} motions...")
     theta = lda.transform(vectorizer.transform(texts))
     theta = theta / theta.sum(axis=1, keepdims=True)
+    outside = [m['doc_id'] for m in metadata if term_of_session(m['session']) is None]
+    if outside:
+        raise ValueError(f"{len(outside)} motions without an electoral term, e.g. {outside[:3]}")
     topic_list = model_data(lda, vocab, theta, metadata, parties)
     top3 = {(str(t['num']),): ' '.join(w for w, _ in t['words'][:3]) for t in topic_list}
     names = load_topic_names(PROJECT_ROOT / 'config' / f'topic_names_{NUM_TOPICS}.tsv', top3)
@@ -165,10 +188,13 @@ def main():
         'topicList': topic_list,
         'motions': len(texts),
         'periodCounts': [sum(1 for m in metadata if m['period'] == p) for p in PERIOD_KEYS],
+        'terms': [term_name(s) for s in TERM_STARTS],
+        'termCounts': [sum(1 for m in metadata if term_of_session(m['session']) == s) for s in TERM_STARTS],
     }
 
     data['generated'] = date.today().isoformat()
     data['topics'] = NUM_TOPICS
+    data['partyMin'] = PARTY_MIN
 
     html = TEMPLATE.read_text(encoding='utf-8')
     assert html.count('__TOPIC_DATA__') == 1, 'template must contain the data placeholder once'

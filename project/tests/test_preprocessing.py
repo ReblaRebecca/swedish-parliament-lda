@@ -189,6 +189,24 @@ class TestPeriodBySession(unittest.TestCase):
         self.assertIsNone(extract.get_temporal_bin('1990/92'))  # not two consecutive years
         self.assertIsNone(extract.get_temporal_bin('inte ett riksmöte'))
 
+    def test_electoral_terms(self):
+        # The topic explorer's chart: a session belongs to the term of the last election before it
+        from periods import TERM_STARTS, term_name, term_of_session
+        self.assertEqual(term_of_session('1985/86'), 1985)
+        self.assertEqual(term_of_session('1987/88'), 1985)
+        self.assertEqual(term_of_session('1988/89'), 1988)
+        self.assertEqual(term_of_session('1993/94'), 1991)
+        self.assertEqual(term_of_session('1997/98'), 1994)
+        self.assertEqual(term_of_session('1999/2000'), 1998)
+        self.assertEqual(term_of_session('2025/26'), 2022)
+        self.assertIsNone(term_of_session('1984/85'))
+        self.assertIsNone(term_of_session('2026/27'))
+        self.assertEqual(term_name(1985), '1985–88')
+        self.assertEqual(term_name(1998), '1998–02')
+        self.assertEqual(term_name(2022), '2022–26')
+        # Eleven terms in sessions 1985/86-2025/26
+        self.assertEqual(len(TERM_STARTS), 11)
+
     def test_motion_keeps_session_and_is_binned_by_it(self):
         # A 1985/86 motion whose date field holds the placeholder 1985-01-01 belongs to the first period
         xml = (

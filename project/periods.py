@@ -62,5 +62,25 @@ def period_key(stem):
     return stem.split('_', 1)[-1]
 
 
+# Electoral terms (mandatperioder) of the study, by the start year of their first session; the last term
+# ends with session 2025/26. Terms were three years until 1994 and four years since.
+TERM_STARTS = [1985, 1988, 1991, 1994, 1998, 2002, 2006, 2010, 2014, 2018, 2022]
+LAST_SESSION_START = 2025
+
+
+def term_of_session(session):
+    """Start year of the electoral term a session belongs to ('1999/2000' -> 1998); None if outside."""
+    year = session_start_year(session)
+    if year is None or not TERM_STARTS[0] <= year <= LAST_SESSION_START:
+        return None
+    return max(start for start in TERM_STARTS if start <= year)
+
+
+def term_name(start):
+    """1985 -> '1985–88' (election year to the next election), 2022 -> '2022–26'."""
+    ends = TERM_STARTS[1:] + [LAST_SESSION_START + 1]
+    return f'{start}–{ends[TERM_STARTS.index(start)] % 100:02d}'
+
+
 # Period key -> name shown on pages and in reports: '1985-1994' -> '1985/86–1993/94'
 DISPLAY_NAMES = {period_key(stem): f'{session_name(first)}–{session_name(last)}' for stem, first, last in PERIODS}

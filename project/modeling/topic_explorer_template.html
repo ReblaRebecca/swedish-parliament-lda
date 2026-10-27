@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
   /* Layout: masthead, then one column of topic cards; each card puts the
-     word cloud with the period chart under it in the left column and the topic's top motions in the
+     word cloud with the electoral-term chart under it in the left column and the topic's top motions in the
      right column, stacking on narrow screens. */
   :root {
     --paper: #f4f6f8;
@@ -18,8 +18,6 @@
     --rule: #dbe1e8;
     --accent: #1d5a8c;
     --accent-soft: #e2ecf5;
-    --gold: #a8761c;
-    --gold-soft: #f5ead2;
     --word-mid: #2b3a4d;
     --word-low: #7a8697;
     --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
@@ -41,8 +39,6 @@
       --rule: #2a3543;
       --accent: #84b6e2;
       --accent-soft: #1c2f42;
-      --gold: #e2b65e;
-      --gold-soft: #3a2e17;
       --word-mid: #d3dbe5;
       --word-low: #8995a6;
     }
@@ -56,8 +52,6 @@
     --rule: #2a3543;
     --accent: #84b6e2;
     --accent-soft: #1c2f42;
-    --gold: #e2b65e;
-    --gold-soft: #3a2e17;
     --word-mid: #d3dbe5;
     --word-low: #8995a6;
   }
@@ -92,7 +86,6 @@
     padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--ink);
     font-variant-numeric: tabular-nums;
   }
-  .chip.concentrated { background: var(--gold-soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--gold); }
 
   .topic-body { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 24px; align-items: start; }
   @media (max-width: 760px) { .topic-body { grid-template-columns: minmax(0, 1fr); } }
@@ -105,10 +98,10 @@
   .cloud .w3 { fill: var(--word-low); }
 
   .periods figcaption, .motions-head { font-family: var(--font-data); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-  .periods svg { width: 100%; max-width: 320px; height: auto; display: block; }
+  .periods svg { width: 100%; max-width: 480px; height: auto; display: block; }
   .periods .bar { fill: var(--accent); }
-  .periods .val { fill: var(--ink); font-family: var(--font-data); font-size: 11px; }
-  .periods .lab { fill: var(--muted); font-family: var(--font-data); font-size: 10.5px; }
+  .periods .val { fill: var(--ink); font-family: var(--font-data); font-size: 9.5px; }
+  .periods .lab { fill: var(--muted); font-family: var(--font-data); font-size: 9.5px; }
   .periods .base { stroke: var(--rule); stroke-width: 1; }
 
   .motions { list-style: none; display: grid; gap: 6px; padding: 0; margin: 0; }
@@ -214,31 +207,28 @@
     return svg;
   }
 
-  function periodChart(topic) {
-    const cw = 320, ch = 132, top = 18, bottom = 34, left = 4;
-    const max = Math.max(...topic.periods) || 1;
-    const slot = (cw - left * 2) / topic.periods.length;
-    const barW = slot * 0.56;
+  function termChart(topic) {
+    const cw = 480, ch = 112, top = 18, bottom = 20, left = 4;
+    const max = Math.max(...topic.terms) || 1;
+    const slot = (cw - left * 2) / topic.terms.length;
+    const barW = slot * 0.62;
     const svg = svgEl('svg', { viewBox: `0 0 ${cw} ${ch}`, role: 'img',
-      'aria-label': 'Share by period: ' + DATA.periods.map((p, i) => `${p} ${pct(topic.periods[i])}`).join(', ') });
+      'aria-label': 'Share by electoral term: ' + DATA.terms.map((p, i) => `${p} ${pct(topic.terms[i])}`).join(', ') });
     const plotH = ch - top - bottom;
-    topic.periods.forEach((v, i) => {
+    topic.terms.forEach((v, i) => {
       const h = Math.max(1, (v / max) * plotH);
       const x = left + i * slot + (slot - barW) / 2;
-      svg.appendChild(svgEl('rect', { class: 'bar', x: x.toFixed(1), y: (top + plotH - h).toFixed(1), width: barW.toFixed(1), height: h.toFixed(1), rx: 2 }));
+      const bar = svgEl('rect', { class: 'bar', x: x.toFixed(1), y: (top + plotH - h).toFixed(1), width: barW.toFixed(1), height: h.toFixed(1), rx: 2 });
+      const tip = svgEl('title', {});
+      tip.textContent = `${DATA.terms[i]}: ${pct(v)} (${DATA.termCounts[i].toLocaleString('en')} motions)`;
+      bar.appendChild(tip);
+      svg.appendChild(bar);
       const val = svgEl('text', { class: 'val', x: (x + barW / 2).toFixed(1), y: (top + plotH - h - 5).toFixed(1), 'text-anchor': 'middle' });
       val.textContent = pct(v);
       svg.appendChild(val);
-      // Period names are sessions ('1985/86–1993/94'): first and last session on two lines
-      const [first, last] = DATA.periods[i].split('–');
-      const lab = svgEl('text', { class: 'lab', x: (x + barW / 2).toFixed(1), y: ch - 18, 'text-anchor': 'middle' });
-      lab.textContent = last ? `${first}–` : first;
+      const lab = svgEl('text', { class: 'lab', x: (x + barW / 2).toFixed(1), y: ch - 5, 'text-anchor': 'middle' });
+      lab.textContent = DATA.terms[i];
       svg.appendChild(lab);
-      if (last) {
-        const lab2 = svgEl('text', { class: 'lab', x: (x + barW / 2).toFixed(1), y: ch - 5, 'text-anchor': 'middle' });
-        lab2.textContent = last;
-        svg.appendChild(lab2);
-      }
     });
     svg.appendChild(svgEl('line', { class: 'base', x1: left, x2: cw - left, y1: top + plotH + 0.5, y2: top + plotH + 0.5 }));
     return svg;
@@ -266,18 +256,22 @@
     const fig = document.createElement('figure');
     fig.className = 'periods';
     const cap = document.createElement('figcaption');
-    cap.textContent = 'Average share across all motions in each period';
-    fig.append(cap, periodChart(topic));
+    cap.textContent = 'Average share across all motions in each electoral term';
+    fig.append(cap, termChart(topic));
 
     const mh = document.createElement('p');
     mh.className = 'motions-head';
     mh.textContent = 'Top motions';
-    const chip = document.createElement('span');
-    // Gold when at least 80% of the motions shown share the first signatory's party
-    chip.className = 'chip' + (topic.partyCount >= 0.8 * topic.partyOf ? ' concentrated' : '');
-    chip.textContent = `${topic.partyName} ${topic.partyCount}/${topic.partyOf}`;
-    chip.title = `${topic.partyCount} of the top ${topic.partyOf} motions have a first signatory from ${topic.partyName}`;
-    mh.appendChild(chip);
+    // Party chip, in the party's colour, only if enough of the motions shown share the first signatory's party
+    if (topic.partyCount >= DATA.partyMin) {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.style.background = topic.partyColours[0];
+      chip.style.color = topic.partyColours[1];
+      chip.textContent = `${topic.partyName} ${topic.partyCount}/${topic.partyOf}`;
+      chip.title = `${topic.partyCount} of the top ${topic.partyOf} motions have a first signatory from ${topic.partyName}`;
+      mh.appendChild(chip);
+    }
     const ol = document.createElement('ol');
     ol.className = 'motions';
     topic.motions.forEach(m => {
