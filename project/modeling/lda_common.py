@@ -181,9 +181,11 @@ def period_display(period):
 
 
 # Duplicate filters, from none to the models' setting: 'none' (length minimum only), 'exact' (also identical
-# texts), 'near' (also near-duplicates; the default, used by every model). The other two are for the
-# deduplication comparison (analysis/dedup_comparison.py).
-DEDUP_LEVELS = ('none', 'exact', 'near')
+# texts), 'near08' (also near-duplicates at the earlier, stricter threshold COMPARISON_NEAR_JACCARD), 'near'
+# (also near-duplicates at NEAR_DUPLICATE_JACCARD; the default, used by every model). The other three are
+# for the deduplication comparison (analysis/dedup_comparison.py).
+COMPARISON_NEAR_JACCARD = 0.8
+DEDUP_LEVELS = ('none', 'exact', 'near08', 'near')
 
 
 def load_body_texts(input_dir, dedup='near'):
@@ -205,9 +207,10 @@ def load_body_texts(input_dir, dedup='near'):
         texts += bin_texts
         metadata += bin_metadata
         malformed_count += bin_malformed
-    if dedup != 'near':
+    if dedup in ('none', 'exact'):
         return texts, metadata, malformed_count
-    copies = near_duplicates(texts, [m['session'] for m in metadata])
+    threshold = COMPARISON_NEAR_JACCARD if dedup == 'near08' else NEAR_DUPLICATE_JACCARD
+    copies = near_duplicates(texts, [m['session'] for m in metadata], threshold)
     keep = [i for i in range(len(texts)) if i not in copies]
     return [texts[i] for i in keep], [metadata[i] for i in keep], malformed_count
 

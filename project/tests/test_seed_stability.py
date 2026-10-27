@@ -157,6 +157,29 @@ class TestNearDuplicates(unittest.TestCase):
         self.assertEqual([m['doc_id'] for m in periods['1985-1994'][1]], ['A', 'C'])
 
 
+class TestDedupLevels(unittest.TestCase):
+    """The deduplication comparison's selections, from none to the models' setting."""
+
+    WORDS = TestNearDuplicates.WORDS
+    revised = TestNearDuplicates.revised
+
+    def test_levels(self):
+        motions = [
+            {'dok_id': 'A', 'session': '1990/91', 'text_no_stopwords': ' '.join(self.WORDS)},
+            {'dok_id': 'B', 'session': '1991/92', 'text_no_stopwords': ' '.join(self.WORDS)},   # exact copy
+            {'dok_id': 'C', 'session': '1992/93', 'text_no_stopwords': self.revised(1)},        # Jaccard 0.95
+            {'dok_id': 'D', 'session': '1993/94', 'text_no_stopwords': self.revised(6)},        # Jaccard 0.73
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            write_bin(tmp, motions)
+            kept = {level: [m['doc_id'] for m in lda_common.load_body_texts(Path(tmp), dedup=level)[1]]
+                    for level in lda_common.DEDUP_LEVELS}
+            with self.assertRaises(ValueError):
+                lda_common.load_body_texts(Path(tmp), dedup='nearly')
+        self.assertEqual(kept, {'none': ['A', 'B', 'C', 'D'], 'exact': ['A', 'C', 'D'],
+                                'near08': ['A', 'D'], 'near': ['A']})
+
+
 class TestSharedSettings(unittest.TestCase):
     """The models and the stability tests use the same code, so they cannot drift apart."""
 

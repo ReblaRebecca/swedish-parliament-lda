@@ -5,35 +5,35 @@
 # Format: period, topic number, its three most probable words, name (tab-separated). The
 # generator shows a name only if the three words still match the model, so a refitted model
 # with other topics gets no wrong names.
-1985-1994	1	skola elev kommun	Skolans ansvar, fristående skolor och föräldrar
-1985-1994	2	kunskap vuxenutbildning folkhögskola	Vuxenutbildning, folkbildning och vårdutbildning
-1985-1994	3	umeå göteborg universitet	Blandat: universitetsorter, läkarutbildning och konstnärlig utbildning
-1985-1994	4	forskning universitet område	Forskning och professurer
-1985-1994	5	lärare elev ämne	Lärare, betyg och lärarutbildning
-1985-1994	6	högskola län teknisk	Regional högskoleutbyggnad
-1985-1994	7	ämne undervisning språk	Språk, religion och teckenspråk
-1985-1994	8	högskola anslag förslag	Högskoleanslag och resurser
-1994-2006	1	forskning högskola universitet	Forskningspolitik och forskarutbildning
-1994-2006	2	högskola universitet utveckling	Regionala högskolor och universitet
-1994-2006	3	lärare kunskap samhälle	Lärarutbildning, jämställdhet och värderingar
-1994-2006	4	student studie system	Studiestöd och kunskapslyftet
-1994-2006	5	kommun fristående kommunal	Fristående skolor och bidrag
-1994-2006	6	hälsa ämne idrott	Idrott, hälsa och kost
-1994-2006	7	elev lärare gymnasieskola	Betyg, antagning och gymnasieskola
-1994-2006	8	barn förskola elev	Mobbning, förskola och barnomsorg
-2006-2014	1	land svensk universitet	Läkarutbildning, vård och forskning
-2006-2014	2	forskning högskola universitet	Forskning, lärosäten och näringsliv
-2006-2014	3	elev gymnasieskola kunskap	Gymnasieskola, språk och vuxenutbildning
-2006-2014	4	validering lärarlegitimation legitimation	Validering och lärarlegitimation
-2006-2014	5	student högskola studie	Studiestöd och fribelopp
-2006-2014	6	elev lärare undervisning	Undervisning, betyg och sex och samlevnad
-2006-2014	7	barn förskola kommun	Förskola, fritidshem och barnomsorg
-2006-2014	8	barn elev kommun	Elevhälsa, skolmat och friskolor
-2014-2026	1	student högskola hög	Studenter, studiemedel och arbetsmarknad
-2014-2026	2	lärare kvalitet nationell	Lärare, lärarutbildning och vuxenutbildning
-2014-2026	3	forskning högskola nivå	Budget: högskoleanslag
-2014-2026	4	kommun förslag verksamhet	Likvärdighet, finansiering och friskolor
-2014-2026	5	forskning hög svensk	Forskning och innovation
-2014-2026	6	kvinna samhälle barn	Demokrati, våld och värderingar
-2014-2026	7	barn kunskap lärare	Ordning, kunskap och grundskola
-2014-2026	8	barn förskola förälder	Förskola och barnomsorg
+1985-1994	1	göteborg umeå medicinsk	Blandat: universitetsorter, medicin och vård
+1985-1994	2	kommun skola gymnasieskola	Skolans ansvar, statsbidrag och fristående skolor
+1985-1994	3	högskola län teknisk	Regional högskoleutbyggnad
+1985-1994	4	lärare lärarutbildning ämne	Lärare och lärarutbildning
+1985-1994	5	forskning högskola universitet	Forskning och högskoleresurser
+1985-1994	6	ämne undervisning svensk	Skolämnen, språk och läroplan
+1985-1994	7	anslag vuxenutbildning kunskap	Vuxenutbildning och folkbildning
+1985-1994	8	skola elev barn	Betyg, ordning och mobbning
+1994-2006	1	student förslag studie	Studiestöd och studiemedel
+1994-2006	2	elev kommun fristående	Fristående skolor, betyg och utvärdering
+1994-2006	3	barn förskola mobbning	Förskola, mobbning och sex och samlevnad
+1994-2006	4	forskning universitet högskola	Forskningspolitik och forskarutbildning
+1994-2006	5	gymnasieskola kunskap yrkesutbildning	Yrkesutbildning, lärlingar och gymnasieprogram
+1994-2006	6	barn funktionshind språk	Blandat: funktionshinder, språk och läkarutbildning
+1994-2006	7	lärare högskola student	Högskolans kvalitet, lärarutbildning och jämställdhet
+1994-2006	8	högskola universitet forskning	Regionala högskolor och universitet
+2006-2014	1	student kommun elev	Blandat: fribelopp, friskolor och skolskjuts
+2006-2014	2	förskola kommun elev	Skollag, avgifter och fritidshem
+2006-2014	3	läkare land person	Läkar- och vårdutbildning
+2006-2014	4	ungdom hälsa fysisk	Hälsa, idrott och fysisk aktivitet
+2006-2014	5	elev lärare kunskap	Undervisning, betyg och ämnen
+2006-2014	6	forskning högskola universitet	Forskning, innovation och lärosäten
+2006-2014	7	barn förälder förskola	Förskola, barnomsorg och avgifter
+2006-2014	8	arbetsmarknad högskola vuxenutbildning	Vuxenutbildning och arbetsmarknad
+2014-2026	1	barn förskola kommun	Förskola och likvärdighet
+2014-2026	2	student studie studera	Studiestöd
+2014-2026	3	forskning lärosäte högskola	Forskning och lärosätenas finansiering
+2014-2026	4	lärare undervisning ämne	Lärare, nationella prov och nyanlända
+2014-2026	5	land hög svensk	Entreprenörskap, kompetens och arbetsmarknad
+2014-2026	6	barn kvinna samhälle	Demokrati, mänskliga rättigheter och jämställdhet
+2014-2026	7	barn lärare stöd	Trygghet, studiero och elevhälsa
+2014-2026	8	forskning nivå avancerad	Universitetsanslag (budgetmotioner)

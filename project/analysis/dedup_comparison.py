@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Deduplication comparison: the same models fitted on three selections of the motions, to show what removing
-duplicates changes.
+Deduplication comparison: the same models fitted on four selections of the motions, to show what removing
+duplicates changes and how much the near-duplicate threshold matters.
 
-    none   length minimum only (every submission counts)
-    exact  also identical final texts removed
-    near   also near-duplicates removed (revised resubmissions; the models' setting)
+    none    length minimum only (every submission counts)
+    exact   also identical final texts removed
+    near08  also near-duplicates at Jaccard >= COMPARISON_NEAR_JACCARD (0.8, the earlier threshold)
+    near    also near-duplicates at Jaccard >= NEAR_DUPLICATE_JACCARD (0.6; the models' setting)
 
 For each selection, with the reported settings (lda_common) and the stability seeds:
 - Whole-corpus model (NUM_TOPICS): seed stability (mean of the per-pair mean cosines, stable topics);
@@ -14,13 +15,13 @@ For each selection, with the reported settings (lda_common) and the stability se
   sequences), and topics whose top 10 motions have at least PARTY_MIN of one party.
 - Period models (PERIOD_TOPICS per period): seed stability per period; of the seed-42 models, the
   alignment of adjacent periods (matched cosine, permutation test) and the chains (mean link >= 0.50).
-- The whole-corpus models of 'none' and 'exact' compared with 'near': topics matched one-to-one, and among
+- The whole-corpus models of 'none', 'exact' and 'near08' compared with 'near': topics matched one-to-one, and among
   the topics found in both, those whose shares per period change most.
 
 Duplicates will probably make the models look more stable (repeated texts are easy to reproduce with any
 seed), so higher stability without deduplication is not by itself an argument for keeping duplicates.
 
-Runtime: about 30-40 minutes per selection (5 whole-corpus and 20 period fits each).
+Runtime: about 25 minutes per selection (5 whole-corpus and 20 period fits each).
 
 Usage: python analysis/dedup_comparison.py
 Output: docs/reports/DEDUP_COMPARISON.md, results/dedup_comparison.json
@@ -40,7 +41,7 @@ from topic_matching import match_and_evaluate, permutation_null
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / 'modeling'))
 from lda_common import (  # noqa: E402
-    DEDUP_LEVELS, DEFAULT_SEED, NEAR_DUPLICATE_JACCARD, NUM_TOPICS, PERIOD_TOPICS, SHINGLE_WORDS, STABILITY_SEEDS,
+    COMPARISON_NEAR_JACCARD, DEDUP_LEVELS, DEFAULT_SEED, NEAR_DUPLICATE_JACCARD, NUM_TOPICS, PERIOD_TOPICS, SHINGLE_WORDS, STABILITY_SEEDS,
     fit_period_vectorizer, load_body_texts, period_display,
 )
 
@@ -178,13 +179,15 @@ def pct(value):
 
 def report(results, periods):
     labels = {'none': 'No duplicates removed', 'exact': 'Exact duplicates removed',
-              'near': 'Exact and near-duplicates removed (the models)'}
+              'near08': f'Exact and near-duplicates (≥ {COMPARISON_NEAR_JACCARD}) removed',
+              'near': f'Exact and near-duplicates (≥ {NEAR_DUPLICATE_JACCARD}) removed (the models)'}
     lines = [
         '# Deduplication Comparison',
         '',
-        'The same models fitted on three selections of the motions (`analysis/dedup_comparison.py`): '
-        '*none* (length minimum only), *exact* (identical final texts removed) and *near* (also revised '
-        f'resubmissions, Jaccard of three-word sequences ≥ {NEAR_DUPLICATE_JACCARD}; the models\' setting). Seeds '
+        'The same models fitted on four selections of the motions (`analysis/dedup_comparison.py`): '
+        '*none* (length minimum only), *exact* (identical final texts removed), and two thresholds for revised '
+        f'resubmissions (Jaccard of three-word sequences): *near08* (≥ {COMPARISON_NEAR_JACCARD}, the earlier setting) '
+        f'and *near* (≥ {NEAR_DUPLICATE_JACCARD}; the models\' setting). Seeds '
         f'{", ".join(map(str, STABILITY_SEEDS))}; topic diagnostics from the seed-{DEFAULT_SEED} models.',
         '',
         'Duplicates will probably make the models look more stable, since repeated texts are easy to '
@@ -245,7 +248,7 @@ def report(results, periods):
         'period changes most; shares per period in the selection and in the models.',
         '',
     ]
-    for level in ('none', 'exact'):
+    for level in ('none', 'exact', 'near08'):
         c = results[level]['compared_with_near']
         lines += [
             f"### {labels[level]} against the models",
@@ -280,7 +283,7 @@ def main():
             'periods': period_models(texts, metadata),
         }
         fitted[level] = (lda, vocab)
-    for level in ('none', 'exact'):
+    for level in ('none', 'exact', 'near08'):
         results[level]['compared_with_near'] = compare_with(
             *fitted[level], results[level]['whole']['topics'], *fitted['near'], results['near']['whole']['topics'])
 
