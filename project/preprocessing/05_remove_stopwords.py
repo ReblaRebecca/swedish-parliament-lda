@@ -21,7 +21,7 @@ except ImportError:
     print("Error: NLTK not installed. Install with: pip install nltk")
     sys.exit(1)
 
-# NLTK data lives next to the repo (SU/nltk_data), not in the home folder
+# NLTK data lives next to the repo (SU/Project_work/nltk_data), not in the home folder
 NLTK_DATA_DIR = Path(__file__).resolve().parent.parent.parent.parent / 'nltk_data'
 nltk.data.path.insert(0, str(NLTK_DATA_DIR))
 

@@ -400,7 +400,7 @@ class TestNormalizeText(unittest.TestCase):
 
 
 class TestStopwords(unittest.TestCase):
-    """05: stopword list (needs NLTK stopwords in SU/nltk_data) and removal."""
+    """05: stopword list (needs NLTK stopwords in SU/Project_work/nltk_data) and removal."""
 
     @classmethod
     def setUpClass(cls):

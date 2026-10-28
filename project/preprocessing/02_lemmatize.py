@@ -31,7 +31,7 @@ except ImportError:
 # Number of motions sent to Stanza at once
 BATCH_SIZE = 32
 
-# Stanza models live next to the repo (SU/stanza_resources), not in the home folder
+# Stanza models live next to the repo (SU/Project_work/stanza_resources), not in the home folder
 STANZA_DIR = Path(__file__).resolve().parent.parent.parent.parent / 'stanza_resources'
 
 

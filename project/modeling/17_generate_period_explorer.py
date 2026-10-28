@@ -29,8 +29,6 @@ import pickle
 import sys
 from pathlib import Path
 
-import numpy as np
-
 from lda_common import (
     PERIOD_TOPICS, RELEVANCE_LAMBDA, load_period_body_texts, load_seed_stability, load_topic_names, most_probable_words,
     period_display,

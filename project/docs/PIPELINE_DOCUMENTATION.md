@@ -102,7 +102,7 @@ The four periods are defined once, in `periods.py`, and imported by every script
 - **Output:** 13,943 motions in `data/input/extracted_text_xml/`. Fields: `session`, `text` (cleaned body), `title` (original title, for display), `title_text` (cleaned title, for processing). The files are JSONL; the folder name means "text extracted from XML"
 
 ### 2. Tagging and Lemmatization (`preprocessing/02_lemmatize.py`) — run once
-- **Tool:** [Stanza](https://stanfordnlp.github.io/stanza/) Swedish pipeline (`tokenize,pos,lemma`, default Talbanken model), stored in `SU/stanza_resources/` and downloaded there automatically if missing
+- **Tool:** [Stanza](https://stanfordnlp.github.io/stanza/) Swedish pipeline (`tokenize,pos,lemma`, default Talbanken model), stored in `SU/Project_work/stanza_resources/` and downloaded there automatically if missing
 - Runs on the running text of body and title, so the tagger sees full sentences and can use context
 - **Saves every word** as `[word, lemma, upos]`, grouped by sentence, in `tokens` (body) and `title_tokens` (title). Nothing is removed at this step
 - **Resumable:** motions already in the output file are skipped, so an interrupted run continues where it stopped
@@ -411,7 +411,7 @@ cd project
 
 A refit gives new topics, so names match only where the generators report it ("Topic names: 32 of 32"); the documentation's numbers stay those of the last full run.
 
-NLTK stopwords are read from (and downloaded to) `SU/nltk_data/`, next to the repo. Stanza's Swedish model (~190 MB) is read from (and downloaded to on first run) `SU/stanza_resources/`.
+NLTK stopwords are read from (and downloaded to) `SU/Project_work/nltk_data/`, next to the repo. Stanza's Swedish model (~190 MB) is read from (and downloaded to on first run) `SU/Project_work/stanza_resources/`.
 
 ```bash
 cd project
@@ -549,7 +549,7 @@ project/
 **Plan to finish:**
 
 1. **Final full run** from step 03 (2026-10-27, about 3 hours): the 0.6 near-duplicate threshold, the boilerplate *med anledning av* and *utgiftsområde* and the 25 lemma corrections for split words (*skolverket*/*skolverk* etc.); all models, seed tests (09, 16), convergence check, topic-count test (8 / 11 / 15), 15-topic alignment, and the deduplication comparison with four levels (none / exact / 0.8 / 0.6). **Done**
-2. **After the run:** new topic and chain names; every number in this document updated; the stability chips appear in the explorers. **Done**; to be committed, after review, as the final version the report refers to
+2. **After the run:** new topic and chain names; every number in this document updated; the stability chips appear in the explorers. **Done** and committed as the final version the report refers to
 3. **Rubric coding, as Gordon (2026, §3.3):** scripts and sheet ready (*Rubric coding*); next: Rebecca codes `docs/rubric/RUBRIC_CODING_SHEET.xlsx` (coherent, thematic) as single annotator in one pass, before choosing chains for close reading; then `rubric_summary.py` for the comparison with Gordon's Table 2
 4. **Readability of the explorers** (display only, no effect on results)
 5. **Report writing**
