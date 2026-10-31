@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
   /* Layout: masthead, then one column of topic cards; each card puts the
-     word cloud with the electoral-term chart under it in the left column and the topic's top motions in the
+     word cloud with the period chart under it in the left column and the topic's top motions in the
      right column, stacking on narrow screens. */
   :root {
     --paper: #f4f6f8;
@@ -209,29 +209,28 @@
     return svg;
   }
 
-  function termChart(topic) {
-    // Term labels at 45°, ending under their bar; the margins leave room for them
-    const cw = 480, ch = 134, top = 18, bottom = 42, left = 18;
-    const max = Math.max(...topic.terms) || 1;
-    const slot = (cw - left * 2) / topic.terms.length;
+  function periodChart(topic) {
+    // One bar per period: a recurring proposal counts once per period (duplicates are removed within each period)
+    const cw = 480, ch = 120, top = 18, bottom = 24, left = 18;
+    const max = Math.max(...topic.periods) || 1;
+    const slot = (cw - left * 2) / topic.periods.length;
     const barW = slot * 0.62;
     const svg = svgEl('svg', { viewBox: `0 0 ${cw} ${ch}`, role: 'img',
-      'aria-label': 'Share by electoral term: ' + DATA.terms.map((p, i) => `${p} ${pct(topic.terms[i])}`).join(', ') });
+      'aria-label': 'Share by period: ' + DATA.periods.map((p, i) => `${p} ${pct(topic.periods[i])}`).join(', ') });
     const plotH = ch - top - bottom;
-    topic.terms.forEach((v, i) => {
+    topic.periods.forEach((v, i) => {
       const h = Math.max(1, (v / max) * plotH);
       const x = left + i * slot + (slot - barW) / 2;
       const bar = svgEl('rect', { class: 'bar', x: x.toFixed(1), y: (top + plotH - h).toFixed(1), width: barW.toFixed(1), height: h.toFixed(1), rx: 2 });
       const tip = svgEl('title', {});
-      tip.textContent = `${DATA.terms[i]}: ${pct(v)} (${DATA.termCounts[i].toLocaleString('en')} motions)`;
+      tip.textContent = `${DATA.periods[i]}: ${pct(v)} (${DATA.periodCounts[i].toLocaleString('en')} motions)`;
       bar.appendChild(tip);
       svg.appendChild(bar);
       const val = svgEl('text', { class: 'val', x: (x + barW / 2).toFixed(1), y: (top + plotH - h - 5).toFixed(1), 'text-anchor': 'middle' });
       val.textContent = pct(v);
       svg.appendChild(val);
-      const lx = (x + barW / 2).toFixed(1), ly = (top + plotH + 12).toFixed(1);
-      const lab = svgEl('text', { class: 'lab', x: lx, y: ly, 'text-anchor': 'end', transform: `rotate(-45 ${lx} ${ly})` });
-      lab.textContent = DATA.terms[i];
+      const lab = svgEl('text', { class: 'lab', x: (x + barW / 2).toFixed(1), y: (top + plotH + 16).toFixed(1), 'text-anchor': 'middle' });
+      lab.textContent = DATA.periods[i];
       svg.appendChild(lab);
     });
     svg.appendChild(svgEl('line', { class: 'base', x1: left, x2: cw - left, y1: top + plotH + 0.5, y2: top + plotH + 0.5 }));
@@ -272,8 +271,8 @@
     const fig = document.createElement('figure');
     fig.className = 'periods';
     const cap = document.createElement('figcaption');
-    cap.textContent = 'Average share across all motions in each electoral term';
-    fig.append(cap, termChart(topic));
+    cap.textContent = 'Average share across all motions in each period';
+    fig.append(cap, periodChart(topic));
 
     const mh = document.createElement('p');
     mh.className = 'motions-head';

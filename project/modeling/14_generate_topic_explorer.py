@@ -34,7 +34,7 @@ from lda_common import (
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from periods import PERIODS, TERM_STARTS, period_key, term_name, term_of_session  # noqa: E402
+from periods import PERIODS, period_key  # noqa: E402
 
 # Period keys in order ('1985-1994', ...); a motion's period is the file it is stored in
 PERIOD_KEYS = [period_key(stem) for stem, _, _ in PERIODS]
@@ -94,7 +94,6 @@ def model_data(lda, vocab, theta, metadata, parties, marginal, stability=None):
     """Per-topic words, shares, top motions and seed stability (or None) for one model
     (marginal: P(word) in the corpus)."""
     periods = np.array([period_index(m['period']) for m in metadata])
-    terms = np.array([term_of_session(m['session']) for m in metadata])
     topic_word = topic_word_distributions(lda)
     topics = []
     for k in range(lda.n_components):
@@ -115,7 +114,6 @@ def model_data(lda, vocab, theta, metadata, parties, marginal, stability=None):
             'words': [[vocab[i], round(float(topic_word[k, i]), 5)] for i in top_word_ids],
             'share': round(float(theta[:, k].mean()), 5),
             'periods': [round(float(theta[periods == p, k].mean()), 5) for p in range(len(PERIOD_KEYS))],
-            'terms': [round(float(theta[terms == s, k].mean()), 5) for s in TERM_STARTS],
             'motions': motions,
             'stability': stability[k] if stability else None,
         })
@@ -144,9 +142,6 @@ def main():
     doc_term = vectorizer.transform(texts)
     theta = lda.transform(doc_term)
     theta = theta / theta.sum(axis=1, keepdims=True)
-    outside = [m['doc_id'] for m in metadata if term_of_session(m['session']) is None]
-    if outside:
-        raise ValueError(f"{len(outside)} motions without an electoral term, e.g. {outside[:3]}")
     stability = load_seed_stability(PROJECT_ROOT / 'results' / f'BASELINE_STABILITY_{NUM_TOPICS}TOPICS_PER_TOPIC.csv',
                                     topic_word_distributions(lda), vocab)
     print("Seed stability: " + ("shown" if stability else "not shown (missing or for another model; run 09_test_lda_stability.py)"))
@@ -161,8 +156,6 @@ def main():
         'topicList': topic_list,
         'motions': len(texts),
         'periodCounts': [sum(1 for m in metadata if m['period'] == p) for p in PERIOD_KEYS],
-        'terms': [term_name(s) for s in TERM_STARTS],
-        'termCounts': [sum(1 for m in metadata if term_of_session(m['session']) == s) for s in TERM_STARTS],
     }
 
     data['topics'] = NUM_TOPICS

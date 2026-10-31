@@ -5,35 +5,35 @@
 # Format: topic number, its three most probable words, name (tab-separated). The generator
 # shows a name only if the three words still match the model, so a refitted model with other
 # topics gets no wrong names.
-1	vetenskapsråd riksrevision vinnova	Restämne: myndigheter, Riksrevisionen och flyghögskola
-2	forskning universitet svensk	Forskningspolitik och forskarutbildning
-3	teknik yrkeshögskola it	Teknik, IT och naturvetenskap
-4	studie ekonomisk student	Studiemedel och studiefinansiering
-5	elev gymnasieskola ämne	Gymnasieskola, betyg och ämnesval
-6	kommun elev fristående	Friskolor, kommuner och skolval
-7	anslag högskola förslag	Högskole- och forskningsanslag
-8	läkare läkarutbildning land	Läkar-, apotekar- och receptarieutbildning
-9	hälsa kunskap sjukdom	Hälsa, kost och medicinsk undervisning
-10	sfi invandrare svensk	Svenska för invandrare
-11	barn förälder ungdom	Blandat: barn, föräldrar och sociala frågor
-12	universitet göteborg umeå	Universitetsorter, institutioner och museer
-13	kvinna kunskap samhälle	Jämställdhet och demokrati
-14	förslag verksamhet uppgift	Blandat: ansvar, regelverk och kårobligatoriet
-15	nationell uppdrag kvalitet	Nationell styrning, myndigheter och granskning
-16	vuxenutbildning behov arbetsmarknad	Vuxenutbildning, folkhögskola och yrkesutbildning
-17	elev lärare undervisning	Undervisning, särskilt stöd och studiero
-18	nivå konstnärlig mälardalens	Konstnärliga högskolor och musikutbildning
-19	idrott fysisk aktivitet	Idrott och fysisk aktivitet
-20	kränkning ky utbildningsvetenskaplig	Restämne: skolavslutning, KY och kränkningar
-21	svensk språk land	Språk, modersmål och teckenspråk
-22	högskola län jönköping	Regionala högskolor och ekonomutbildning
-23	högskola linje plats	Utbildningslinjer och platser vid högskolor
-24	företag land hög	Regional utveckling, företagande och högskolor
-25	elev behov särskola	Särskola, funktionshinder och läromedel
-26	narkotika hbt ant	Restämne: ANT och hbt-frågor
-27	skolinspektion huvudman elevhälsa	Restämne: Skolinspektionen och simundervisning
-28	läroplan ämne undervisning	Läroplan, värdegrund och religion
-29	vård behov landsting	Vårdutbildning och sjuksköterskor
-30	student högskola hög	Högre utbildning, antagning och kvalitet
-31	stockholm linköping stiftelse	Restämne: stiftelser, botaniska trädgårdar och lokalisering
-32	förskola barn pedagogisk	Förskola och barnomsorg
+1	kvinna jämställdhet flicka	Jämställdhet, kvinnoforskning och genus
+2	adhd hjärt autism	Restämne: hjärt-lungräddning, älvdalska och animation
+3	forskning högskola universitet	Forskning, forskarutbildning och forskningsanslag
+4	ämne kunskap undervisning	Skolämnen och läroplan
+5	läkare sjukvård vård	Läkar- och tandläkarutbildning
+6	gymnasieskola program elev	Gymnasieskola, yrkesprogram och behörighet
+7	forskning utveckling svensk	Forskning, innovation och näringsliv
+8	åtgärd lag skolverk	Skolpersonal, rektorer och registerkontroll
+9	kommun fristående kommunal	Statsbidrag, huvudmän och fristående skolor
+10	samhälle människa kunskap	Blandat: demokrati, samhälle och värdegrund
+11	land arbetsmarknad hög	Kompetens, arbetsmarknad och företagande
+12	stockholm uppsala teologisk	Restämne: lokaler och lokalisering i Stockholm och Uppsala
+13	lärare lärarutbildning pedagogisk	Lärare, lärarutbildning och religionskunskap
+14	mat läromedel allians	Skolmat och skolmåltider
+15	språk svensk undervisning	Svenska för invandrare och modersmål
+16	elev lärare grundskola	Grundskola, betyg och nationella prov
+17	behov stöd särskild	Särskola, specialskola och funktionshinder
+18	social vård landsting	Vård- och sjuksköterskeutbildning
+19	lärcentrum rekryteringsbidrag hbt	Restämne: hbt-frågor, lärcentra och rekryteringsbidrag
+20	barn förskola förälder	Förskola, barnomsorg och fritidshem
+21	högskola län region	Regionala högskolor och utbildningslinjer
+22	förskoleklass validering kvalitetsinstitut	Restämne: simundervisning och förskoleklass
+23	student högskola hög	Studiemedel, fribelopp och studentinflytande
+24	entreprenörskap kalmar bibliotek	Restämne: museer, bibliotek och entreprenörskap
+25	psykisk sjukdom arbetsmiljö	Psykisk ohälsa, sjukdomar och arbetsmiljö
+26	göteborg skövde konstnärlig	Receptarie- och apotekarutbildning, Västsverige
+27	skolinspektion elevhälsa alkohol	Restämne: ANT-undervisning, dans och elevhälsa
+28	mälardalens riksrevision etisk	Djurförsök i utbildning och forskning
+29	nivå universitet forskarnivå	Restämne: examina och professionsutbildningar
+30	vuxenutbildning folkhögskola vuxen	Folkbildning, folkhögskola och vuxenutbildning
+31	örebro barn hörselskadad	Elever med syn-, hörsel- och rörelsehinder
+32	mobbning barn fysisk	Mobbning, idrott och fysisk aktivitet
