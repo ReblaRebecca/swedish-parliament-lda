@@ -81,9 +81,10 @@ def motion_metadata(motion, period):
     }
 
 
-# Motions with fewer words than this in the final text are not modelled: almost all are short formal
-# requests (hemställan) that refer to another motion, too short for a reliable topic mix, and since every
-# motion counts equally in a topic's share they would add noise to the shares.
+# Motions with fewer words than this in the final text are not modelled: too short for a reliable topic mix,
+# and since every motion counts equally in a topic's share they would add noise to the shares. Many are short
+# formal requests (hemställan) that refer to another motion, some are short proposals of their own (a stated
+# limitation; docs/PIPELINE_DOCUMENTATION.md, Design Decisions).
 MIN_WORDS = 20
 
 
