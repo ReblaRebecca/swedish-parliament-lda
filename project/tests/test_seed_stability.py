@@ -156,28 +156,50 @@ class TestNearDuplicates(unittest.TestCase):
         self.assertEqual([m['doc_id'] for m in metadata], ['A', 'C'])
         self.assertEqual([m['doc_id'] for m in periods['1985-1994'][1]], ['A', 'C'])
 
+    def test_near_copy_in_a_later_period_kept(self):
+        bins = {
+            'group1_1985-1994.jsonl': [{'dok_id': 'A', 'session': '1993/94', 'text_no_stopwords': ' '.join(self.WORDS)}],
+            'group2_1994-2006.jsonl': [{'dok_id': 'B', 'session': '1994/95', 'text_no_stopwords': self.revised(1)}],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, motions in bins.items():
+                (Path(tmp) / name).write_text(''.join(json.dumps(m) + '\n' for m in motions), encoding='utf-8')
+            _, metadata, _ = lda_common.load_body_texts(Path(tmp))
+            periods, _ = lda_common.load_period_body_texts(Path(tmp))
+        self.assertEqual([m['doc_id'] for m in metadata], ['A', 'B'])
+        self.assertEqual([m['doc_id'] for m in periods['1994-2006'][1]], ['B'])
+
 
 class TestDedupLevels(unittest.TestCase):
-    """The deduplication comparison's selections, from none to the models' setting."""
+    """The deduplication comparison's selections: none, over all periods (earlier setting), within each period."""
 
     WORDS = TestNearDuplicates.WORDS
     revised = TestNearDuplicates.revised
 
     def test_levels(self):
-        motions = [
-            {'dok_id': 'A', 'session': '1990/91', 'text_no_stopwords': ' '.join(self.WORDS)},
-            {'dok_id': 'B', 'session': '1991/92', 'text_no_stopwords': ' '.join(self.WORDS)},   # exact copy
-            {'dok_id': 'C', 'session': '1992/93', 'text_no_stopwords': self.revised(1)},        # Jaccard 0.95
-            {'dok_id': 'D', 'session': '1993/94', 'text_no_stopwords': self.revised(6)},        # Jaccard 0.73
-        ]
+        bins = {
+            'group1_1985-1994.jsonl': [
+                {'dok_id': 'A', 'session': '1990/91', 'text_no_stopwords': ' '.join(self.WORDS)},
+                {'dok_id': 'B', 'session': '1991/92', 'text_no_stopwords': ' '.join(self.WORDS)},  # exact copy
+                {'dok_id': 'C', 'session': '1992/93', 'text_no_stopwords': self.revised(1)},       # near copy
+            ],
+            'group2_1994-2006.jsonl': [
+                {'dok_id': 'D', 'session': '1994/95', 'text_no_stopwords': ' '.join(self.WORDS)},  # exact, later period
+                {'dok_id': 'E', 'session': '1995/96', 'text_no_stopwords': self.revised(6)},       # near, same period as D
+            ],
+        }
         with tempfile.TemporaryDirectory() as tmp:
-            write_bin(tmp, motions)
+            for name, motions in bins.items():
+                (Path(tmp) / name).write_text(''.join(json.dumps(m) + '\n' for m in motions), encoding='utf-8')
             kept = {level: [m['doc_id'] for m in lda_common.load_body_texts(Path(tmp), dedup=level)[1]]
                     for level in lda_common.DEDUP_LEVELS}
             with self.assertRaises(ValueError):
-                lda_common.load_body_texts(Path(tmp), dedup='nearly')
-        self.assertEqual(kept, {'none': ['A', 'B', 'C', 'D'], 'exact': ['A', 'C', 'D'],
-                                'near08': ['A', 'D'], 'near': ['A']})
+                lda_common.load_body_texts(Path(tmp), dedup='near')
+        self.assertEqual(kept, {'none': ['A', 'B', 'C', 'D', 'E'], 'global': ['A'], 'period': ['A', 'D']})
+
+    def test_default_is_within_each_period(self):
+        self.assertEqual(lda_common.load_body_texts.__defaults__, ('period',))
+        self.assertEqual(lda_common.load_period_body_texts.__defaults__, ('period',))
 
 
 class TestSharedSettings(unittest.TestCase):

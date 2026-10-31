@@ -104,15 +104,14 @@ NEAR_DUPLICATE_JACCARD = 0.6
 SHINGLE_WORDS = 3
 
 
-def near_duplicates(texts, sessions, threshold=None, chunk=400):
+def near_duplicates(texts, sessions, chunk=400):
     """Indices of texts that are near-copies of an earlier text.
 
     A text is a near-copy if the Jaccard similarity of its set of SHINGLE_WORDS-word sequences with the
-    set of any earlier text is at least threshold (default NEAR_DUPLICATE_JACCARD). Earlier means an
-    earlier session, or the same session and earlier in the list. Compared with every earlier text, so
-    each revision in a series of resubmissions is caught by its predecessor.
+    set of any earlier text is at least NEAR_DUPLICATE_JACCARD. Earlier means an earlier session, or the
+    same session and earlier in the list. Compared with every earlier text, so each revision in a series of
+    resubmissions is caught by its predecessor.
     """
-    threshold = NEAR_DUPLICATE_JACCARD if threshold is None else threshold
     n = len(texts)
     if n < 2:
         return set()
@@ -132,7 +131,7 @@ def near_duplicates(texts, sessions, threshold=None, chunk=400):
         union = sizes[rows, None] + sizes[None, :] - shared
         jaccard = np.divide(shared, union, out=np.zeros_like(shared), where=union > 0)
         jaccard[rank[None, :] >= rank[rows, None]] = 0  # only earlier texts count as originals
-        copies.update(int(r) for r in rows[jaccard.max(axis=1) >= threshold])
+        copies.update(int(r) for r in rows[jaccard.max(axis=1) >= NEAR_DUPLICATE_JACCARD])
     return copies
 
 
@@ -141,9 +140,10 @@ def read_bin_body_texts(bin_file, seen=None, skip_duplicates=True):
 
     Input field: text_no_stopwords (output of 05_remove_stopwords.py). Texts with fewer than MIN_WORDS
     words are skipped (is_modelled), among them any text with no words left. Duplicates are skipped:
-    a text identical to one already in seen (text_key; shared across the period files, read in period
-    order) is a later copy, mostly the same motion resubmitted in a later session; the first is kept.
-    skip_duplicates=False keeps them (for the deduplication comparison).
+    a text identical to one already in seen (text_key) is a later copy, mostly the same motion resubmitted
+    in a later session; the first is kept. seen is new for each period file unless the caller shares it
+    across files (global deduplication, for the deduplication comparison). skip_duplicates=False keeps
+    every copy.
     Returns: texts (list), metadata (list, same order), malformed_count (int)
     """
     if seen is None:
@@ -180,19 +180,26 @@ def period_display(period):
     return DISPLAY_NAMES.get(period, period)
 
 
-# Duplicate filters, from none to the models' setting: 'none' (length minimum only), 'exact' (also identical
-# texts), 'near08' (also near-duplicates at the earlier, stricter threshold COMPARISON_NEAR_JACCARD), 'near'
-# (also near-duplicates at NEAR_DUPLICATE_JACCARD; the default, used by every model). The other three are
-# for the deduplication comparison (analysis/dedup_comparison.py).
-COMPARISON_NEAR_JACCARD = 0.8
-DEDUP_LEVELS = ('none', 'exact', 'near08', 'near')
+# Duplicate filters. 'period' (the default, used by every model): exact and near-duplicates removed within each
+# period only, so a resubmission in a later period counts as that period's text and a theme still raised there
+# does not look as if it disappeared; the whole corpus is the union of the deduplicated periods. 'global': the
+# same filters over all periods at once (the earlier setting: first copy over all periods). 'none': length
+# minimum only. The other two are for the deduplication comparison (analysis/dedup_comparison.py).
+DEDUP_LEVELS = ('none', 'global', 'period')
 
 
-def load_body_texts(input_dir, dedup='near'):
+def without(indices, texts, metadata):
+    """texts and metadata without the given indices."""
+    keep = [i for i in range(len(texts)) if i not in indices]
+    return [texts[i] for i in keep], [metadata[i] for i in keep]
+
+
+def load_body_texts(input_dir, dedup='period'):
     """Load final body text from all temporal bins combined, for the whole-corpus model.
 
     Selection: read_bin_body_texts (length minimum, exact duplicates), then near-duplicates of an earlier
-    motion are dropped (near_duplicates). The period models use the same motions (load_period_body_texts).
+    motion are dropped (near_duplicates), both within each period. The period models use the same motions
+    (load_period_body_texts).
     dedup: one of DEDUP_LEVELS; anything but the default only for the deduplication comparison.
     Returns: texts (list), metadata (list, same order), malformed_count (int)
     """
@@ -203,19 +210,21 @@ def load_body_texts(input_dir, dedup='near'):
     malformed_count = 0
     seen = set()
     for bin_file in sorted(input_dir.glob('group*.jsonl')):
-        bin_texts, bin_metadata, bin_malformed = read_bin_body_texts(bin_file, seen, skip_duplicates=dedup != 'none')
+        bin_texts, bin_metadata, bin_malformed = read_bin_body_texts(
+            bin_file, seen if dedup == 'global' else None, skip_duplicates=dedup != 'none')
+        if dedup == 'period':
+            copies = near_duplicates(bin_texts, [m['session'] for m in bin_metadata])
+            bin_texts, bin_metadata = without(copies, bin_texts, bin_metadata)
         texts += bin_texts
         metadata += bin_metadata
         malformed_count += bin_malformed
-    if dedup in ('none', 'exact'):
-        return texts, metadata, malformed_count
-    threshold = COMPARISON_NEAR_JACCARD if dedup == 'near08' else NEAR_DUPLICATE_JACCARD
-    copies = near_duplicates(texts, [m['session'] for m in metadata], threshold)
-    keep = [i for i in range(len(texts)) if i not in copies]
-    return [texts[i] for i in keep], [metadata[i] for i in keep], malformed_count
+    if dedup == 'global':
+        copies = near_duplicates(texts, [m['session'] for m in metadata])
+        texts, metadata = without(copies, texts, metadata)
+    return texts, metadata, malformed_count
 
 
-def load_period_body_texts(input_dir, dedup='near'):
+def load_period_body_texts(input_dir, dedup='period'):
     """Load final body text per period, for the period models: the motions of load_body_texts, split by period.
 
     Returns: {period label: (texts, metadata)} in period order, and the total malformed count.
