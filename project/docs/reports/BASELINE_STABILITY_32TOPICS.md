@@ -21,11 +21,11 @@ the iteration count confirms the setting, not convergence.
 
 | Seed | Training perplexity | Iterations |
 |---|---|---|
-| 42 | 1937.30 | 50 |
-| 123 | 1934.21 | 50 |
-| 456 | 1942.25 | 50 |
-| 789 | 1934.20 | 50 |
-| 999 | 1954.68 | 50 |
+| 42 | 1958.69 | 50 |
+| 123 | 1952.12 | 50 |
+| 456 | 1956.00 | 50 |
+| 789 | 1938.99 | 50 |
+| 999 | 1975.54 | 50 |
 
 ## Stability per Topic (reference model: seed 42)
 
@@ -36,208 +36,208 @@ topics that are found in all models with more confidence than the others.
 
 | Found in | Topics |
 |---|---|
-| 4 of 4 | 4 |
-| 3 of 4 | 4 |
-| 2 of 4 | 8 |
-| 1 of 4 | 7 |
-| 0 of 4 | 9 |
+| 4 of 4 | 7 |
+| 3 of 4 | 3 |
+| 2 of 4 | 1 |
+| 1 of 4 | 6 |
+| 0 of 4 | 15 |
 
 | Topic | Top words | Found | Mean cosine | Min cosine | Mean Jaccard |
 |---|---|---|---|---|---|
-| 1 | vetenskapsråd, riksrevision, vinnova, statlig, tfhs, ämnesråd, pandemin, holdingbolag | 1/4 | 0.344 | 0.065 | 0.180 |
-| 2 | forskning, universitet, svensk, forskare, utveckling, område, internationell, avancerad | 4/4 | 0.914 | 0.870 | 0.606 |
-| 3 | teknik, yrkeshögskola, it, teknisk, kärnämne, akademi, naturvetenskap, använda | 0/4 | 0.237 | 0.077 | 0.110 |
-| 4 | studie, ekonomisk, student, studiemedel, system, kostnad, studera, studerande | 1/4 | 0.574 | 0.208 | 0.299 |
-| 5 | elev, gymnasieskola, ämne, betyg, program, kunskap, grundskola, gymnasium | 4/4 | 0.864 | 0.777 | 0.432 |
-| 6 | kommun, elev, fristående, kommunal, friskola, förälder, verksamhet, välja | 3/4 | 0.872 | 0.674 | 0.408 |
-| 7 | anslag, högskola, förslag, medel, resurs, liten, särskild, verksamhet | 3/4 | 0.716 | 0.568 | 0.350 |
-| 8 | läkare, läkarutbildning, land, fn, utbildningsplats, läkemedel, plats, sjukvård | 0/4 | 0.057 | 0.000 | 0.044 |
-| 9 | hälsa, kunskap, sjukdom, mat, hemkunskap, ämne, psykisk, dålig | 0/4 | 0.514 | 0.083 | 0.220 |
-| 10 | sfi, invandrare, svensk, nyanländ, undervisning, timme, svenska, arbetsmarknad | 1/4 | 0.509 | 0.121 | 0.347 |
-| 11 | barn, förälder, ungdom, ung, social, samhälle, problem, vuxen | 1/4 | 0.563 | 0.450 | 0.219 |
-| 12 | universitet, göteborg, umeå, lund, örebro, stockholm, institution, uppsala | 2/4 | 0.612 | 0.027 | 0.246 |
-| 13 | kvinna, kunskap, samhälle, människa, jämställdhet, flicka, arbete, pojke | 2/4 | 0.572 | 0.248 | 0.268 |
-| 14 | förslag, verksamhet, uppgift, ansvar, politisk, krav, enskild, återkomma | 0/4 | 0.516 | 0.447 | 0.143 |
-| 15 | nationell, uppdrag, kvalitet, myndighet, tydlig, stärka, skolverk, stat | 0/4 | 0.393 | 0.198 | 0.169 |
-| 16 | vuxenutbildning, behov, arbetsmarknad, lärande, folkhögskola, människa, yrkesutbildning, samhälle | 2/4 | 0.658 | 0.542 | 0.357 |
-| 17 | elev, lärare, undervisning, kunskap, grundskola, lärarutbildning, mobbning, stöd | 1/4 | 0.724 | 0.552 | 0.311 |
-| 18 | nivå, konstnärlig, mälardalens, malmö, musik, borås, kultur, stockholm | 2/4 | 0.460 | 0.003 | 0.242 |
-| 19 | idrott, fysisk, aktivitet, hälsa, fritid, rörelse, ämne, friluftsliv | 2/4 | 0.719 | 0.590 | 0.276 |
-| 20 | kränkning, ky, utbildningsvetenskaplig, vfu, skolavslutning, rektorsutbildning, otrygg, kill | 0/4 | 0.146 | 0.013 | 0.026 |
-| 21 | svensk, språk, land, svenska, undervisning, modersmål, internationell, teckenspråk | 3/4 | 0.782 | 0.606 | 0.340 |
-| 22 | högskola, län, jönköping, gävle, kristianstad, sandviken, halmstad, gävleborg | 3/4 | 0.599 | 0.060 | 0.067 |
-| 23 | högskola, linje, plats, behov, teknisk, län, kurs, högskoleutbildning | 2/4 | 0.604 | 0.344 | 0.274 |
-| 24 | företag, land, hög, utveckling, region, näringsliv, regional, utveckla | 2/4 | 0.664 | 0.361 | 0.349 |
-| 25 | elev, behov, särskola, funktionshind, stöd, specialskola, särskild, läromedel | 0/4 | 0.579 | 0.499 | 0.314 |
-| 26 | narkotika, hbt, ant, fråga, undervisning, bisexuell, barnkunskap, indikator | 0/4 | 0.141 | 0.129 | 0.067 |
-| 27 | skolinspektion, huvudman, elevhälsa, utreda, alliansregering, tillstånd, befogenhet, neuropsykiatrisk | 1/4 | 0.349 | 0.022 | 0.067 |
-| 28 | läroplan, ämne, undervisning, samhälle, människa, värde, värdegrund, religiös | 1/4 | 0.606 | 0.356 | 0.367 |
-| 29 | vård, behov, landsting, sjukvård, hälsa, ohälsa, sjuksköterska, patient | 2/4 | 0.754 | 0.625 | 0.394 |
-| 30 | student, högskola, hög, universitet, lärosäte, kvalitet, lärare, akademisk | 4/4 | 0.920 | 0.863 | 0.459 |
-| 31 | stockholm, linköping, stiftelse, stockholmsregionen, beräknad, södertälje, trädgård, kommun | 0/4 | 0.175 | 0.039 | 0.040 |
-| 32 | förskola, barn, pedagogisk, verksamhet, barnomsorg, förälder, personal, behov | 4/4 | 0.923 | 0.905 | 0.650 |
+| 1 | kvinna, jämställdhet, flicka, pojke, kön, kvinnlig, manlig, kvinnoforskning | 3/4 | 0.862 | 0.612 | 0.321 |
+| 2 | adhd, hjärt, autism, diabetes, kärlsjukdom, indikator, stamning, hemundervisning | 0/4 | 0.004 | 0.001 | 0.006 |
+| 3 | forskning, högskola, universitet, anslag, forskarutbildning, medel, förslag, verksamhet | 4/4 | 0.861 | 0.746 | 0.454 |
+| 4 | ämne, kunskap, undervisning, elev, grundskola, ungdom, läroplan, ung | 1/4 | 0.684 | 0.592 | 0.302 |
+| 5 | läkare, sjukvård, vård, medicinsk, hälsa, läkarutbildning, klinisk, patient | 1/4 | 0.571 | 0.407 | 0.294 |
+| 6 | gymnasieskola, program, elev, kurs, yrkesutbildning, gymnasium, kunskap, krav | 1/4 | 0.715 | 0.614 | 0.389 |
+| 7 | forskning, utveckling, svensk, lärosäte, hög, internationell, kvalitet, stärka | 2/4 | 0.663 | 0.373 | 0.306 |
+| 8 | åtgärd, lag, skolverk, lärare, uppdrag, rektor, problem, myndighet | 0/4 | 0.310 | 0.202 | 0.106 |
+| 9 | kommun, fristående, kommunal, skolverk, verksamhet, bidrag, förslag, stat | 4/4 | 0.868 | 0.844 | 0.471 |
+| 10 | samhälle, människa, kunskap, svensk, land, utveckling, arbete, social | 1/4 | 0.713 | 0.627 | 0.282 |
+| 11 | land, arbetsmarknad, hög, företag, jobb, ung, kompetens, person | 1/4 | 0.602 | 0.548 | 0.293 |
+| 12 | stockholm, uppsala, teologisk, lokal, södertälje, anläggning, verksamhet, hyra | 0/4 | 0.272 | 0.076 | 0.061 |
+| 13 | lärare, lärarutbildning, pedagogisk, undervisning, ämne, fortbildning, läraryrke, kunskap | 4/4 | 0.878 | 0.798 | 0.336 |
+| 14 | mat, läromedel, allians, äta, ungdom, skolmat, skolsköterska, bok | 0/4 | 0.385 | 0.183 | 0.188 |
+| 15 | språk, svensk, undervisning, svenska, invandrare, sfi, modersmål, nyanländ | 3/4 | 0.721 | 0.174 | 0.329 |
+| 16 | elev, lärare, grundskola, betyg, undervisning, nationell, kunskap, stöd | 4/4 | 0.896 | 0.836 | 0.355 |
+| 17 | behov, stöd, särskild, särskola, funktionshind, barngrupp, kompetens, specialskola | 0/4 | 0.367 | 0.255 | 0.112 |
+| 18 | social, vård, landsting, omsorg, vårdutbildning, vårdhögskola, huvudmannaskap, sjuksköterska | 0/4 | 0.213 | 0.011 | 0.105 |
+| 19 | lärcentrum, rekryteringsbidrag, hbt, homosexuell, bisexuell, transperson, östersjön, marin | 0/4 | 0.121 | 0.015 | 0.047 |
+| 20 | barn, förskola, förälder, kommun, verksamhet, personal, barnomsorg, behov | 4/4 | 0.909 | 0.762 | 0.589 |
+| 21 | högskola, län, region, plats, utveckling, teknisk, hög, behov | 4/4 | 0.915 | 0.878 | 0.611 |
+| 22 | förskoleklass, validering, kvalitetsinstitut, lovskola, skolavslutning, simundervisning, svensk, transparent | 0/4 | 0.217 | 0.005 | 0.091 |
+| 23 | student, högskola, hög, studie, förslag, studerande, studiemedel, system | 4/4 | 0.897 | 0.855 | 0.440 |
+| 24 | entreprenörskap, kalmar, bibliotek, företagande, turism, starta, kooperativ, natt | 0/4 | 0.120 | 0.013 | 0.066 |
+| 25 | psykisk, sjukdom, arbetsmiljö, problem, ohälsa, kränkning, drabba, behandling | 0/4 | 0.409 | 0.279 | 0.191 |
+| 26 | göteborg, skövde, konstnärlig, västsverige, skaraborg, region, fjärrundervisning, trollhättan | 0/4 | 0.290 | 0.144 | 0.083 |
+| 27 | skolinspektion, elevhälsa, alkohol, handlingsplan, tuff, ant, fetma, tobak | 3/4 | 0.745 | 0.343 | 0.154 |
+| 28 | mälardalens, riksrevision, etisk, djur, djurförsök, alternativ, fn, metod | 0/4 | 0.228 | 0.086 | 0.072 |
+| 29 | nivå, universitet, forskarnivå, lund, linköping, nordisk, högskolebehörighet, poäng | 0/4 | 0.278 | 0.154 | 0.112 |
+| 30 | vuxenutbildning, folkhögskola, vuxen, komvux, studieförbund, folkbildning, verksamhet, bidrag | 1/4 | 0.545 | 0.151 | 0.228 |
+| 31 | örebro, barn, hörselskadad, ekeskola, synskadad, uf, hjälpmedel, rörelsehindrad | 0/4 | 0.217 | 0.000 | 0.033 |
+| 32 | mobbning, barn, fysisk, idrott, ungdom, våld, aktivitet, hälsa | 0/4 | 0.542 | 0.425 | 0.233 |
 
 ## Pairwise Comparisons
 
 ### Seed 42 vs Seed 123
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.5753
-- Median: 0.6494
-- Min: 0.0245
-- Max: 0.9733
-- Std Dev: 0.2920
+- Mean: 0.5252
+- Median: 0.5554
+- Min: 0.0049
+- Max: 0.9919
+- Std Dev: 0.3134
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.2841
-- Median: 0.2311
+- Mean: 0.2475
+- Median: 0.2121
 - Min: 0.0000
-- Max: 0.6667
-- Std Dev: 0.2179
+- Max: 0.7391
+- Std Dev: 0.2120
 
 ### Seed 42 vs Seed 456
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.5452
-- Median: 0.6322
-- Min: 0.0004
-- Max: 0.9617
-- Std Dev: 0.3088
+- Mean: 0.5551
+- Median: 0.6191
+- Min: 0.0006
+- Max: 0.9564
+- Std Dev: 0.3101
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.2544
+- Mean: 0.2419
 - Median: 0.1765
 - Min: 0.0000
 - Max: 0.7391
-- Std Dev: 0.2084
+- Std Dev: 0.1928
 
 ### Seed 42 vs Seed 789
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.5444
-- Median: 0.6251
-- Min: 0.0030
-- Max: 0.9626
-- Std Dev: 0.3066
+- Mean: 0.5433
+- Median: 0.6086
+- Min: 0.0004
+- Max: 0.9735
+- Std Dev: 0.3219
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.2626
+- Mean: 0.2667
 - Median: 0.2500
 - Min: 0.0000
-- Max: 0.6667
-- Std Dev: 0.1937
+- Max: 0.7391
+- Std Dev: 0.2143
 
 ### Seed 42 vs Seed 999
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.5929
-- Median: 0.6391
-- Min: 0.0128
-- Max: 0.9558
-- Std Dev: 0.2805
+- Mean: 0.5036
+- Median: 0.5422
+- Min: 0.0014
+- Max: 0.9510
+- Std Dev: 0.3149
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.2791
-- Median: 0.2702
-- Min: 0.0256
-- Max: 0.6000
-- Std Dev: 0.1763
+- Mean: 0.2016
+- Median: 0.1765
+- Min: 0.0000
+- Max: 0.6667
+- Std Dev: 0.1622
 
 ### Seed 123 vs Seed 456
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.5373
-- Median: 0.6192
-- Min: 0.0031
-- Max: 0.9826
-- Std Dev: 0.3468
+- Mean: 0.5469
+- Median: 0.6186
+- Min: 0.0272
+- Max: 0.9449
+- Std Dev: 0.2881
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.2672
-- Median: 0.2121
-- Min: 0.0000
-- Max: 0.7391
-- Std Dev: 0.2275
+- Mean: 0.2386
+- Median: 0.2500
+- Min: 0.0256
+- Max: 0.5385
+- Std Dev: 0.1574
 
 ### Seed 123 vs Seed 789
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.5251
-- Median: 0.6002
-- Min: 0.0010
-- Max: 0.9768
-- Std Dev: 0.3005
+- Mean: 0.5584
+- Median: 0.6280
+- Min: 0.0029
+- Max: 0.9322
+- Std Dev: 0.3150
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.2381
-- Median: 0.1765
+- Mean: 0.2420
+- Median: 0.2121
 - Min: 0.0000
-- Max: 1.0000
-- Std Dev: 0.2231
+- Max: 0.6667
+- Std Dev: 0.1906
 
 ### Seed 123 vs Seed 999
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.4965
-- Median: 0.5450
-- Min: 0.0018
-- Max: 0.9735
-- Std Dev: 0.2941
+- Mean: 0.5242
+- Median: 0.5062
+- Min: 0.0009
+- Max: 0.9463
+- Std Dev: 0.2946
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.1897
-- Median: 0.1429
+- Mean: 0.1985
+- Median: 0.1765
 - Min: 0.0000
-- Max: 0.6000
-- Std Dev: 0.1617
+- Max: 0.5385
+- Std Dev: 0.1540
 
 ### Seed 456 vs Seed 789
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.5035
-- Median: 0.5073
-- Min: 0.0083
-- Max: 0.9876
-- Std Dev: 0.3077
+- Mean: 0.5248
+- Median: 0.6202
+- Min: 0.0038
+- Max: 0.9779
+- Std Dev: 0.3530
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.2403
-- Median: 0.2121
+- Mean: 0.2217
+- Median: 0.1943
 - Min: 0.0000
 - Max: 0.7391
-- Std Dev: 0.1853
+- Std Dev: 0.1933
 
 ### Seed 456 vs Seed 999
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.5565
-- Median: 0.5563
-- Min: 0.0021
-- Max: 0.9881
-- Std Dev: 0.3121
+- Mean: 0.5540
+- Median: 0.6314
+- Min: 0.0060
+- Max: 0.9752
+- Std Dev: 0.2986
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.2648
-- Median: 0.2311
+- Mean: 0.2181
+- Median: 0.2121
 - Min: 0.0000
-- Max: 0.6667
-- Std Dev: 0.2025
+- Max: 0.8182
+- Std Dev: 0.1703
 
 ### Seed 789 vs Seed 999
 
 **Cosine Similarity (full topic distributions):**
-- Mean: 0.5459
-- Median: 0.5722
-- Min: 0.0023
-- Max: 0.9761
-- Std Dev: 0.2697
+- Mean: 0.5917
+- Median: 0.6922
+- Min: 0.0010
+- Max: 0.9760
+- Std Dev: 0.3398
 
 **Jaccard Similarity (top 20 words):**
-- Mean: 0.2296
-- Median: 0.1943
+- Mean: 0.2478
+- Median: 0.2121
 - Min: 0.0000
-- Max: 0.6000
-- Std Dev: 0.1610
+- Max: 0.7391
+- Std Dev: 0.1848
 
 ## Overall Summary Statistics
 
@@ -251,15 +251,15 @@ deviation understates the real uncertainty. For spread across runs, compare the 
 means above.
 
 ### Cosine Similarity (across all matches)
-- Mean: 0.5423
-- Median: 0.5988
+- Mean: 0.5427
+- Median: 0.6129
 - Min: 0.0004
-- Max: 0.9881
-- Std Dev: 0.3038
+- Max: 0.9919
+- Std Dev: 0.3164
 
 ### Jaccard Similarity (across all matches)
-- Mean: 0.2510
+- Mean: 0.2324
 - Median: 0.2121
 - Min: 0.0000
-- Max: 1.0000
-- Std Dev: 0.1989
+- Max: 0.8182
+- Std Dev: 0.1855
