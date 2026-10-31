@@ -1,6 +1,6 @@
 #!/bin/bash
 # Fast rebuild: preprocessing (as needed), both models and both explorers, without the seed tests,
-# convergence check, topic-count test or deduplication comparison (those are for a full run).
+# convergence check or topic-count test (those are for a full run).
 #
 # Usage: ./run_explorers.sh [start]
 #   03         boilerplate list or lemma corrections changed: 03 -> 04 -> 05 -> models -> explorers (~8 min)
@@ -58,6 +58,6 @@ echo
 echo "===== $(date '+%H:%M:%S') done in $(( ($(date +%s) - T0) / 60 )) min"
 if [ "$START" != explorers ]; then
   echo "Models refitted: topic and chain names match only where the 'Topic names' and 'Chain names' lines"
-  echo "above say so; the seed tests, convergence check, topic-count test, deduplication comparison and"
+  echo "above say so; the seed tests, convergence check, topic-count test and"
   echo "the numbers in docs/PIPELINE_DOCUMENTATION.md are from the last full run."
 fi

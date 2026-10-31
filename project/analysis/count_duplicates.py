@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """
 Count duplicate and near-duplicate motions on the final preprocessed text (for reporting).
-The models skip duplicates within each period (lda_common.load_body_texts, dedup='period': the first copy in
-each period is kept, by text_key); this script lists them. Counts all motions, including those under the
+The models skip duplicates within each period (lda_common.read_bin_body_texts: the first copy in each period is
+kept, by text_key); this script lists them. Counts all motions, including those under the
 models' length minimum. Copies of a motion in an earlier period are kept by the models and counted separately.
 Near-duplicates (lda_common.near_duplicates: revised resubmissions, also skipped within each period) are counted
 among the motions left after the length minimum and exact duplicates, per period.
-Finally the modelled motions per period with the current rule and with the earlier global rule (dedup='global').
 Re-run after changing boilerplate or stopwords, since the count depends on the final text.
 
 Input: JSON lines with 'text_no_stopwords' field (output of 05_remove_stopwords.py).
@@ -22,7 +21,7 @@ from periods import PERIOD_FILES  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'modeling'))
 from lda_common import (  # noqa: E402
-    NEAR_DUPLICATE_JACCARD, load_body_texts, near_duplicates, period_label, read_bin_body_texts, text_key,
+    NEAR_DUPLICATE_JACCARD, near_duplicates, read_bin_body_texts, text_key,
 )
 
 
@@ -126,18 +125,6 @@ def main():
         total_near += len(copies)
         print(f"  {filename}: {len(copies)} of {len(texts)}")
     print(f"  Total: {total_near}")
-
-    # Modelled motions per period: the current rule against the earlier global one
-    print("=" * 60)
-    print("Modelled motions per period, within each period (the models) and over all periods (earlier rule):")
-    counts = {}
-    for dedup in ('period', 'global'):
-        _, metadata, _ = load_body_texts(INPUT_DIR, dedup=dedup)
-        counts[dedup] = [sum(1 for m in metadata if m['period'] == period_label(f)) for f in bins]
-    for filename, now, before in zip(bins, counts['period'], counts['global']):
-        print(f"  {filename}: {now} (global: {before}; +{now - before})")
-    print(f"  Total: {sum(counts['period'])} (global: {sum(counts['global'])}; "
-          f"+{sum(counts['period']) - sum(counts['global'])})")
     print("=" * 60)
 
 

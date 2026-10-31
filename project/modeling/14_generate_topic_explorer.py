@@ -44,7 +44,7 @@ TOP_MOTIONS = 10
 # Party code in the data -> (party it is counted as, name at the time). Folkpartiet became Liberalerna
 # (2015), Kristen demokratisk samling became Kristdemokraterna (1996) and Vänsterpartiet kommunisterna
 # became Vänsterpartiet (1990): the same parties, counted together (party_as_counted; used by
-# analysis/dedup_comparison.py). The page shows each motion's party under its name at the time.
+# analysis/rubric_coding_sheet.py). The page shows each motion's party under its name at the time.
 PARTIES = {
     'S': ('S', 'Socialdemokraterna'),
     'M': ('M', 'Moderaterna'),

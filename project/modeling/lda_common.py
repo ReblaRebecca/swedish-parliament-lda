@@ -135,19 +135,16 @@ def near_duplicates(texts, sessions, chunk=400):
     return copies
 
 
-def read_bin_body_texts(bin_file, seen=None, skip_duplicates=True):
+def read_bin_body_texts(bin_file):
     """Load final body text (titles not added) from one temporal-bin file.
 
     Input field: text_no_stopwords (output of 05_remove_stopwords.py). Texts with fewer than MIN_WORDS
-    words are skipped (is_modelled), among them any text with no words left. Duplicates are skipped:
-    a text identical to one already in seen (text_key) is a later copy, mostly the same motion resubmitted
-    in a later session; the first is kept. seen is new for each period file unless the caller shares it
-    across files (global deduplication, for the deduplication comparison). skip_duplicates=False keeps
-    every copy.
+    words are skipped (is_modelled), among them any text with no words left. Duplicates within the file are
+    skipped: a text identical to an earlier one of the same period (text_key) is a later copy, mostly the
+    same motion resubmitted in a later session; the first is kept. A copy of another period's motion is kept.
     Returns: texts (list), metadata (list, same order), malformed_count (int)
     """
-    if seen is None:
-        seen = set()
+    seen = set()
     texts = []
     metadata = []
     malformed_count = 0
@@ -162,7 +159,7 @@ def read_bin_body_texts(bin_file, seen=None, skip_duplicates=True):
             text = motion.get('text_no_stopwords', '')
             if is_modelled(text):
                 key = text_key(text)
-                if skip_duplicates and key in seen:
+                if key in seen:
                     continue
                 seen.add(key)
                 texts.append(text)
@@ -180,56 +177,33 @@ def period_display(period):
     return DISPLAY_NAMES.get(period, period)
 
 
-# Duplicate filters. 'period' (the default, used by every model): exact and near-duplicates removed within each
-# period only, so a resubmission in a later period counts as that period's text and a theme still raised there
-# does not look as if it disappeared; the whole corpus is the union of the deduplicated periods. 'global': the
-# same filters over all periods at once (the earlier setting: first copy over all periods). 'none': length
-# minimum only. The other two are for the deduplication comparison (analysis/dedup_comparison.py).
-DEDUP_LEVELS = ('none', 'global', 'period')
-
-
-def without(indices, texts, metadata):
-    """texts and metadata without the given indices."""
-    keep = [i for i in range(len(texts)) if i not in indices]
-    return [texts[i] for i in keep], [metadata[i] for i in keep]
-
-
-def load_body_texts(input_dir, dedup='period'):
+def load_body_texts(input_dir):
     """Load final body text from all temporal bins combined, for the whole-corpus model.
 
-    Selection: read_bin_body_texts (length minimum, exact duplicates), then near-duplicates of an earlier
-    motion are dropped (near_duplicates), both within each period. The period models use the same motions
-    (load_period_body_texts).
-    dedup: one of DEDUP_LEVELS; anything but the default only for the deduplication comparison.
+    Selection, within each period: read_bin_body_texts (length minimum, exact duplicates), then near-duplicates
+    of an earlier motion of the period are dropped (near_duplicates). A resubmission in a later period counts as
+    that period's text, so a theme still raised there does not look as if it disappeared; the whole corpus is the
+    union of the deduplicated periods, and the period models use the same motions (load_period_body_texts).
     Returns: texts (list), metadata (list, same order), malformed_count (int)
     """
-    if dedup not in DEDUP_LEVELS:
-        raise ValueError(f"dedup must be one of {DEDUP_LEVELS}, not {dedup!r}")
     texts = []
     metadata = []
     malformed_count = 0
-    seen = set()
     for bin_file in sorted(input_dir.glob('group*.jsonl')):
-        bin_texts, bin_metadata, bin_malformed = read_bin_body_texts(
-            bin_file, seen if dedup == 'global' else None, skip_duplicates=dedup != 'none')
-        if dedup == 'period':
-            copies = near_duplicates(bin_texts, [m['session'] for m in bin_metadata])
-            bin_texts, bin_metadata = without(copies, bin_texts, bin_metadata)
-        texts += bin_texts
-        metadata += bin_metadata
+        bin_texts, bin_metadata, bin_malformed = read_bin_body_texts(bin_file)
+        copies = near_duplicates(bin_texts, [m['session'] for m in bin_metadata])
+        texts += [t for i, t in enumerate(bin_texts) if i not in copies]
+        metadata += [m for i, m in enumerate(bin_metadata) if i not in copies]
         malformed_count += bin_malformed
-    if dedup == 'global':
-        copies = near_duplicates(texts, [m['session'] for m in metadata])
-        texts, metadata = without(copies, texts, metadata)
     return texts, metadata, malformed_count
 
 
-def load_period_body_texts(input_dir, dedup='period'):
+def load_period_body_texts(input_dir):
     """Load final body text per period, for the period models: the motions of load_body_texts, split by period.
 
     Returns: {period label: (texts, metadata)} in period order, and the total malformed count.
     """
-    texts, metadata, malformed_count = load_body_texts(input_dir, dedup)
+    texts, metadata, malformed_count = load_body_texts(input_dir)
     periods = {period_label(bin_file): ([], []) for bin_file in sorted(input_dir.glob('group*.jsonl'))}
     for text, meta in zip(texts, metadata):
         periods[meta['period']][0].append(text)
